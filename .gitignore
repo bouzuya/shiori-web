@@ -1,0 +1,5 @@
+/*.json
+/.claude/settings.local.json
+/.claude/read-log.jsonl
+/.claude/compliance-log.jsonl
+/.env
