@@ -82,6 +82,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn get_auth_callback_sets_session_and_redirects() -> anyhow::Result<()> {
+        // Step 1: Login to get CSRF and nonce cookies
+        let state = AppState::new(Arc::new(MockOidcClient));
+        let login_response = send_request(
+            crate::router::router().with_state(state.clone()),
+            axum::http::Request::builder()
+                .uri("/auth/login")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let cookies: Vec<_> = login_response
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .map(|v| v.to_str().unwrap().to_string())
+            .collect();
+        let cookie_header = cookies.join("; ");
+
+        // Step 2: Call callback with code, state, and cookies from login
+        let response = send_request(
+            crate::router::router().with_state(state),
+            axum::http::Request::builder()
+                .uri("/auth/callback?code=test_code&state=test_state")
+                .header("cookie", &cookie_header)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::TEMPORARY_REDIRECT
+        );
+        let location = response.headers().get("location").unwrap().to_str()?;
+        assert_eq!(location, "/");
+        let set_cookies: Vec<_> = response
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .map(|v| v.to_str().unwrap().to_string())
+            .collect();
+        assert!(
+            set_cookies.iter().any(|c| c.contains("session")),
+            "Expected session cookie to be set"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn get_root_returns_ok() -> anyhow::Result<()> {
         let response = send_request(
             test_app(),

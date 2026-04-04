@@ -1,3 +1,4 @@
+mod callback;
 mod login;
 
 use axum::Router;
@@ -5,5 +6,7 @@ use axum::Router;
 use crate::extractor::AppState;
 
 pub(crate) fn router() -> Router<AppState> {
-    Router::new().merge(login::router())
+    Router::new()
+        .merge(callback::router())
+        .merge(login::router())
 }
