@@ -1,13 +1,21 @@
-# AGENTS.md
+# shiori-web
+
+## プロジェクト構成
+
+- `backend/` — Rust (Cargo workspace)
+  - `backend/crates/main/` — メインクレート
 
 ## コーディングスタイル
 
-- xxx/mod.rs ではなく xxx.rs + xxx/... 形式を取ること
-- テストコードにおいて unwrap は使用せず、 ? operator と anyhow を使用する
-- フィールドはソートすること
-    - ただし Ord などで意味を持つ場合は除く。その場合はコメントで明示すること
-- `#[derive(...)]` はソートすること
-    - 例: `#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, serde::Deserialize, serde::Serialize)]`
+- モジュールは `xxx/mod.rs` ではなく `xxx.rs` + `xxx/` 形式を使うこと
+- `unwrap` を使用しないこと
+  - テストコードでは `?` 演算子と `anyhow` を使うこと
+- フィールドはアルファベット順にソートすること
+  - ただし `Ord` の実装など順序に意味がある場合は除く。その場合はコメントで明示すること
+- `#[derive(...)]` の項目はアルファベット順にソートすること
+  - 例: `#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, serde::Deserialize, serde::Serialize)]`
+- テストは `#[cfg(test)] mod tests` 内にインラインで書くこと
+- コード編集後は `cargo +nightly fmt` を実行すること
 
 ## 開発スタイル
 
@@ -26,7 +34,8 @@ TDD (テスト駆動開発) で開発を進めること。
 - リファクタリングはテストが通っている状態でのみ行う
 - 各ステップで `cargo test` を実行し、期待通りの結果 (Red では失敗、Green/Refactor では成功) を確認する
 
-## テスト
+## コマンド
 
-- テストの実行: `cd /workspaces/shiori-web/backend && cargo test`
-- テストは `#[cfg(test)] mod tests` 内にインラインで書く
+- format: `cd backend && cargo +nightly fmt`
+- lint: `cd backend && cargo clippy -- -D warnings`
+- test: `cd backend && cargo test`
