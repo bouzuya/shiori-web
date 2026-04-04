@@ -16,7 +16,9 @@ pub(crate) fn router() -> Router<AppState> {
 }
 
 async fn handler(State(state): State<AppState>, jar: SignedCookieJar) -> impl IntoResponse {
+    tracing::info!("auth login: generating authentication request");
     let auth_request = state.oidc_client.build_authentication_request();
+    tracing::debug!(url = %auth_request.url, "auth login: redirecting to OIDC provider");
     let jar = jar
         .add(Cookie::new(NONCE_COOKIE, auth_request.nonce))
         .add(Cookie::new(STATE_COOKIE, auth_request.state));
