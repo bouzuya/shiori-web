@@ -1,12 +1,16 @@
-use axum::{Router, routing::get};
+use axum::Router;
+use axum::routing::get;
 
-use crate::extractor::{self, AppState};
+use crate::extractor::AppState;
+use crate::extractor::{self};
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new().route(
         "/",
-        get(|extractor::RequireAuth(claims): extractor::RequireAuth| async move {
-            format!("OK: {}", claims.sub)
-        }),
+        get(
+            |extractor::RequireAuth(claims): extractor::RequireAuth| async move {
+                format!("OK: {}", claims.sub)
+            },
+        ),
     )
 }

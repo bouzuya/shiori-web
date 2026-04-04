@@ -1,7 +1,9 @@
 mod client;
 mod real_oidc_client;
 
-pub(crate) use client::{AuthenticationRequest, OidcClaims, OidcClient};
+pub(crate) use client::AuthenticationRequest;
+pub(crate) use client::OidcClaims;
+pub(crate) use client::OidcClient;
 
 use std::sync::Arc;
 

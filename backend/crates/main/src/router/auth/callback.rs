@@ -1,7 +1,10 @@
-use axum::extract::{Query, State};
+use axum::Router;
+use axum::extract::Query;
+use axum::extract::State;
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Redirect};
-use axum::{Router, routing::get};
+use axum::response::IntoResponse;
+use axum::response::Redirect;
+use axum::routing::get;
 use axum_extra::extract::SignedCookieJar;
 use axum_extra::extract::cookie::Cookie;
 

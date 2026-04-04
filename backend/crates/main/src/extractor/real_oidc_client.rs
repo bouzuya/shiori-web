@@ -1,4 +1,6 @@
-use super::client::{AuthenticationRequest, OidcClaims, OidcClient};
+use super::client::AuthenticationRequest;
+use super::client::OidcClaims;
+use super::client::OidcClient;
 
 pub(crate) struct RealOidcClientOptions {
     pub client_id: String,

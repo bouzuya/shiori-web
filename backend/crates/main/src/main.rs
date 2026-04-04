@@ -15,7 +15,8 @@ async fn main() -> anyhow::Result<()> {
 mod tests {
     use std::sync::Arc;
 
-    use crate::extractor::{self, AppState};
+    use crate::extractor::AppState;
+    use crate::extractor::{self};
 
     struct MockOidcClient;
 
