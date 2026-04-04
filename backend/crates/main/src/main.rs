@@ -129,22 +129,76 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_root_returns_ok() -> anyhow::Result<()> {
+    async fn get_protected_without_session_returns_unauthorized() -> anyhow::Result<()> {
         let response = send_request(
             test_app(),
             axum::http::Request::builder()
-                .method(axum::http::Method::GET)
                 .uri("/")
                 .body(axum::body::Body::empty())?,
         )
         .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_protected_with_session_returns_ok() -> anyhow::Result<()> {
+        // Full flow: login → callback → access protected route
+        let state = AppState::new(Arc::new(MockOidcClient));
+
+        // Step 1: Login
+        let login_response = send_request(
+            crate::router::router().with_state(state.clone()),
+            axum::http::Request::builder()
+                .uri("/auth/login")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let login_cookies: Vec<_> = login_response
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .map(|v| v.to_str().unwrap().to_string())
+            .collect();
+        let login_cookie_header = login_cookies.join("; ");
+
+        // Step 2: Callback
+        let callback_response = send_request(
+            crate::router::router().with_state(state.clone()),
+            axum::http::Request::builder()
+                .uri("/auth/callback?code=test_code&state=test_state")
+                .header("cookie", &login_cookie_header)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let callback_cookies: Vec<_> = callback_response
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .map(|v| v.to_str().unwrap().to_string())
+            .collect();
+        let session_cookie_header = callback_cookies.join("; ");
+
+        // Step 3: Access protected route with session cookie
+        let response = send_request(
+            crate::router::router().with_state(state),
+            axum::http::Request::builder()
+                .uri("/")
+                .header("cookie", &session_cookie_header)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
-        assert_eq!(response.into_body_string().await?, "OK");
+        let body = response.into_body_string().await?;
+        assert!(
+            body.starts_with("OK: "),
+            "Expected body to start with 'OK: ', got: {body}"
+        );
         Ok(())
     }
 
     async fn send_request(
-        router: axum::Router,
+        router: axum::Router<()>,
         request: axum::http::Request<axum::body::Body>,
     ) -> anyhow::Result<axum::response::Response<axum::body::Body>> {
         let response = tower::ServiceExt::oneshot(router, request).await?;
