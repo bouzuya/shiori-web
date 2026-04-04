@@ -1,4 +1,4 @@
-mod auth;
+mod extractor;
 mod env;
 
 use axum::{Router, routing::get};
