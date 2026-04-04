@@ -134,6 +134,14 @@ mod tests {
             set_cookies.iter().any(|c| c.contains("session")),
             "Expected session cookie to be set"
         );
+        let session_cookie = set_cookies
+            .iter()
+            .find(|c| c.starts_with("session="))
+            .expect("Expected session cookie");
+        assert!(
+            session_cookie.contains("Path=/"),
+            "Expected session cookie to have Path=/, got: {session_cookie}"
+        );
         Ok(())
     }
 

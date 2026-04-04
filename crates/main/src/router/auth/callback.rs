@@ -70,7 +70,7 @@ async fn handler(
     let jar = jar
         .remove(Cookie::from(STATE_COOKIE))
         .remove(Cookie::from(NONCE_COOKIE))
-        .add(Cookie::new(SESSION_COOKIE, session_value));
+        .add(Cookie::build((SESSION_COOKIE, session_value)).path("/"));
 
     Ok((jar, Redirect::temporary("/")))
 }
