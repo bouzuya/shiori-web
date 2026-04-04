@@ -46,6 +46,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn get_auth_login_redirects_to_oidc_provider() -> anyhow::Result<()> {
+        let response = send_request(
+            test_app(),
+            axum::http::Request::builder()
+                .method(axum::http::Method::GET)
+                .uri("/auth/login")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::TEMPORARY_REDIRECT
+        );
+        let location = response.headers().get("location").unwrap().to_str()?;
+        assert!(
+            location.starts_with("https://provider.example.com/authorize"),
+            "Expected redirect to OIDC provider, got: {location}"
+        );
+        let set_cookies: Vec<_> = response
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .map(|v| v.to_str().unwrap().to_string())
+            .collect();
+        assert!(
+            set_cookies.iter().any(|c| c.contains("oidc_state")),
+            "Expected oidc_state cookie to be set"
+        );
+        assert!(
+            set_cookies.iter().any(|c| c.contains("oidc_nonce")),
+            "Expected oidc_nonce cookie to be set"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn get_root_returns_ok() -> anyhow::Result<()> {
         let response = send_request(
             test_app(),
