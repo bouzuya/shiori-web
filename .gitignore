@@ -2,3 +2,4 @@
 /.claude/*.jsonl
 /.claude/settings.local.json
 /.env
+/target/

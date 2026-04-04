@@ -1,10 +1,5 @@
 # shiori-web
 
-## プロジェクト構成
-
-- `backend/` — Rust (Cargo workspace)
-  - `backend/crates/main/` — メインクレート
-
 ## コーディングスタイル
 
 - モジュールは `xxx/mod.rs` ではなく `xxx.rs` + `xxx/` 形式を使うこと
@@ -36,6 +31,6 @@ TDD (テスト駆動開発) で開発を進めること。
 
 ## コマンド
 
-- format: `cd backend && cargo +nightly fmt`
-- lint: `cd backend && cargo clippy -- -D warnings`
-- test: `cd backend && cargo test`
+- format: `cargo +nightly fmt`
+- lint: `cargo clippy -- -D warnings`
+- test: `cargo test`
