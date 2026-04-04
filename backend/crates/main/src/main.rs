@@ -1,3 +1,5 @@
+mod env;
+
 use axum::{Router, routing::get};
 
 fn app() -> Router {
