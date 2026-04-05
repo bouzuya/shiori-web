@@ -1,3 +1,4 @@
 services:
   workspace:
+    # env_file: ../.env
     tty: true
