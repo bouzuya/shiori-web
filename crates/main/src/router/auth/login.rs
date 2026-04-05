@@ -7,9 +7,8 @@ use axum_extra::extract::SignedCookieJar;
 use axum_extra::extract::cookie::Cookie;
 
 use crate::AppState;
-
-const NONCE_COOKIE: &str = "oidc_nonce";
-const STATE_COOKIE: &str = "oidc_state";
+use crate::cookie::NONCE_COOKIE;
+use crate::cookie::STATE_COOKIE;
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new().route("/auth/login", get(handler))

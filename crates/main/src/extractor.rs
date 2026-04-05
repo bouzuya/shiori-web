@@ -11,7 +11,7 @@ use axum::http::StatusCode;
 use axum_extra::extract::SignedCookieJar;
 use axum_extra::extract::cookie::Key;
 
-const SESSION_COOKIE: &str = "session";
+use crate::cookie::SESSION_COOKIE;
 
 pub(crate) struct RequireAuth(pub OidcClaims);
 
