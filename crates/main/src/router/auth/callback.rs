@@ -8,7 +8,7 @@ use axum::routing::get;
 use axum_extra::extract::SignedCookieJar;
 use axum_extra::extract::cookie::Cookie;
 
-use crate::extractor::AppState;
+use crate::AppState;
 
 const SESSION_COOKIE: &str = "session";
 const NONCE_COOKIE: &str = "oidc_nonce";

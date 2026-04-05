@@ -1,7 +1,7 @@
 use axum::Router;
 use axum::routing::get;
 
-use crate::extractor::AppState;
+use crate::AppState;
 use crate::extractor::{self};
 
 pub(crate) fn router() -> Router<AppState> {
