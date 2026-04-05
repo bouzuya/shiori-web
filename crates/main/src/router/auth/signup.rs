@@ -7,18 +7,20 @@ use axum_extra::extract::SignedCookieJar;
 use axum_extra::extract::cookie::Cookie;
 
 use crate::AppState;
+use crate::cookie::FLOW_COOKIE;
 use crate::cookie::NONCE_COOKIE;
 use crate::cookie::STATE_COOKIE;
 
 pub(crate) fn router() -> Router<AppState> {
-    Router::new().route("/auth/login", get(handler))
+    Router::new().route("/auth/signup", get(handler))
 }
 
 async fn handler(State(state): State<AppState>, jar: SignedCookieJar) -> impl IntoResponse {
-    tracing::info!("auth login: generating authentication request");
+    tracing::info!("auth signup: generating authentication request");
     let auth_request = state.oidc_client.build_authentication_request();
-    tracing::debug!(url = %auth_request.url, "auth login: redirecting to OIDC provider");
+    tracing::debug!(url = %auth_request.url, "auth signup: redirecting to OIDC provider");
     let jar = jar
+        .add(Cookie::new(FLOW_COOKIE, "signup".to_string()))
         .add(Cookie::new(NONCE_COOKIE, auth_request.nonce))
         .add(Cookie::new(STATE_COOKIE, auth_request.state));
     (jar, Redirect::temporary(&auth_request.url))

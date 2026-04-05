@@ -9,6 +9,7 @@ use axum_extra::extract::SignedCookieJar;
 use axum_extra::extract::cookie::Cookie;
 
 use crate::AppState;
+use crate::cookie::FLOW_COOKIE;
 use crate::cookie::NONCE_COOKIE;
 use crate::cookie::SESSION_COOKIE;
 use crate::cookie::STATE_COOKIE;
@@ -50,7 +51,15 @@ async fn handler(
             StatusCode::BAD_REQUEST
         })?;
 
-    let claims = app_state
+    let flow = jar
+        .get(FLOW_COOKIE)
+        .map(|c| c.value().to_string())
+        .ok_or_else(|| {
+            tracing::warn!("auth callback: auth_flow cookie not found, returning 400");
+            StatusCode::BAD_REQUEST
+        })?;
+
+    let oidc_claims = app_state
         .oidc_client
         .exchange_code(&params.code, &nonce)
         .await
@@ -59,14 +68,57 @@ async fn handler(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    let session_value = serde_json::to_string(&claims).map_err(|e| {
-        tracing::error!("auth callback: failed to serialize claims: {e}");
+    let user = app_state
+        .user_repository
+        .find(&oidc_claims.sub)
+        .await
+        .map_err(|e| {
+            tracing::error!("auth callback: failed to find user: {e:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    match (flow.as_str(), user) {
+        ("signin", None) => {
+            tracing::warn!(
+                sub = %oidc_claims.sub,
+                "auth callback: user not found for signin, returning 403"
+            );
+            return Err(StatusCode::FORBIDDEN);
+        }
+        ("signin", Some(_)) => {
+            // signin successful, do nothing here and let the session be created below
+        }
+        ("signup", None) => {
+            app_state
+                .user_repository
+                .store(crate::user::User::create(&oidc_claims.sub))
+                .await
+                .map_err(|e| {
+                    tracing::error!("auth callback: failed to store user: {e:?}");
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
+        }
+        ("signup", Some(_)) => {
+            tracing::warn!(
+                sub = %oidc_claims.sub,
+                "auth callback: user already exists for signup, returning 403"
+            );
+            return Err(StatusCode::FORBIDDEN);
+        }
+        _ => {
+            tracing::warn!(flow, "auth callback: unknown auth flow, returning 400");
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    }
+
+    let session_value = serde_json::to_string(&oidc_claims).map_err(|e| {
+        tracing::error!("auth callback: failed to serialize session claims: {e}");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    tracing::info!(sub = %claims.sub, "auth callback: authentication successful, setting session cookie");
+    tracing::info!(sub = %oidc_claims.sub, "auth callback: authentication successful, setting session cookie");
 
     let jar = jar
+        .remove(Cookie::from(FLOW_COOKIE))
         .remove(Cookie::from(STATE_COOKIE))
         .remove(Cookie::from(NONCE_COOKIE))
         .add(Cookie::build((SESSION_COOKIE, session_value)).path("/"));

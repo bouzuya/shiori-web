@@ -3,6 +3,7 @@ mod env;
 mod extractor;
 mod router;
 mod state;
+mod user;
 
 pub(crate) use state::AppState;
 
@@ -29,6 +30,9 @@ mod tests {
 
     use crate::AppState;
     use crate::extractor::{self};
+    use crate::user::InMemoryUserRepository;
+    use crate::user::User;
+    use crate::user::UserRepository;
 
     struct MockOidcClient;
 
@@ -54,17 +58,20 @@ mod tests {
     }
 
     fn test_app() -> axum::Router {
-        let state = AppState::new(Arc::new(MockOidcClient));
+        let state = AppState::new(
+            Arc::new(MockOidcClient),
+            Arc::new(InMemoryUserRepository::new()),
+        );
         crate::router::router().with_state(state)
     }
 
     #[tokio::test]
-    async fn get_auth_login_redirects_to_oidc_provider() -> anyhow::Result<()> {
+    async fn get_auth_signup_redirects_to_oidc_provider() -> anyhow::Result<()> {
         let response = send_request(
             test_app(),
             axum::http::Request::builder()
                 .method(axum::http::Method::GET)
-                .uri("/auth/login")
+                .uri("/auth/signup")
                 .body(axum::body::Body::empty())?,
         )
         .await?;
@@ -72,16 +79,20 @@ mod tests {
             response.status(),
             axum::http::StatusCode::TEMPORARY_REDIRECT
         );
-        let location = response.headers().get("location").unwrap().to_str()?;
+        let location = response
+            .headers()
+            .get(axum::http::header::LOCATION)
+            .expect("Expected location header")
+            .to_str()?;
         assert!(
             location.starts_with("https://provider.example.com/authorize"),
             "Expected redirect to OIDC provider, got: {location}"
         );
         let set_cookies: Vec<_> = response
             .headers()
-            .get_all("set-cookie")
+            .get_all(axum::http::header::SET_COOKIE)
             .iter()
-            .map(|v| v.to_str().unwrap().to_string())
+            .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
             .collect();
         assert!(
             set_cookies.iter().any(|c| c.contains("oidc_state")),
@@ -91,34 +102,20 @@ mod tests {
             set_cookies.iter().any(|c| c.contains("oidc_nonce")),
             "Expected oidc_nonce cookie to be set"
         );
+        assert!(
+            set_cookies.iter().any(|c| c.contains("auth_flow")),
+            "Expected auth_flow cookie to be set"
+        );
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_auth_callback_sets_session_and_redirects() -> anyhow::Result<()> {
-        // Step 1: Login to get CSRF and nonce cookies
-        let state = AppState::new(Arc::new(MockOidcClient));
-        let login_response = send_request(
-            crate::router::router().with_state(state.clone()),
-            axum::http::Request::builder()
-                .uri("/auth/login")
-                .body(axum::body::Body::empty())?,
-        )
-        .await?;
-        let cookies: Vec<_> = login_response
-            .headers()
-            .get_all("set-cookie")
-            .iter()
-            .map(|v| v.to_str().unwrap().to_string())
-            .collect();
-        let cookie_header = cookies.join("; ");
-
-        // Step 2: Call callback with code, state, and cookies from login
+    async fn get_auth_signin_redirects_to_oidc_provider() -> anyhow::Result<()> {
         let response = send_request(
-            crate::router::router().with_state(state),
+            test_app(),
             axum::http::Request::builder()
-                .uri("/auth/callback?code=test_code&state=test_state")
-                .header("cookie", &cookie_header)
+                .method(axum::http::Method::GET)
+                .uri("/auth/signin")
                 .body(axum::body::Body::empty())?,
         )
         .await?;
@@ -126,31 +123,141 @@ mod tests {
             response.status(),
             axum::http::StatusCode::TEMPORARY_REDIRECT
         );
-        let location = response.headers().get("location").unwrap().to_str()?;
-        assert_eq!(location, "/");
+        let location = response
+            .headers()
+            .get(axum::http::header::LOCATION)
+            .expect("Expected location header")
+            .to_str()?;
+        assert!(
+            location.starts_with("https://provider.example.com/authorize"),
+            "Expected redirect to OIDC provider, got: {location}"
+        );
         let set_cookies: Vec<_> = response
             .headers()
-            .get_all("set-cookie")
+            .get_all(axum::http::header::SET_COOKIE)
             .iter()
-            .map(|v| v.to_str().unwrap().to_string())
+            .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
             .collect();
         assert!(
-            set_cookies.iter().any(|c| c.contains("session")),
-            "Expected session cookie to be set"
-        );
-        let session_cookie = set_cookies
-            .iter()
-            .find(|c| c.starts_with("session="))
-            .expect("Expected session cookie");
-        assert!(
-            session_cookie.contains("Path=/"),
-            "Expected session cookie to have Path=/, got: {session_cookie}"
+            set_cookies.iter().any(|c| c.contains("auth_flow")),
+            "Expected auth_flow cookie to be set"
         );
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_protected_without_session_returns_unauthorized() -> anyhow::Result<()> {
+    async fn signup_callback_creates_user_and_sets_session() -> anyhow::Result<()> {
+        let state = AppState::new(
+            Arc::new(MockOidcClient),
+            Arc::new(InMemoryUserRepository::new()),
+        );
+
+        // Step 1: Signup to get CSRF and nonce cookies
+        let signup_response = send_request(
+            crate::router::router().with_state(state.clone()),
+            axum::http::Request::builder()
+                .uri("/auth/signup")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let cookie_header = extract_cookies(&signup_response);
+
+        // Step 2: Call callback with code, state, and cookies
+        let response = send_request(
+            crate::router::router().with_state(state),
+            axum::http::Request::builder()
+                .uri("/auth/callback?code=test_code&state=test_state")
+                .header(axum::http::header::COOKIE, &cookie_header)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::TEMPORARY_REDIRECT
+        );
+        let location = response
+            .headers()
+            .get(axum::http::header::LOCATION)
+            .expect("Expected location header")
+            .to_str()?;
+        assert_eq!(location, "/");
+        let set_cookies: Vec<_> = response
+            .headers()
+            .get_all(axum::http::header::SET_COOKIE)
+            .iter()
+            .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
+            .collect();
+        assert!(
+            set_cookies.iter().any(|c| c.contains("session")),
+            "Expected session cookie to be set"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn signin_callback_with_existing_user_sets_session() -> anyhow::Result<()> {
+        let user_repo = Arc::new(InMemoryUserRepository::new());
+        user_repo.store(User::create("user123")).await?;
+        let state = AppState::new(Arc::new(MockOidcClient), user_repo);
+
+        // Step 1: Signin
+        let signin_response = send_request(
+            crate::router::router().with_state(state.clone()),
+            axum::http::Request::builder()
+                .uri("/auth/signin")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let cookie_header = extract_cookies(&signin_response);
+
+        // Step 2: Callback
+        let response = send_request(
+            crate::router::router().with_state(state),
+            axum::http::Request::builder()
+                .uri("/auth/callback?code=test_code&state=test_state")
+                .header(axum::http::header::COOKIE, &cookie_header)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::TEMPORARY_REDIRECT
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn signin_callback_with_unknown_user_returns_error() -> anyhow::Result<()> {
+        let state = AppState::new(
+            Arc::new(MockOidcClient),
+            Arc::new(InMemoryUserRepository::new()),
+        );
+
+        // Step 1: Signin (no user in DB)
+        let signin_response = send_request(
+            crate::router::router().with_state(state.clone()),
+            axum::http::Request::builder()
+                .uri("/auth/signin")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let cookie_header = extract_cookies(&signin_response);
+
+        // Step 2: Callback — should fail because user doesn't exist
+        let response = send_request(
+            crate::router::router().with_state(state),
+            axum::http::Request::builder()
+                .uri("/auth/callback?code=test_code&state=test_state")
+                .header(axum::http::header::COOKIE, &cookie_header)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::FORBIDDEN);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_root_without_session_returns_landing_page() -> anyhow::Result<()> {
         let response = send_request(
             test_app(),
             axum::http::Request::builder()
@@ -158,54 +265,54 @@ mod tests {
                 .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains("/auth/signup"),
+            "Expected landing page to contain signup link"
+        );
+        assert!(
+            body.contains("/auth/signin"),
+            "Expected landing page to contain signin link"
+        );
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_protected_with_session_returns_ok() -> anyhow::Result<()> {
-        // Full flow: login → callback → access protected route
-        let state = AppState::new(Arc::new(MockOidcClient));
+    async fn get_root_with_session_returns_ok() -> anyhow::Result<()> {
+        // Full flow: signup → callback → access root
+        let state = AppState::new(
+            Arc::new(MockOidcClient),
+            Arc::new(InMemoryUserRepository::new()),
+        );
 
-        // Step 1: Login
-        let login_response = send_request(
+        // Step 1: Signup
+        let signup_response = send_request(
             crate::router::router().with_state(state.clone()),
             axum::http::Request::builder()
-                .uri("/auth/login")
+                .uri("/auth/signup")
                 .body(axum::body::Body::empty())?,
         )
         .await?;
-        let login_cookies: Vec<_> = login_response
-            .headers()
-            .get_all("set-cookie")
-            .iter()
-            .map(|v| v.to_str().unwrap().to_string())
-            .collect();
-        let login_cookie_header = login_cookies.join("; ");
+        let signup_cookie_header = extract_cookies(&signup_response);
 
         // Step 2: Callback
         let callback_response = send_request(
             crate::router::router().with_state(state.clone()),
             axum::http::Request::builder()
                 .uri("/auth/callback?code=test_code&state=test_state")
-                .header("cookie", &login_cookie_header)
+                .header(axum::http::header::COOKIE, &signup_cookie_header)
                 .body(axum::body::Body::empty())?,
         )
         .await?;
-        let callback_cookies: Vec<_> = callback_response
-            .headers()
-            .get_all("set-cookie")
-            .iter()
-            .map(|v| v.to_str().unwrap().to_string())
-            .collect();
-        let session_cookie_header = callback_cookies.join("; ");
+        let session_cookie_header = extract_cookies(&callback_response);
 
-        // Step 3: Access protected route with session cookie
+        // Step 3: Access root with session cookie
         let response = send_request(
             crate::router::router().with_state(state),
             axum::http::Request::builder()
                 .uri("/")
-                .header("cookie", &session_cookie_header)
+                .header(axum::http::header::COOKIE, &session_cookie_header)
                 .body(axum::body::Body::empty())?,
         )
         .await?;
@@ -216,6 +323,16 @@ mod tests {
             "Expected body to start with 'OK: ', got: {body}"
         );
         Ok(())
+    }
+
+    fn extract_cookies(response: &axum::response::Response<axum::body::Body>) -> String {
+        response
+            .headers()
+            .get_all(axum::http::header::SET_COOKIE)
+            .iter()
+            .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
+            .collect::<Vec<_>>()
+            .join("; ")
     }
 
     async fn send_request(
