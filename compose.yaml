@@ -5,7 +5,6 @@ services:
       - ./firebase:/firebase
 
   workspace:
-    env_file: .env
     environment:
       - FIRESTORE_EMULATOR_HOST=firebase:8080
       - GOOGLE_CLOUD_PROJECT=demo-project
