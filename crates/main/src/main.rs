@@ -1,11 +1,12 @@
-mod cookie;
+mod cookie_jar;
 mod env;
 mod extractor;
 mod router;
 mod state;
 mod user;
 
-pub(crate) use state::AppState;
+pub(crate) use self::cookie_jar::CookieJar;
+pub(crate) use self::state::AppState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

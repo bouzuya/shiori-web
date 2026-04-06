@@ -1,7 +1,6 @@
 mod client;
 pub(crate) mod real_oidc_client;
 
-#[cfg(test)]
 pub(crate) use client::AuthenticationRequest;
 pub(crate) use client::OidcClaims;
 pub(crate) use client::OidcClient;
@@ -9,10 +8,9 @@ pub(crate) use client::OidcClient;
 use axum::extract::FromRequestParts;
 use axum::extract::OptionalFromRequestParts;
 use axum::http::StatusCode;
-use axum_extra::extract::SignedCookieJar;
 use axum_extra::extract::cookie::Key;
 
-use crate::cookie::SESSION_COOKIE;
+use crate::CookieJar;
 
 pub(crate) struct RequireAuth(pub OidcClaims);
 
@@ -28,18 +26,14 @@ where
         state: &S,
     ) -> Result<Self, Self::Rejection> {
         tracing::debug!(uri = %parts.uri, method = %parts.method, "RequireAuth: checking authentication");
-        let jar = SignedCookieJar::<Key>::from_request_parts(parts, state)
+        let jar = CookieJar::from_request_parts(parts, state)
             .await
             .map_err(|e| {
-                tracing::warn!("RequireAuth: failed to read signed cookie jar: {e}");
+                tracing::warn!("RequireAuth: failed to read cookie jar: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
-        let session_cookie = jar.get(SESSION_COOKIE).ok_or_else(|| {
-            tracing::info!(uri = %parts.uri, "RequireAuth: no session cookie found, returning 401");
-            StatusCode::UNAUTHORIZED
-        })?;
-        let claims: OidcClaims = serde_json::from_str(session_cookie.value()).map_err(|e| {
-            tracing::warn!("RequireAuth: failed to deserialize session cookie: {e}");
+        let claims = jar.get_session().ok_or_else(|| {
+            tracing::warn!("RequireAuth: failed to read session cookie");
             StatusCode::UNAUTHORIZED
         })?;
         tracing::debug!(sub = %claims.sub, "RequireAuth: authenticated");
@@ -58,15 +52,13 @@ where
         parts: &mut axum::http::request::Parts,
         state: &S,
     ) -> Result<Option<Self>, Self::Rejection> {
-        let jar = SignedCookieJar::<Key>::from_request_parts(parts, state)
+        let jar = CookieJar::from_request_parts(parts, state)
             .await
             .map_err(|e| {
-                tracing::warn!("OptionalAuth: failed to read signed cookie jar: {e}");
+                tracing::warn!("OptionalAuth: failed to read cookie jar: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
-        let claims = jar
-            .get(SESSION_COOKIE)
-            .and_then(|c| serde_json::from_str::<OidcClaims>(c.value()).ok());
+        let claims = jar.get_session();
         Ok(claims.map(RequireAuth))
     }
 }
