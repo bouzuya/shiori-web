@@ -57,6 +57,12 @@ impl DateTime {
         Self::from_millis(millis)
     }
 
+    pub(crate) fn now() -> Self {
+        let millis = chrono::Utc::now().timestamp_millis();
+        // System time is always within [0001-01-01, 9999-12-31], so from_millis cannot fail here.
+        Self::from_millis(millis).unwrap_or_else(|_| unreachable!("system clock is out of range"))
+    }
+
     pub(crate) fn from_unix_timestamp_as_millis(millis: i64) -> anyhow::Result<Self> {
         Self::from_millis(millis)
     }
@@ -180,6 +186,16 @@ mod tests {
     #[test]
     fn test_after_max_returns_error() {
         assert!(DateTime::from_unix_timestamp_as_millis(MAX_MILLIS + 1).is_err());
+    }
+
+    #[test]
+    fn test_now_returns_current_time() {
+        let before_millis = chrono::Utc::now().timestamp_millis();
+        let dt = DateTime::now();
+        let after_millis = chrono::Utc::now().timestamp_millis();
+        let millis = dt.to_unix_timestamp_as_millis();
+        assert!(before_millis <= millis);
+        assert!(millis <= after_millis);
     }
 
     #[test]
