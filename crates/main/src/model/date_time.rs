@@ -4,7 +4,7 @@ const MIN_MILLIS: i64 = -62_135_596_800_000;
 const MAX_MILLIS: i64 = 253_402_300_799_999;
 
 #[allow(dead_code)]
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) struct DateTime {
     inner: chrono::DateTime<chrono::Utc>,
 }
@@ -196,6 +196,61 @@ mod tests {
         let millis = dt.to_unix_timestamp_as_millis();
         assert!(before_millis <= millis);
         assert!(millis <= after_millis);
+    }
+
+    #[test]
+    fn test_clone() -> anyhow::Result<()> {
+        let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
+        let cloned = dt.clone();
+        assert_eq!(dt, cloned);
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy() -> anyhow::Result<()> {
+        let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
+        let copied = dt;
+        // dt is still usable after copy
+        assert_eq!(dt, copied);
+        Ok(())
+    }
+
+    #[test]
+    fn test_debug() -> anyhow::Result<()> {
+        let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
+        let s = format!("{dt:?}");
+        assert!(!s.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn test_eq() -> anyhow::Result<()> {
+        let a = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
+        let b = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
+        let c = DateTime::from_rfc3339("2024-01-15T10:30:45.456Z")?;
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+        Ok(())
+    }
+
+    #[test]
+    fn test_ord() -> anyhow::Result<()> {
+        let earlier = DateTime::from_rfc3339("2024-01-15T10:30:45.000Z")?;
+        let later = DateTime::from_rfc3339("2024-01-15T10:30:45.999Z")?;
+        assert!(earlier < later);
+        assert!(later > earlier);
+        assert_eq!(earlier.cmp(&earlier), std::cmp::Ordering::Equal);
+        Ok(())
+    }
+
+    #[test]
+    fn test_partial_ord() -> anyhow::Result<()> {
+        let earlier = DateTime::from_rfc3339("2024-01-15T10:30:45.000Z")?;
+        let later = DateTime::from_rfc3339("2024-01-15T10:30:45.999Z")?;
+        assert!(earlier.partial_cmp(&later) == Some(std::cmp::Ordering::Less));
+        assert!(later.partial_cmp(&earlier) == Some(std::cmp::Ordering::Greater));
+        assert!(earlier.partial_cmp(&earlier) == Some(std::cmp::Ordering::Equal));
+        Ok(())
     }
 
     #[test]
