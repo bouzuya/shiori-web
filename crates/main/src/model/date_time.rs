@@ -4,7 +4,7 @@ const MIN_MILLIS: i64 = -62_135_596_800_000;
 const MAX_MILLIS: i64 = 253_402_300_799_999;
 
 #[allow(dead_code)]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) struct DateTime {
     inner: chrono::DateTime<chrono::Utc>,
 }

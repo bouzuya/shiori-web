@@ -1,12 +1,16 @@
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub(crate) struct User {
+    created_at: crate::model::DateTime,
     id: String,
 }
 
 impl User {
     pub(crate) fn create(id: &str) -> Self {
-        Self { id: id.to_string() }
+        Self {
+            created_at: crate::model::DateTime::now(),
+            id: id.to_string(),
+        }
     }
 }
 
@@ -50,6 +54,16 @@ mod tests {
     fn test_user_create() {
         let user = User::create("user1");
         assert_eq!(user.id, "user1");
+    }
+
+    #[test]
+    fn test_user_create_has_created_at() -> anyhow::Result<()> {
+        let before = crate::model::DateTime::now();
+        let user = User::create("user1");
+        let after = crate::model::DateTime::now();
+        assert!(user.created_at >= before);
+        assert!(user.created_at <= after);
+        Ok(())
     }
 
     #[tokio::test]
