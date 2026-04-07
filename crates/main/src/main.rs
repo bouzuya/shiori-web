@@ -1,9 +1,9 @@
 mod cookie_jar;
 mod env;
 mod extractor;
+mod model;
 mod router;
 mod state;
-mod user;
 
 pub(crate) use self::cookie_jar::CookieJar;
 pub(crate) use self::state::AppState;
@@ -31,9 +31,9 @@ mod tests {
 
     use crate::AppState;
     use crate::extractor::{self};
-    use crate::user::InMemoryUserRepository;
-    use crate::user::User;
-    use crate::user::UserRepository;
+    use crate::model::InMemoryUserRepository;
+    use crate::model::User;
+    use crate::model::UserRepository;
 
     struct MockOidcClient;
 

@@ -76,7 +76,7 @@ async fn handler(
         ("signup", None) => {
             app_state
                 .user_repository
-                .store(crate::user::User::create(&oidc_claims.sub))
+                .store(crate::model::User::create(&oidc_claims.sub))
                 .await
                 .map_err(|e| {
                     tracing::error!("auth callback: failed to store user: {e:?}");

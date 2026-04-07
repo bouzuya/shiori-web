@@ -4,7 +4,7 @@ use axum_extra::extract::cookie::Key;
 
 use crate::extractor::OidcClient;
 use crate::extractor::real_oidc_client;
-use crate::user::UserRepository;
+use crate::model::UserRepository;
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -30,7 +30,7 @@ impl AppState {
             redirect_uri: env.oidc_redirect_uri.clone(),
         };
         let oidc_client = real_oidc_client::RealOidcClient::new(options).await?;
-        let user_repository = Arc::new(crate::user::InMemoryUserRepository::new());
+        let user_repository = Arc::new(crate::model::InMemoryUserRepository::new());
         Ok(Self::new(Arc::new(oidc_client), user_repository))
     }
 }
