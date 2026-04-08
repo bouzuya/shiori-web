@@ -198,7 +198,9 @@ mod tests {
     #[tokio::test]
     async fn signin_callback_with_existing_user_sets_session() -> anyhow::Result<()> {
         let user_repo = Arc::new(InMemoryUserRepository::new());
-        user_repo.store(User::create("user123")).await?;
+        user_repo
+            .store(User::create("user123".parse::<crate::model::UserId>()?))
+            .await?;
         let state = AppState::new(Arc::new(MockOidcClient), user_repo);
 
         // Step 1: Signin

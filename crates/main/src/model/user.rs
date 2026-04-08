@@ -2,14 +2,14 @@
 #[allow(dead_code)]
 pub(crate) struct User {
     created_at: crate::model::DateTime,
-    id: String,
+    id: crate::model::UserId,
 }
 
 impl User {
-    pub(crate) fn create(id: &str) -> Self {
+    pub(crate) fn create(id: crate::model::UserId) -> Self {
         Self {
             created_at: crate::model::DateTime::now(),
-            id: id.to_string(),
+            id,
         }
     }
 }
@@ -41,7 +41,7 @@ impl UserRepository for InMemoryUserRepository {
 
     async fn store(&self, user: User) -> anyhow::Result<()> {
         let mut users = self.users.write().await;
-        users.entry(user.id.clone()).or_insert(user);
+        users.entry(user.id.to_string()).or_insert(user);
         Ok(())
     }
 }
@@ -58,7 +58,7 @@ impl TryFrom<UserDocumentData> for User {
     fn try_from(doc: UserDocumentData) -> Result<Self, Self::Error> {
         Ok(Self {
             created_at: crate::model::DateTime::from_rfc3339(&doc.created_at)?,
-            id: doc.id,
+            id: doc.id.parse::<crate::model::UserId>()?,
         })
     }
 }
@@ -99,7 +99,7 @@ impl UserRepository for FirestoreUserRepository {
             .map_err(|e| anyhow::anyhow!(e))?;
         let data = UserDocumentData {
             created_at: user.created_at.to_rfc3339(),
-            id: user.id.clone(),
+            id: user.id.to_string(),
         };
         self.firestore
             .run_transaction(
@@ -123,15 +123,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_user_create() {
-        let user = User::create("user1");
-        assert_eq!(user.id, "user1");
+    fn test_user_create() -> anyhow::Result<()> {
+        let user = User::create("user1".parse::<crate::model::UserId>()?);
+        assert_eq!(user.id.to_string(), "user1");
+        Ok(())
     }
 
     #[test]
     fn test_user_create_has_created_at() -> anyhow::Result<()> {
         let before = crate::model::DateTime::now();
-        let user = User::create("user1");
+        let user = User::create("user1".parse::<crate::model::UserId>()?);
         let after = crate::model::DateTime::now();
         assert!(user.created_at >= before);
         assert!(user.created_at <= after);
@@ -149,18 +150,21 @@ mod tests {
     #[tokio::test]
     async fn test_store_then_find_returns_user() -> anyhow::Result<()> {
         let repo = InMemoryUserRepository::new();
-        repo.store(User::create("user1")).await?;
+        repo.store(User::create("user1".parse()?)).await?;
         let result = repo.find("user1").await?;
         assert!(result.is_some());
-        assert_eq!(result.as_ref().map(|u| u.id.as_str()), Some("user1"));
+        assert_eq!(
+            result.as_ref().map(|u| u.id.to_string()),
+            Some("user1".to_string())
+        );
         Ok(())
     }
 
     #[tokio::test]
     async fn test_store_is_idempotent() -> anyhow::Result<()> {
         let repo = InMemoryUserRepository::new();
-        repo.store(User::create("user1")).await?;
-        repo.store(User::create("user1")).await?;
+        repo.store(User::create("user1".parse()?)).await?;
+        repo.store(User::create("user1".parse()?)).await?;
         let result = repo.find("user1").await?;
         assert!(result.is_some());
         Ok(())
@@ -189,10 +193,14 @@ mod tests {
     async fn test_firestore_store_then_find_returns_user() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
         let id = "firestore_test_user1";
-        repo.store(User::create(id)).await?;
+        repo.store(User::create(id.parse::<crate::model::UserId>()?))
+            .await?;
         let result = repo.find(id).await?;
         assert!(result.is_some());
-        assert_eq!(result.as_ref().map(|u| u.id.as_str()), Some(id));
+        assert_eq!(
+            result.as_ref().map(|u| u.id.to_string()),
+            Some(id.to_string())
+        );
         Ok(())
     }
 
@@ -202,8 +210,10 @@ mod tests {
     async fn test_firestore_store_is_idempotent() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
         let id = "firestore_test_user2";
-        repo.store(User::create(id)).await?;
-        repo.store(User::create(id)).await?;
+        repo.store(User::create(id.parse::<crate::model::UserId>()?))
+            .await?;
+        repo.store(User::create(id.parse::<crate::model::UserId>()?))
+            .await?;
         let result = repo.find(id).await?;
         assert!(result.is_some());
         Ok(())
