@@ -46,6 +46,10 @@ impl UserRepository for InMemoryUserRepository {
     }
 }
 
+fn user_id_to_document_id(id: &str) -> String {
+    id.bytes().map(|b| format!("{b:02x}")).collect()
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 struct UserDocumentData {
     created_at: String,
@@ -76,10 +80,10 @@ impl FirestoreUserRepository {
 #[async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
     async fn find(&self, id: &str) -> anyhow::Result<Option<User>> {
+        let document_id = user_id_to_document_id(id);
         let doc_ref = self
             .firestore
-            // FIXME: unsafe
-            .doc(format!("users/{id}"))
+            .doc(format!("users/{document_id}"))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
         if !snapshot.exists() {
@@ -93,9 +97,10 @@ impl UserRepository for FirestoreUserRepository {
     }
 
     async fn store(&self, user: User) -> anyhow::Result<()> {
+        let document_id = user_id_to_document_id(&user.id.to_string());
         let doc_ref = self
             .firestore
-            .doc(format!("users/{}", user.id))
+            .doc(format!("users/{document_id}"))
             .map_err(|e| anyhow::anyhow!(e))?;
         let data = UserDocumentData {
             created_at: user.created_at.to_rfc3339(),
@@ -167,6 +172,13 @@ mod tests {
         repo.store(User::create("user1".parse()?)).await?;
         let result = repo.find("user1").await?;
         assert!(result.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn test_user_id_to_document_id() -> anyhow::Result<()> {
+        // a=0x61, b=0x62, c=0x63, 1=0x31, 2=0x32, 3=0x33
+        assert_eq!(user_id_to_document_id("abc123"), "616263313233");
         Ok(())
     }
 
