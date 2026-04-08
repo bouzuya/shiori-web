@@ -30,7 +30,10 @@ impl AppState {
             redirect_uri: env.oidc_redirect_uri.clone(),
         };
         let oidc_client = real_oidc_client::RealOidcClient::new(options).await?;
-        let user_repository = Arc::new(crate::model::InMemoryUserRepository::new());
+        let firestore = bouzuya_firestore_client::Firestore::new(
+            bouzuya_firestore_client::FirestoreOptions::default(),
+        )?;
+        let user_repository = Arc::new(crate::model::FirestoreUserRepository::new(firestore));
         Ok(Self::new(Arc::new(oidc_client), user_repository))
     }
 }
