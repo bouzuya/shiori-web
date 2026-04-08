@@ -31,11 +31,19 @@ mod tests {
 
     use crate::AppState;
     use crate::extractor::{self};
-    use crate::model::InMemoryUserRepository;
+    use crate::model::FirestoreUserRepository;
     use crate::model::User;
     use crate::model::UserRepository;
 
-    struct MockOidcClient;
+    struct MockOidcClient {
+        sub: String,
+    }
+
+    impl MockOidcClient {
+        fn new(sub: impl Into<String>) -> Self {
+            Self { sub: sub.into() }
+        }
+    }
 
     #[async_trait::async_trait]
     impl extractor::OidcClient for MockOidcClient {
@@ -53,23 +61,36 @@ mod tests {
             _nonce: &str,
         ) -> anyhow::Result<extractor::OidcClaims> {
             Ok(extractor::OidcClaims {
-                sub: "user123".to_string(),
+                sub: self.sub.clone(),
             })
         }
     }
 
-    fn test_app() -> axum::Router {
-        let state = AppState::new(
-            Arc::new(MockOidcClient),
-            Arc::new(InMemoryUserRepository::new()),
-        );
-        crate::router::router().with_state(state)
+    fn unique_user_id() -> String {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        format!("u{nanos}")
+    }
+
+    fn firestore_user_repo() -> anyhow::Result<Arc<dyn UserRepository>> {
+        let firestore = bouzuya_firestore_client::Firestore::new(
+            bouzuya_firestore_client::FirestoreOptions::default(),
+        )?;
+        Ok(Arc::new(FirestoreUserRepository::new(firestore)))
+    }
+
+    fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
+        let state = AppState::new(Arc::new(MockOidcClient::new(sub)), firestore_user_repo()?);
+        Ok(crate::router::router().with_state(state))
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn get_auth_signup_redirects_to_oidc_provider() -> anyhow::Result<()> {
         let response = send_request(
-            test_app(),
+            test_app("test_signup_redirect_user")?,
             axum::http::Request::builder()
                 .method(axum::http::Method::GET)
                 .uri("/auth/signup")
@@ -111,9 +132,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn get_auth_signin_redirects_to_oidc_provider() -> anyhow::Result<()> {
         let response = send_request(
-            test_app(),
+            test_app("test_signin_redirect_user")?,
             axum::http::Request::builder()
                 .method(axum::http::Method::GET)
                 .uri("/auth/signin")
@@ -147,11 +169,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn signup_callback_creates_user_and_sets_session() -> anyhow::Result<()> {
-        let state = AppState::new(
-            Arc::new(MockOidcClient),
-            Arc::new(InMemoryUserRepository::new()),
-        );
+        let sub = unique_user_id();
+        let state = AppState::new(Arc::new(MockOidcClient::new(&sub)), firestore_user_repo()?);
 
         // Step 1: Signup to get CSRF and nonce cookies
         let signup_response = send_request(
@@ -196,12 +217,14 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn signin_callback_with_existing_user_sets_session() -> anyhow::Result<()> {
-        let user_repo = Arc::new(InMemoryUserRepository::new());
+        let sub = unique_user_id();
+        let user_repo = firestore_user_repo()?;
         user_repo
-            .store(User::create("user123".parse::<crate::model::UserId>()?))
+            .store(User::create(sub.parse::<crate::model::UserId>()?))
             .await?;
-        let state = AppState::new(Arc::new(MockOidcClient), user_repo);
+        let state = AppState::new(Arc::new(MockOidcClient::new(&sub)), user_repo);
 
         // Step 1: Signin
         let signin_response = send_request(
@@ -230,11 +253,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn signin_callback_with_unknown_user_returns_error() -> anyhow::Result<()> {
-        let state = AppState::new(
-            Arc::new(MockOidcClient),
-            Arc::new(InMemoryUserRepository::new()),
-        );
+        let sub = unique_user_id();
+        let state = AppState::new(Arc::new(MockOidcClient::new(&sub)), firestore_user_repo()?);
 
         // Step 1: Signin (no user in DB)
         let signin_response = send_request(
@@ -260,9 +282,10 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn get_root_without_session_returns_landing_page() -> anyhow::Result<()> {
         let response = send_request(
-            test_app(),
+            test_app("test_root_no_session_user")?,
             axum::http::Request::builder()
                 .uri("/")
                 .body(axum::body::Body::empty())?,
@@ -282,12 +305,11 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn get_root_with_session_returns_ok() -> anyhow::Result<()> {
         // Full flow: signup → callback → access root
-        let state = AppState::new(
-            Arc::new(MockOidcClient),
-            Arc::new(InMemoryUserRepository::new()),
-        );
+        let sub = unique_user_id();
+        let state = AppState::new(Arc::new(MockOidcClient::new(&sub)), firestore_user_repo()?);
 
         // Step 1: Signup
         let signup_response = send_request(
