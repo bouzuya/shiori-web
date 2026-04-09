@@ -3,13 +3,11 @@ const MIN_MILLIS: i64 = -62_135_596_800_000;
 // 9999-12-31T23:59:59.999Z
 const MAX_MILLIS: i64 = 253_402_300_799_999;
 
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub(crate) struct DateTime {
+pub struct DateTime {
     inner: chrono::DateTime<chrono::Utc>,
 }
 
-#[allow(dead_code)]
 impl DateTime {
     fn from_millis(millis: i64) -> anyhow::Result<Self> {
         if !(MIN_MILLIS..=MAX_MILLIS).contains(&millis) {
@@ -25,7 +23,7 @@ impl DateTime {
         Ok(Self { inner })
     }
 
-    pub(crate) fn from_rfc3339(s: &str) -> anyhow::Result<Self> {
+    pub fn from_rfc3339(s: &str) -> anyhow::Result<Self> {
         // Validate millisecond precision: require exactly 3 fractional second digits.
         // RFC3339 format is YYYY-MM-DDTHH:MM:SS[.fraction]timezone, so the dot
         // appears at position 19 or later (after the fixed-length datetime prefix).
@@ -50,33 +48,33 @@ impl DateTime {
         Self::from_millis(dt.timestamp_millis())
     }
 
-    pub(crate) fn from_unix_timestamp(secs: i64) -> anyhow::Result<Self> {
+    pub fn from_unix_timestamp(secs: i64) -> anyhow::Result<Self> {
         let millis = secs
             .checked_mul(1000)
             .ok_or_else(|| anyhow::anyhow!("unix timestamp overflow: {secs}"))?;
         Self::from_millis(millis)
     }
 
-    pub(crate) fn now() -> Self {
+    pub fn from_unix_timestamp_as_millis(millis: i64) -> anyhow::Result<Self> {
+        Self::from_millis(millis)
+    }
+
+    pub fn now() -> Self {
         let millis = chrono::Utc::now().timestamp_millis();
         // System time is always within [0001-01-01, 9999-12-31], so from_millis cannot fail here.
         Self::from_millis(millis).unwrap_or_else(|_| unreachable!("system clock is out of range"))
     }
 
-    pub(crate) fn from_unix_timestamp_as_millis(millis: i64) -> anyhow::Result<Self> {
-        Self::from_millis(millis)
-    }
-
-    pub(crate) fn to_rfc3339(&self) -> String {
+    pub fn to_rfc3339(&self) -> String {
         self.inner
             .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
     }
 
-    pub(crate) fn to_unix_timestamp(&self) -> i64 {
+    pub fn to_unix_timestamp(&self) -> i64 {
         self.inner.timestamp()
     }
 
-    pub(crate) fn to_unix_timestamp_as_millis(&self) -> i64 {
+    pub fn to_unix_timestamp_as_millis(&self) -> i64 {
         self.inner.timestamp_millis()
     }
 }

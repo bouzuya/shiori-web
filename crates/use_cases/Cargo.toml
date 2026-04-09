@@ -1,0 +1,9 @@
+[dependencies]
+anyhow = "1"
+async-trait = "0.1.89"
+entities = { path = "../entities" }
+
+[package]
+edition.workspace = true
+name = "use_cases"
+publish.workspace = true

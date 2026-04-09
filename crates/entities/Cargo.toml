@@ -1,0 +1,8 @@
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+
+[package]
+edition.workspace = true
+name = "entities"
+publish.workspace = true

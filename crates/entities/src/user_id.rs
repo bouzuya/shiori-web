@@ -1,8 +1,7 @@
 /// Google OIDC の sub claim を表す ID。
 /// ASCII 文字のみ、最大 255 文字、大文字小文字を区別する。
-#[allow(dead_code)]
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct UserId(String);
+pub struct UserId(String);
 
 impl std::fmt::Display for UserId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
