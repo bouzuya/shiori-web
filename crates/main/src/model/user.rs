@@ -1,4 +1,4 @@
-pub(crate) use use_cases::UserRepository;
+pub(crate) use kernel::UserRepository;
 
 fn user_id_to_document_id(id: &str) -> String {
     id.bytes().map(|b| format!("{b:02x}")).collect()

@@ -1,9 +1,9 @@
 [dependencies]
 anyhow = "1"
 async-trait = "0.1.89"
-entities = { path = "../entities" }
+chrono = "0.4"
 
 [package]
 edition.workspace = true
-name = "use_cases"
+name = "kernel"
 publish.workspace = true
