@@ -13,7 +13,7 @@ struct UserDocumentData {
 fn try_user_from_doc(doc: UserDocumentData) -> anyhow::Result<crate::model::User> {
     Ok(crate::model::User::new(
         crate::model::DateTime::from_rfc3339(&doc.created_at)?,
-        doc.id.parse::<crate::model::UserId>()?,
+        doc.id.parse::<crate::model::GoogleUserId>()?,
     ))
 }
 
@@ -108,7 +108,7 @@ mod tests {
         let repo = firestore_repo()?;
         let id = "firestore_test_user1";
         repo.store(crate::model::User::create(
-            id.parse::<crate::model::UserId>()?,
+            id.parse::<crate::model::GoogleUserId>()?,
         ))
         .await?;
         let result = repo.find(id).await?;
@@ -127,11 +127,11 @@ mod tests {
         let repo = firestore_repo()?;
         let id = "firestore_test_user2";
         repo.store(crate::model::User::create(
-            id.parse::<crate::model::UserId>()?,
+            id.parse::<crate::model::GoogleUserId>()?,
         ))
         .await?;
         repo.store(crate::model::User::create(
-            id.parse::<crate::model::UserId>()?,
+            id.parse::<crate::model::GoogleUserId>()?,
         ))
         .await?;
         let result = repo.find(id).await?;

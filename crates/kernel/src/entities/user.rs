@@ -1,11 +1,11 @@
 #[derive(Clone, Debug)]
 pub struct User {
     created_at: crate::entities::DateTime,
-    id: crate::entities::UserId,
+    id: crate::entities::GoogleUserId,
 }
 
 impl User {
-    pub fn create(id: crate::entities::UserId) -> Self {
+    pub fn create(id: crate::entities::GoogleUserId) -> Self {
         Self {
             created_at: crate::entities::DateTime::now(),
             id,
@@ -16,11 +16,11 @@ impl User {
         self.created_at
     }
 
-    pub fn id(&self) -> &crate::entities::UserId {
+    pub fn id(&self) -> &crate::entities::GoogleUserId {
         &self.id
     }
 
-    pub fn new(created_at: crate::entities::DateTime, id: crate::entities::UserId) -> Self {
+    pub fn new(created_at: crate::entities::DateTime, id: crate::entities::GoogleUserId) -> Self {
         Self { created_at, id }
     }
 }
@@ -31,7 +31,7 @@ mod tests {
 
     #[test]
     fn test_user_create() -> anyhow::Result<()> {
-        let user = User::create("user1".parse::<crate::entities::UserId>()?);
+        let user = User::create("user1".parse::<crate::entities::GoogleUserId>()?);
         assert_eq!(user.id().to_string(), "user1");
         Ok(())
     }
@@ -39,7 +39,7 @@ mod tests {
     #[test]
     fn test_user_create_has_created_at() -> anyhow::Result<()> {
         let before = crate::entities::DateTime::now();
-        let user = User::create("user1".parse::<crate::entities::UserId>()?);
+        let user = User::create("user1".parse::<crate::entities::GoogleUserId>()?);
         let after = crate::entities::DateTime::now();
         assert!(user.created_at() >= before);
         assert!(user.created_at() <= after);

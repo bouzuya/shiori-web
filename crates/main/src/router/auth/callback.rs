@@ -79,7 +79,7 @@ async fn handler(
                 .store(crate::model::User::create(
                     oidc_claims
                         .sub
-                        .parse::<crate::model::UserId>()
+                        .parse::<crate::model::GoogleUserId>()
                         .map_err(|e| {
                             tracing::error!("auth callback: invalid user id: {e:?}");
                             StatusCode::INTERNAL_SERVER_ERROR

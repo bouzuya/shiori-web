@@ -222,7 +222,7 @@ mod tests {
         let sub = unique_user_id();
         let user_repo = firestore_user_repo()?;
         user_repo
-            .store(User::create(sub.parse::<crate::model::UserId>()?))
+            .store(User::create(sub.parse::<crate::model::GoogleUserId>()?))
             .await?;
         let state = AppState::new(Arc::new(MockOidcClient::new(&sub)), user_repo);
 
