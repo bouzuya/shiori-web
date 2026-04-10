@@ -7,13 +7,15 @@ fn user_id_to_document_id(id: &str) -> String {
 #[derive(serde::Deserialize, serde::Serialize)]
 struct UserDocumentData {
     created_at: String,
-    id: String,
+    google_user_id: String,
+    user_id: String,
 }
 
 fn try_user_from_doc(doc: UserDocumentData) -> anyhow::Result<crate::model::User> {
     Ok(crate::model::User::new(
         crate::model::DateTime::from_rfc3339(&doc.created_at)?,
-        doc.id.parse::<crate::model::GoogleUserId>()?,
+        doc.google_user_id.parse::<crate::model::GoogleUserId>()?,
+        doc.user_id.parse::<crate::model::UserId>()?,
     ))
 }
 
@@ -47,14 +49,15 @@ impl UserRepository for FirestoreUserRepository {
     }
 
     async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
-        let document_id = user_id_to_document_id(&user.id().to_string());
+        let document_id = user_id_to_document_id(&user.google_user_id().to_string());
         let doc_ref = self
             .firestore
             .doc(format!("users/{document_id}"))
             .map_err(|e| anyhow::anyhow!(e))?;
         let data = UserDocumentData {
             created_at: user.created_at().to_rfc3339(),
-            id: user.id().to_string(),
+            google_user_id: user.google_user_id().to_string(),
+            user_id: user.id().to_string(),
         };
         self.firestore
             .run_transaction(
@@ -114,7 +117,7 @@ mod tests {
         let result = repo.find(id).await?;
         assert!(result.is_some());
         assert_eq!(
-            result.as_ref().map(|u| u.id().to_string()),
+            result.as_ref().map(|u| u.google_user_id().to_string()),
             Some(id.to_string())
         );
         Ok(())
