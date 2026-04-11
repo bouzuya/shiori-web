@@ -5,15 +5,15 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 
 use crate::AppState;
-use crate::extractor::RequireAuth;
+use crate::extractor::CurrentUserId;
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new().route("/", get(handler))
 }
 
-async fn handler(State(state): State<AppState>, auth: Option<RequireAuth>) -> impl IntoResponse {
+async fn handler(State(state): State<AppState>, auth: Option<CurrentUserId>) -> impl IntoResponse {
     match auth {
-        Some(RequireAuth(user_id)) => Html(format!("OK: {}", user_id)).into_response(),
+        Some(CurrentUserId(user_id)) => Html(format!("OK: {}", user_id)).into_response(),
         None => {
             let base = &state.base_path;
             Html(format!(
