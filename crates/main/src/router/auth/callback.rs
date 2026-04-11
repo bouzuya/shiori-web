@@ -54,9 +54,16 @@ async fn handler(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
+    let google_user_id = oidc_claims
+        .sub
+        .parse::<crate::model::GoogleUserId>()
+        .map_err(|e| {
+            tracing::error!("auth callback: invalid google user id: {e:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
     let user = app_state
         .user_repository
-        .find_by_google_user_id(&oidc_claims.sub)
+        .find_by_google_user_id(&google_user_id)
         .await
         .map_err(|e| {
             tracing::error!("auth callback: failed to find user: {e:?}");

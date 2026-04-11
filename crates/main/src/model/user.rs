@@ -36,8 +36,11 @@ impl FirestoreUserRepository {
 
 #[async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
-    async fn find_by_google_user_id(&self, id: &str) -> anyhow::Result<Option<crate::model::User>> {
-        let google_user_id_document_id = google_user_id_to_document_id(id);
+    async fn find_by_google_user_id(
+        &self,
+        id: &crate::model::GoogleUserId,
+    ) -> anyhow::Result<Option<crate::model::User>> {
+        let google_user_id_document_id = google_user_id_to_document_id(&id.to_string());
         let google_user_id_doc_ref = self
             .firestore
             .doc(format!("google_user_ids/{google_user_id_document_id}"))
@@ -133,7 +136,9 @@ mod tests {
     async fn test_firestore_find_by_google_user_id_returns_none_for_unknown() -> anyhow::Result<()>
     {
         let repo = firestore_repo()?;
-        let result = repo.find_by_google_user_id("unknown_user_for_test").await?;
+        let result = repo
+            .find_by_google_user_id(&"unknown_user_for_test".parse::<crate::model::GoogleUserId>()?)
+            .await?;
         assert!(result.is_none());
         Ok(())
     }
@@ -143,12 +148,9 @@ mod tests {
     #[serial_test::serial]
     async fn test_firestore_store_then_find_by_google_user_id_returns_user() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let id = "firestore_test_user1";
-        repo.store(crate::model::User::create(
-            id.parse::<crate::model::GoogleUserId>()?,
-        ))
-        .await?;
-        let result = repo.find_by_google_user_id(id).await?;
+        let id = "firestore_test_user1".parse::<crate::model::GoogleUserId>()?;
+        repo.store(crate::model::User::create(id.clone())).await?;
+        let result = repo.find_by_google_user_id(&id).await?;
         assert!(result.is_some());
         assert_eq!(
             result.as_ref().map(|u| u.google_user_id().to_string()),
@@ -162,16 +164,10 @@ mod tests {
     #[serial_test::serial]
     async fn test_firestore_store_is_idempotent() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let id = "firestore_test_user2";
-        repo.store(crate::model::User::create(
-            id.parse::<crate::model::GoogleUserId>()?,
-        ))
-        .await?;
-        repo.store(crate::model::User::create(
-            id.parse::<crate::model::GoogleUserId>()?,
-        ))
-        .await?;
-        let result = repo.find_by_google_user_id(id).await?;
+        let id = "firestore_test_user2".parse::<crate::model::GoogleUserId>()?;
+        repo.store(crate::model::User::create(id.clone())).await?;
+        repo.store(crate::model::User::create(id.clone())).await?;
+        let result = repo.find_by_google_user_id(&id).await?;
         assert!(result.is_some());
         Ok(())
     }
