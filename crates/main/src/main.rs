@@ -66,6 +66,9 @@ mod tests {
         }
     }
 
+    const TEST_COOKIE_SIGNING_SECRET: &str =
+        "test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding";
+
     fn unique_user_id() -> String {
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -84,6 +87,7 @@ mod tests {
     fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
         let state = AppState::new(
             "".to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(sub)),
             firestore_user_repo()?,
         );
@@ -178,6 +182,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
         );
@@ -234,6 +239,7 @@ mod tests {
             .await?;
         let state = AppState::new(
             "".to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             user_repo,
         );
@@ -270,6 +276,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
         );
@@ -327,6 +334,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
         );
@@ -378,6 +386,7 @@ mod tests {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new("base_path_route_user")),
             firestore_user_repo()?,
         );
@@ -419,6 +428,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             base_path.to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
         );
@@ -462,6 +472,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             base_path.to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
         );
@@ -506,6 +517,7 @@ mod tests {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new("base_path_links_user")),
             firestore_user_repo()?,
         );

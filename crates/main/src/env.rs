@@ -4,6 +4,8 @@ use anyhow::Context as _;
 pub(crate) struct Env {
     /// アプリケーションのベースパス (例: `/app`、デフォルト: `""`)
     pub base_path: String,
+    /// クッキー署名用シークレット (64バイト以上必要)
+    pub cookie_signing_secret: String,
     /// OIDC の client id
     pub oidc_client_id: String,
     /// OIDC の client secret
@@ -22,6 +24,7 @@ impl Env {
 
         Ok(Self {
             base_path: std::env::var("BASE_PATH").unwrap_or_default(),
+            cookie_signing_secret: read_var("COOKIE_SIGNING_SECRET")?,
             oidc_client_id: read_var("OIDC_CLIENT_ID")?,
             oidc_client_secret: read_var("OIDC_CLIENT_SECRET")?,
             oidc_issuer_url: read_var("OIDC_ISSUER_URL")?,
@@ -39,6 +42,10 @@ mod tests {
         temp_env::with_vars(
             [
                 ("BASE_PATH", Some("/app")),
+                (
+                    "COOKIE_SIGNING_SECRET",
+                    Some("test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"),
+                ),
                 ("OIDC_CLIENT_ID", Some("test_client_id")),
                 ("OIDC_CLIENT_SECRET", Some("test_client_secret")),
                 ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
@@ -50,6 +57,10 @@ mod tests {
             || {
                 let env = Env::from_env()?;
                 assert_eq!(env.base_path, "/app");
+                assert_eq!(
+                    env.cookie_signing_secret,
+                    "test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"
+                );
                 assert_eq!(env.oidc_client_id, "test_client_id");
                 assert_eq!(env.oidc_client_secret, "test_client_secret");
                 assert_eq!(env.oidc_issuer_url, "https://issuer.example.com");
@@ -64,6 +75,10 @@ mod tests {
         temp_env::with_vars(
             [
                 ("BASE_PATH", None::<&str>),
+                (
+                    "COOKIE_SIGNING_SECRET",
+                    Some("test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"),
+                ),
                 ("OIDC_CLIENT_ID", Some("test_client_id")),
                 ("OIDC_CLIENT_SECRET", Some("test_client_secret")),
                 ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
@@ -85,7 +100,8 @@ mod tests {
         temp_env::with_vars(
             [
                 ("BASE_PATH", None::<&str>),
-                ("OIDC_CLIENT_ID", None::<&str>),
+                ("COOKIE_SIGNING_SECRET", None::<&str>),
+                ("OIDC_CLIENT_ID", Some("test_client_id")),
                 ("OIDC_CLIENT_SECRET", Some("secret")),
                 ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
                 (
@@ -96,7 +112,7 @@ mod tests {
             || match Env::from_env() {
                 Ok(_) => panic!("should fail"),
                 Err(err) => assert!(
-                    err.to_string().contains("OIDC_CLIENT_ID"),
+                    err.to_string().contains("COOKIE_SIGNING_SECRET"),
                     "error message should contain the variable name: {err}"
                 ),
             },

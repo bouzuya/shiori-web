@@ -20,14 +20,16 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
+    /// `cookie_signing_secret` は `Key::from()` の要件により 64 バイト以上必要。
     pub fn new(
         base_path: String,
+        cookie_signing_secret: &str,
         oidc_client: Arc<dyn OidcClient>,
         user_repository: Arc<dyn UserRepository>,
     ) -> Self {
         Self {
             base_path,
-            cookie_key: Key::generate(),
+            cookie_key: Key::from(cookie_signing_secret.as_bytes()),
             oidc_client,
             user_repository,
         }
@@ -47,6 +49,7 @@ impl AppState {
         let user_repository = Arc::new(crate::model::FirestoreUserRepository::new(firestore));
         Ok(Self::new(
             env.base_path.clone(),
+            &env.cookie_signing_secret,
             Arc::new(oidc_client),
             user_repository,
         ))
