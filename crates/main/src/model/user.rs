@@ -148,7 +148,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial_test::serial]
     async fn test_firestore_find_returns_none_for_unknown() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
@@ -159,7 +158,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial_test::serial]
     async fn test_firestore_store_then_find_returns_user() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
@@ -174,7 +172,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial_test::serial]
     async fn test_firestore_find_by_google_user_id_returns_none_for_unknown() -> anyhow::Result<()>
     {
@@ -187,7 +184,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial_test::serial]
     async fn test_firestore_store_then_find_by_google_user_id_returns_user() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
@@ -203,7 +199,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial_test::serial]
     async fn test_firestore_store_is_idempotent() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
