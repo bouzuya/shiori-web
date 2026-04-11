@@ -69,7 +69,7 @@ async fn handler(
             tracing::error!("auth callback: failed to find user: {e:?}");
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    match (flow.as_str(), user) {
+    let user_id = match (flow.as_str(), user) {
         ("signin", None) => {
             tracing::warn!(
                 sub = %oidc_claims.sub,
@@ -77,26 +77,19 @@ async fn handler(
             );
             return Err(StatusCode::FORBIDDEN);
         }
-        ("signin", Some(_)) => {
-            // signin successful, do nothing here and let the session be created below
-        }
+        ("signin", Some(user)) => user.id(),
         ("signup", None) => {
+            let new_user = crate::model::User::create(google_user_id);
+            let user_id = new_user.id();
             app_state
                 .user_repository
-                .store(crate::model::User::create(
-                    oidc_claims
-                        .sub
-                        .parse::<crate::model::GoogleUserId>()
-                        .map_err(|e| {
-                            tracing::error!("auth callback: invalid user id: {e:?}");
-                            StatusCode::INTERNAL_SERVER_ERROR
-                        })?,
-                ))
+                .store(new_user)
                 .await
                 .map_err(|e| {
                     tracing::error!("auth callback: failed to store user: {e:?}");
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
+            user_id
         }
         ("signup", Some(_)) => {
             tracing::warn!(
@@ -109,10 +102,10 @@ async fn handler(
             tracing::warn!(flow, "auth callback: unknown auth flow, returning 400");
             return Err(StatusCode::BAD_REQUEST);
         }
-    }
+    };
 
     tracing::info!(sub = %oidc_claims.sub, "auth callback: authentication successful, setting session cookie");
-    let jar = jar.with_session_cookies(oidc_claims);
+    let jar = jar.with_session_cookies(user_id.to_string());
 
     let redirect_target = if app_state.base_path.is_empty() {
         "/".to_string()

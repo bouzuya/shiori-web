@@ -2,6 +2,7 @@ mod client;
 pub(crate) mod real_oidc_client;
 
 pub(crate) use client::AuthenticationRequest;
+#[cfg(test)]
 pub(crate) use client::OidcClaims;
 pub(crate) use client::OidcClient;
 
@@ -13,7 +14,7 @@ use axum_extra::extract::cookie::Key;
 use crate::CookieJar;
 use crate::state::BasePath;
 
-pub(crate) struct RequireAuth(pub OidcClaims);
+pub(crate) struct RequireAuth(pub crate::model::UserId);
 
 impl<S> FromRequestParts<S> for RequireAuth
 where
@@ -34,12 +35,16 @@ where
                 tracing::warn!("RequireAuth: failed to read cookie jar: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
-        let claims = jar.get_session().ok_or_else(|| {
+        let user_id_str = jar.get_session().ok_or_else(|| {
             tracing::warn!("RequireAuth: failed to read session cookie");
             StatusCode::UNAUTHORIZED
         })?;
-        tracing::debug!(sub = %claims.sub, "RequireAuth: authenticated");
-        Ok(RequireAuth(claims))
+        let user_id = user_id_str.parse::<crate::model::UserId>().map_err(|e| {
+            tracing::warn!("RequireAuth: invalid user_id in session cookie: {e}");
+            StatusCode::UNAUTHORIZED
+        })?;
+        tracing::debug!(user_id = %user_id, "RequireAuth: authenticated");
+        Ok(RequireAuth(user_id))
     }
 }
 
@@ -61,7 +66,9 @@ where
                 tracing::warn!("OptionalAuth: failed to read cookie jar: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
-        let claims = jar.get_session();
-        Ok(claims.map(RequireAuth))
+        let user_id = jar
+            .get_session()
+            .and_then(|s| s.parse::<crate::model::UserId>().ok());
+        Ok(user_id.map(RequireAuth))
     }
 }

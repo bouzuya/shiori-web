@@ -2,6 +2,7 @@
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct UserId(uuid::Uuid);
 
+#[allow(clippy::new_without_default)]
 impl UserId {
     pub fn new() -> Self {
         Self(uuid::Uuid::now_v7())

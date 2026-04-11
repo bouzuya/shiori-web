@@ -13,7 +13,7 @@ pub(crate) fn router() -> Router<AppState> {
 
 async fn handler(State(state): State<AppState>, auth: Option<RequireAuth>) -> impl IntoResponse {
     match auth {
-        Some(RequireAuth(claims)) => Html(format!("OK: {}", claims.sub)).into_response(),
+        Some(RequireAuth(user_id)) => Html(format!("OK: {}", user_id)).into_response(),
         None => {
             let base = &state.base_path;
             Html(format!(

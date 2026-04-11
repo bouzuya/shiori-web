@@ -11,7 +11,6 @@ use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::cookie::Key;
 
 use crate::extractor::AuthenticationRequest;
-use crate::extractor::OidcClaims;
 use crate::state::BasePath;
 
 pub(crate) struct CookieJar {
@@ -47,10 +46,10 @@ impl CookieJar {
             .map(|c| c.value().to_string())
     }
 
-    pub(crate) fn get_session(&self) -> Option<OidcClaims> {
+    pub(crate) fn get_session(&self) -> Option<String> {
         self.jar
             .get(Self::SESSION_COOKIE_NAME)
-            .and_then(|c| serde_json::from_str::<OidcClaims>(c.value()).ok())
+            .map(|c| c.value().to_string())
     }
 
     pub(crate) fn get_state(&self) -> Option<String> {
@@ -59,9 +58,8 @@ impl CookieJar {
             .map(|c| c.value().to_string())
     }
 
-    pub(crate) fn with_session_cookies(&self, oidc_claims: OidcClaims) -> Self {
-        let session_value =
-            serde_json::to_string(&oidc_claims).expect("Failed to serialize session claims");
+    pub(crate) fn with_session_cookies(&self, user_id: String) -> Self {
+        let session_value = user_id;
         let cp = self.cookie_path();
 
         let jar = self
@@ -154,7 +152,6 @@ mod tests {
     use axum_extra::extract::cookie::Key;
 
     use crate::extractor::AuthenticationRequest;
-    use crate::extractor::OidcClaims;
 
     use super::CookieJar;
 
@@ -199,17 +196,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_session_returns_none_for_invalid_json() {
-        use axum_extra::extract::cookie::Cookie;
-        let key = Key::generate();
-        let jar = CookieJar {
-            base_path: "".to_string(),
-            jar: SignedCookieJar::new(key).add(Cookie::new("session", "invalid-json")),
-        };
-        assert!(jar.get_session().is_none());
-    }
-
-    #[test]
     fn test_with_signin_cookies_sets_flow() {
         let jar = make_empty_jar().with_signin_cookies(&make_auth_request());
         assert_eq!(jar.get_flow(), Some("signin".to_string()));
@@ -245,17 +231,20 @@ mod tests {
         assert_eq!(jar.get_state(), Some("test_state".to_string()));
     }
 
+    fn make_session() -> String {
+        crate::model::UserId::new().to_string()
+    }
+
     #[test]
     fn test_with_session_cookies_sets_session() -> anyhow::Result<()> {
+        let user_id_str = make_session();
         let jar = make_empty_jar()
             .with_signin_cookies(&make_auth_request())
-            .with_session_cookies(OidcClaims {
-                sub: "user123".to_string(),
-            });
-        let session = jar
+            .with_session_cookies(user_id_str.clone());
+        let stored = jar
             .get_session()
-            .ok_or_else(|| anyhow::anyhow!("expected Some(OidcClaims)"))?;
-        assert_eq!(session.sub, "user123");
+            .ok_or_else(|| anyhow::anyhow!("expected Some(String)"))?;
+        assert_eq!(stored, user_id_str);
         Ok(())
     }
 
@@ -263,9 +252,7 @@ mod tests {
     fn test_with_session_cookies_removes_flow_nonce_state() {
         let jar = make_empty_jar()
             .with_signin_cookies(&make_auth_request())
-            .with_session_cookies(OidcClaims {
-                sub: "user123".to_string(),
-            });
+            .with_session_cookies(make_session());
         assert_eq!(jar.get_flow(), None);
         assert_eq!(jar.get_nonce(), None);
         assert_eq!(jar.get_state(), None);
@@ -273,9 +260,7 @@ mod tests {
 
     #[test]
     fn test_with_session_cookies_sets_root_path_when_base_path_is_empty() -> anyhow::Result<()> {
-        let jar = make_empty_jar().with_session_cookies(OidcClaims {
-            sub: "user123".to_string(),
-        });
+        let jar = make_empty_jar().with_session_cookies(make_session());
         let cookie = jar
             .jar
             .get(CookieJar::SESSION_COOKIE_NAME)
@@ -291,9 +276,7 @@ mod tests {
             base_path: "/app".to_string(),
             jar: SignedCookieJar::new(key),
         };
-        let jar = jar.with_session_cookies(OidcClaims {
-            sub: "user123".to_string(),
-        });
+        let jar = jar.with_session_cookies(make_session());
         let cookie = jar
             .jar
             .get(CookieJar::SESSION_COOKIE_NAME)
