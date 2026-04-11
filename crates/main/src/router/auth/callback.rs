@@ -56,7 +56,7 @@ async fn handler(
 
     let user = app_state
         .user_repository
-        .find(&oidc_claims.sub)
+        .find_by_google_user_id(&oidc_claims.sub)
         .await
         .map_err(|e| {
             tracing::error!("auth callback: failed to find user: {e:?}");
