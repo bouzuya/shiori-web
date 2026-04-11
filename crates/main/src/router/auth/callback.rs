@@ -107,5 +107,10 @@ async fn handler(
     tracing::info!(sub = %oidc_claims.sub, "auth callback: authentication successful, setting session cookie");
     let jar = jar.with_session_cookies(oidc_claims);
 
-    Ok((jar, Redirect::temporary("/")))
+    let redirect_target = if app_state.base_path.is_empty() {
+        "/".to_string()
+    } else {
+        app_state.base_path.clone()
+    };
+    Ok((jar, Redirect::temporary(&redirect_target)))
 }

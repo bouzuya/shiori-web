@@ -11,11 +11,13 @@ use axum::http::StatusCode;
 use axum_extra::extract::cookie::Key;
 
 use crate::CookieJar;
+use crate::state::BasePath;
 
 pub(crate) struct RequireAuth(pub OidcClaims);
 
 impl<S> FromRequestParts<S> for RequireAuth
 where
+    BasePath: axum::extract::FromRef<S>,
     Key: axum::extract::FromRef<S>,
     S: Send + Sync,
 {
@@ -43,6 +45,7 @@ where
 
 impl<S> OptionalFromRequestParts<S> for RequireAuth
 where
+    BasePath: axum::extract::FromRef<S>,
     Key: axum::extract::FromRef<S>,
     S: Send + Sync,
 {

@@ -1,5 +1,6 @@
 use std::convert::Infallible;
 
+use axum::extract::FromRef;
 use axum::extract::FromRequestParts;
 use axum::response::IntoResponse;
 use axum::response::IntoResponseParts;
@@ -11,8 +12,12 @@ use axum_extra::extract::cookie::Key;
 
 use crate::extractor::AuthenticationRequest;
 use crate::extractor::OidcClaims;
+use crate::state::BasePath;
 
-pub(crate) struct CookieJar(SignedCookieJar);
+pub(crate) struct CookieJar {
+    base_path: String,
+    jar: SignedCookieJar,
+}
 
 impl CookieJar {
     const FLOW_COOKIE_NAME: &str = "auth_flow";
@@ -20,26 +25,36 @@ impl CookieJar {
     const SESSION_COOKIE_NAME: &str = "session";
     const STATE_COOKIE_NAME: &str = "oidc_state";
 
+    /// Cookie の `Path` 属性に設定する値を返す。
+    /// `base_path` が空のときは `/`、それ以外は `base_path` そのものを使う。
+    fn cookie_path(&self) -> String {
+        if self.base_path.is_empty() {
+            "/".to_string()
+        } else {
+            self.base_path.clone()
+        }
+    }
+
     pub(crate) fn get_flow(&self) -> Option<String> {
-        self.0
+        self.jar
             .get(Self::FLOW_COOKIE_NAME)
             .map(|c| c.value().to_string())
     }
 
     pub(crate) fn get_nonce(&self) -> Option<String> {
-        self.0
+        self.jar
             .get(Self::NONCE_COOKIE_NAME)
             .map(|c| c.value().to_string())
     }
 
     pub(crate) fn get_session(&self) -> Option<OidcClaims> {
-        self.0
+        self.jar
             .get(Self::SESSION_COOKIE_NAME)
             .and_then(|c| serde_json::from_str::<OidcClaims>(c.value()).ok())
     }
 
     pub(crate) fn get_state(&self) -> Option<String> {
-        self.0
+        self.jar
             .get(Self::STATE_COOKIE_NAME)
             .map(|c| c.value().to_string())
     }
@@ -47,54 +62,61 @@ impl CookieJar {
     pub(crate) fn with_session_cookies(&self, oidc_claims: OidcClaims) -> Self {
         let session_value =
             serde_json::to_string(&oidc_claims).expect("Failed to serialize session claims");
+        let cp = self.cookie_path();
 
         let jar = self
-            .0
+            .jar
             .clone()
-            .remove(Cookie::from(Self::FLOW_COOKIE_NAME))
-            .remove(Cookie::from(Self::STATE_COOKIE_NAME))
-            .remove(Cookie::from(Self::NONCE_COOKIE_NAME))
-            .add(Cookie::build((Self::SESSION_COOKIE_NAME, session_value)).path("/"));
+            .remove(Cookie::build((Self::FLOW_COOKIE_NAME, "")).path(cp.clone()))
+            .remove(Cookie::build((Self::STATE_COOKIE_NAME, "")).path(cp.clone()))
+            .remove(Cookie::build((Self::NONCE_COOKIE_NAME, "")).path(cp.clone()))
+            .add(Cookie::build((Self::SESSION_COOKIE_NAME, session_value)).path(cp));
 
-        Self(jar)
+        Self {
+            base_path: self.base_path.clone(),
+            jar,
+        }
     }
 
     pub(crate) fn with_signin_cookies(&self, auth_request: &AuthenticationRequest) -> Self {
+        let cp = self.cookie_path();
         let jar = self
-            .0
+            .jar
             .clone()
-            .add(Cookie::new(Self::FLOW_COOKIE_NAME, "signin".to_string()))
-            .add(Cookie::new(
-                Self::NONCE_COOKIE_NAME,
-                auth_request.nonce.clone(),
-            ))
-            .add(Cookie::new(
-                Self::STATE_COOKIE_NAME,
-                auth_request.state.clone(),
-            ));
-        Self(jar)
+            .add(Cookie::build((Self::FLOW_COOKIE_NAME, "signin")).path(cp.clone()))
+            .add(
+                Cookie::build((Self::NONCE_COOKIE_NAME, auth_request.nonce.clone()))
+                    .path(cp.clone()),
+            )
+            .add(Cookie::build((Self::STATE_COOKIE_NAME, auth_request.state.clone())).path(cp));
+        Self {
+            base_path: self.base_path.clone(),
+            jar,
+        }
     }
 
     pub(crate) fn with_signup_cookies(&self, auth_request: &AuthenticationRequest) -> Self {
+        let cp = self.cookie_path();
         let jar = self
-            .0
+            .jar
             .clone()
-            .add(Cookie::new(Self::FLOW_COOKIE_NAME, "signup".to_string()))
-            .add(Cookie::new(
-                Self::NONCE_COOKIE_NAME,
-                auth_request.nonce.clone(),
-            ))
-            .add(Cookie::new(
-                Self::STATE_COOKIE_NAME,
-                auth_request.state.clone(),
-            ));
-        Self(jar)
+            .add(Cookie::build((Self::FLOW_COOKIE_NAME, "signup")).path(cp.clone()))
+            .add(
+                Cookie::build((Self::NONCE_COOKIE_NAME, auth_request.nonce.clone()))
+                    .path(cp.clone()),
+            )
+            .add(Cookie::build((Self::STATE_COOKIE_NAME, auth_request.state.clone())).path(cp));
+        Self {
+            base_path: self.base_path.clone(),
+            jar,
+        }
     }
 }
 
 impl<S> FromRequestParts<S> for CookieJar
 where
     Key: axum::extract::FromRef<S>,
+    BasePath: axum::extract::FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = <SignedCookieJar as FromRequestParts<S>>::Rejection;
@@ -103,9 +125,12 @@ where
         parts: &mut axum::http::request::Parts,
         state: &S,
     ) -> Result<Self, Self::Rejection> {
-        SignedCookieJar::from_request_parts(parts, state)
-            .await
-            .map(Self)
+        let jar = SignedCookieJar::from_request_parts(parts, state).await?;
+        let base_path = BasePath::from_ref(state);
+        Ok(Self {
+            base_path: base_path.0,
+            jar,
+        })
     }
 }
 
@@ -113,20 +138,19 @@ impl IntoResponseParts for CookieJar {
     type Error = Infallible;
 
     fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        self.0.into_response_parts(res)
+        self.jar.into_response_parts(res)
     }
 }
 
 impl IntoResponse for CookieJar {
     fn into_response(self) -> Response {
-        self.0.into_response()
+        self.jar.into_response()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use axum_extra::extract::SignedCookieJar;
-    use axum_extra::extract::cookie::Cookie;
     use axum_extra::extract::cookie::Key;
 
     use crate::extractor::AuthenticationRequest;
@@ -136,7 +160,10 @@ mod tests {
 
     fn make_empty_jar() -> CookieJar {
         let key = Key::generate();
-        CookieJar(SignedCookieJar::new(key))
+        CookieJar {
+            base_path: "".to_string(),
+            jar: SignedCookieJar::new(key),
+        }
     }
 
     fn make_auth_request() -> AuthenticationRequest {
@@ -173,8 +200,12 @@ mod tests {
 
     #[test]
     fn test_get_session_returns_none_for_invalid_json() {
+        use axum_extra::extract::cookie::Cookie;
         let key = Key::generate();
-        let jar = CookieJar(SignedCookieJar::new(key).add(Cookie::new("session", "invalid-json")));
+        let jar = CookieJar {
+            base_path: "".to_string(),
+            jar: SignedCookieJar::new(key).add(Cookie::new("session", "invalid-json")),
+        };
         assert!(jar.get_session().is_none());
     }
 
@@ -238,5 +269,63 @@ mod tests {
         assert_eq!(jar.get_flow(), None);
         assert_eq!(jar.get_nonce(), None);
         assert_eq!(jar.get_state(), None);
+    }
+
+    #[test]
+    fn test_with_session_cookies_sets_root_path_when_base_path_is_empty() -> anyhow::Result<()> {
+        let jar = make_empty_jar().with_session_cookies(OidcClaims {
+            sub: "user123".to_string(),
+        });
+        let cookie = jar
+            .jar
+            .get(CookieJar::SESSION_COOKIE_NAME)
+            .ok_or_else(|| anyhow::anyhow!("session cookie not found"))?;
+        assert_eq!(cookie.path(), Some("/"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_with_session_cookies_sets_base_path_when_base_path_is_set() -> anyhow::Result<()> {
+        let key = Key::generate();
+        let jar = CookieJar {
+            base_path: "/app".to_string(),
+            jar: SignedCookieJar::new(key),
+        };
+        let jar = jar.with_session_cookies(OidcClaims {
+            sub: "user123".to_string(),
+        });
+        let cookie = jar
+            .jar
+            .get(CookieJar::SESSION_COOKIE_NAME)
+            .ok_or_else(|| anyhow::anyhow!("session cookie not found"))?;
+        assert_eq!(cookie.path(), Some("/app"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_with_signin_cookies_sets_root_path_when_base_path_is_empty() -> anyhow::Result<()> {
+        let jar = make_empty_jar().with_signin_cookies(&make_auth_request());
+        let cookie = jar
+            .jar
+            .get(CookieJar::FLOW_COOKIE_NAME)
+            .ok_or_else(|| anyhow::anyhow!("auth_flow cookie not found"))?;
+        assert_eq!(cookie.path(), Some("/"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_with_signin_cookies_sets_base_path_when_base_path_is_set() -> anyhow::Result<()> {
+        let key = Key::generate();
+        let jar = CookieJar {
+            base_path: "/app".to_string(),
+            jar: SignedCookieJar::new(key),
+        };
+        let jar = jar.with_signin_cookies(&make_auth_request());
+        let cookie = jar
+            .jar
+            .get(CookieJar::FLOW_COOKIE_NAME)
+            .ok_or_else(|| anyhow::anyhow!("auth_flow cookie not found"))?;
+        assert_eq!(cookie.path(), Some("/app"));
+        Ok(())
     }
 }
