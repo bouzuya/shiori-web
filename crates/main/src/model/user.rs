@@ -36,6 +36,23 @@ impl FirestoreUserRepository {
 
 #[async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
+    async fn find(&self, id: &crate::model::UserId) -> anyhow::Result<Option<crate::model::User>> {
+        let user_document_id = id.to_string();
+        let user_doc_ref = self
+            .firestore
+            .doc(format!("users/{user_document_id}"))
+            .map_err(|e| anyhow::anyhow!(e))?;
+        let snapshot = user_doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
+        if !snapshot.exists() {
+            return Ok(None);
+        }
+        let doc: UserDocumentData = snapshot
+            .data::<UserDocumentData>()
+            .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
+            .map_err(|e| anyhow::anyhow!(e))?;
+        Ok(Some(try_user_from_doc(doc)?))
+    }
+
     async fn find_by_google_user_id(
         &self,
         id: &crate::model::GoogleUserId,
@@ -128,6 +145,32 @@ mod tests {
             bouzuya_firestore_client::FirestoreOptions::default(),
         )?;
         Ok(FirestoreUserRepository::new(firestore))
+    }
+
+    #[tokio::test]
+    #[ignore]
+    #[serial_test::serial]
+    async fn test_firestore_find_returns_none_for_unknown() -> anyhow::Result<()> {
+        let repo = firestore_repo()?;
+        let id = crate::model::UserId::new();
+        let result = repo.find(&id).await?;
+        assert!(result.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    #[serial_test::serial]
+    async fn test_firestore_store_then_find_returns_user() -> anyhow::Result<()> {
+        let repo = firestore_repo()?;
+        let google_user_id = "firestore_test_find_user1".parse::<crate::model::GoogleUserId>()?;
+        let user = crate::model::User::create(google_user_id);
+        let user_id = user.id().clone();
+        repo.store(user).await?;
+        let result = repo.find(&user_id).await?;
+        assert!(result.is_some());
+        assert_eq!(result.as_ref().map(|u| u.id().clone()), Some(user_id));
+        Ok(())
     }
 
     #[tokio::test]
