@@ -66,6 +66,47 @@ mod tests {
         }
     }
 
+    struct MockUserRepository {
+        users: std::sync::Mutex<Vec<crate::model::User>>,
+    }
+
+    impl MockUserRepository {
+        fn new() -> Self {
+            Self {
+                users: std::sync::Mutex::new(Vec::new()),
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl UserRepository for MockUserRepository {
+        async fn find(
+            &self,
+            id: &crate::model::UserId,
+        ) -> anyhow::Result<Option<crate::model::User>> {
+            let users = self.users.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
+            Ok(users.iter().find(|u| u.id() == *id).cloned())
+        }
+
+        async fn find_by_google_user_id(
+            &self,
+            id: &crate::model::GoogleUserId,
+        ) -> anyhow::Result<Option<crate::model::User>> {
+            let users = self.users.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
+            Ok(users.iter().find(|u| u.google_user_id() == id).cloned())
+        }
+
+        async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
+            let mut users = self.users.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
+            if let Some(pos) = users.iter().position(|u| u.id() == user.id()) {
+                users[pos] = user;
+            } else {
+                users.push(user);
+            }
+            Ok(())
+        }
+    }
+
     const TEST_COOKIE_SIGNING_SECRET: &str =
         "test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding";
 
@@ -92,6 +133,16 @@ mod tests {
             firestore_user_repo()?,
         );
         Ok(crate::router::router("").with_state(state))
+    }
+
+    fn test_app_with_mock_repo(sub: impl Into<String>) -> axum::Router {
+        let state = AppState::new(
+            "".to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(sub)),
+            Arc::new(MockUserRepository::new()),
+        );
+        crate::router::router("").with_state(state)
     }
 
     #[tokio::test]
@@ -508,6 +559,117 @@ mod tests {
                 .any(|c| c.contains("session") && c.contains("Path=/app")),
             "Expected session cookie with Path=/app, got: {set_cookies:?}"
         );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_auth_signout_redirects_to_root() -> anyhow::Result<()> {
+        let response = send_request(
+            test_app_with_mock_repo("test_signout_redirect_user"),
+            axum::http::Request::builder()
+                .method(axum::http::Method::GET)
+                .uri("/auth/signout")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::TEMPORARY_REDIRECT
+        );
+        let location = response
+            .headers()
+            .get(axum::http::header::LOCATION)
+            .expect("Expected location header")
+            .to_str()?;
+        assert_eq!(location, "/");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_auth_signout_clears_session_cookie() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            Arc::new(MockUserRepository::new()),
+        );
+
+        // Step 1: Signup
+        let signup_response = send_request(
+            crate::router::router("").with_state(state.clone()),
+            axum::http::Request::builder()
+                .uri("/auth/signup")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let signup_cookie_header = extract_cookies(&signup_response);
+
+        // Step 2: Callback
+        let callback_response = send_request(
+            crate::router::router("").with_state(state.clone()),
+            axum::http::Request::builder()
+                .uri("/auth/callback?code=test_code&state=test_state")
+                .header(axum::http::header::COOKIE, &signup_cookie_header)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let session_cookie_header = extract_cookies(&callback_response);
+
+        // Step 3: Signout
+        let response = send_request(
+            crate::router::router("").with_state(state),
+            axum::http::Request::builder()
+                .uri("/auth/signout")
+                .header(axum::http::header::COOKIE, &session_cookie_header)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::TEMPORARY_REDIRECT
+        );
+        let set_cookies: Vec<_> = response
+            .headers()
+            .get_all(axum::http::header::SET_COOKIE)
+            .iter()
+            .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
+            .collect();
+        assert!(
+            set_cookies
+                .iter()
+                .any(|c| c.contains("session") && c.contains("Max-Age=0")),
+            "Expected session cookie to be cleared, got: {set_cookies:?}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn with_base_path_signout_redirects_to_base_path() -> anyhow::Result<()> {
+        let base_path = "/app";
+        let state = AppState::new(
+            base_path.to_string(),
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new("signout_base_path_user")),
+            Arc::new(MockUserRepository::new()),
+        );
+        let response = send_request(
+            crate::router::router(base_path).with_state(state),
+            axum::http::Request::builder()
+                .uri("/app/auth/signout")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::TEMPORARY_REDIRECT
+        );
+        let location = response
+            .headers()
+            .get(axum::http::header::LOCATION)
+            .expect("Expected location header")
+            .to_str()?;
+        assert_eq!(location, "/app");
         Ok(())
     }
 
