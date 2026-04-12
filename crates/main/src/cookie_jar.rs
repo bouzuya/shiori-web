@@ -76,6 +76,18 @@ impl CookieJar {
         }
     }
 
+    pub(crate) fn with_signout_cookies(&self) -> Self {
+        let cp = self.cookie_path();
+        let jar = self
+            .jar
+            .clone()
+            .remove(Cookie::build((Self::SESSION_COOKIE_NAME, "")).path(cp));
+        Self {
+            base_path: self.base_path.clone(),
+            jar,
+        }
+    }
+
     pub(crate) fn with_signin_cookies(&self, auth_request: &AuthenticationRequest) -> Self {
         let cp = self.cookie_path();
         let jar = self
@@ -256,6 +268,16 @@ mod tests {
         assert_eq!(jar.get_flow(), None);
         assert_eq!(jar.get_nonce(), None);
         assert_eq!(jar.get_state(), None);
+    }
+
+    #[test]
+    fn test_with_signout_cookies_removes_session() {
+        let user_id_str = make_session();
+        let jar = make_empty_jar()
+            .with_signin_cookies(&make_auth_request())
+            .with_session_cookies(user_id_str)
+            .with_signout_cookies();
+        assert!(jar.get_session().is_none());
     }
 
     #[test]
