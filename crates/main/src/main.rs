@@ -8,8 +8,13 @@ mod state;
 pub(crate) use self::cookie_jar::CookieJar;
 pub(crate) use self::state::AppState;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn generate_secret() -> String {
+    use axum_extra::extract::cookie::Key;
+    let key = Key::generate();
+    key.master().iter().map(|b| format!("{b:02x}")).collect()
+}
+
+async fn run_server() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -25,9 +30,33 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(|s| s.as_str()) == Some("generate-secret") {
+        println!("{}", generate_secret());
+        return Ok(());
+    }
+    run_server().await
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
+
+    #[test]
+    fn generate_secret_returns_string_usable_as_cookie_signing_secret() {
+        use axum_extra::extract::cookie::Key;
+        let secret = super::generate_secret();
+        // cookie_signing_secret は Key::from() に渡すため、UTF-8 バイト列が 64 バイト以上必要
+        assert!(
+            secret.len() >= 64,
+            "generated secret must be at least 64 bytes, got {}",
+            secret.len()
+        );
+        // 実際に Key::from() で変換できることを確認
+        let _ = Key::from(secret.as_bytes());
+    }
 
     use crate::AppState;
     use crate::extractor::{self};
