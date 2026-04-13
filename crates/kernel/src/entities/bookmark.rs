@@ -81,10 +81,6 @@ impl Bookmark {
 mod tests {
     use super::*;
 
-    fn sample_url() -> anyhow::Result<crate::entities::Url> {
-        Ok("https://example.com".parse()?)
-    }
-
     fn sample_title() -> anyhow::Result<crate::entities::Title> {
         Ok("Example".parse()?)
     }
@@ -96,7 +92,12 @@ mod tests {
     #[test]
     fn test_bookmark_create_generates_id() -> anyhow::Result<()> {
         let user_id = crate::entities::UserId::new();
-        let b = Bookmark::create(user_id, sample_url()?, sample_title()?, sample_comment()?);
+        let b = Bookmark::create(
+            user_id,
+            crate::entities::Url::for_test(),
+            sample_title()?,
+            sample_comment()?,
+        );
         let _id: crate::entities::BookmarkId = b.id();
         Ok(())
     }
@@ -104,8 +105,18 @@ mod tests {
     #[test]
     fn test_bookmark_create_unique_ids() -> anyhow::Result<()> {
         let user_id = crate::entities::UserId::new();
-        let b1 = Bookmark::create(user_id, sample_url()?, sample_title()?, sample_comment()?);
-        let b2 = Bookmark::create(user_id, sample_url()?, sample_title()?, sample_comment()?);
+        let b1 = Bookmark::create(
+            user_id,
+            crate::entities::Url::for_test(),
+            sample_title()?,
+            sample_comment()?,
+        );
+        let b2 = Bookmark::create(
+            user_id,
+            crate::entities::Url::for_test(),
+            sample_title()?,
+            sample_comment()?,
+        );
         assert_ne!(b1.id(), b2.id());
         Ok(())
     }
@@ -113,9 +124,14 @@ mod tests {
     #[test]
     fn test_bookmark_create_stores_fields() -> anyhow::Result<()> {
         let user_id = crate::entities::UserId::new();
-        let b = Bookmark::create(user_id, sample_url()?, sample_title()?, sample_comment()?);
+        let b = Bookmark::create(
+            user_id,
+            crate::entities::Url::for_test(),
+            sample_title()?,
+            sample_comment()?,
+        );
         assert_eq!(b.user_id(), user_id);
-        assert_eq!(b.url().to_string(), "https://example.com/");
+        assert!(b.url().to_string().starts_with("https://example.com/"));
         assert_eq!(b.title().to_string(), "Example");
         assert_eq!(b.comment().to_string(), "my comment");
         Ok(())
@@ -125,7 +141,12 @@ mod tests {
     fn test_bookmark_create_has_created_at() -> anyhow::Result<()> {
         let before = crate::entities::DateTime::now();
         let user_id = crate::entities::UserId::new();
-        let b = Bookmark::create(user_id, sample_url()?, sample_title()?, sample_comment()?);
+        let b = Bookmark::create(
+            user_id,
+            crate::entities::Url::for_test(),
+            sample_title()?,
+            sample_comment()?,
+        );
         let after = crate::entities::DateTime::now();
         assert!(b.created_at() >= before);
         assert!(b.created_at() <= after);
@@ -135,7 +156,12 @@ mod tests {
     #[test]
     fn test_bookmark_create_updated_at_equals_created_at() -> anyhow::Result<()> {
         let user_id = crate::entities::UserId::new();
-        let b = Bookmark::create(user_id, sample_url()?, sample_title()?, sample_comment()?);
+        let b = Bookmark::create(
+            user_id,
+            crate::entities::Url::for_test(),
+            sample_title()?,
+            sample_comment()?,
+        );
         assert_eq!(b.created_at(), b.updated_at());
         Ok(())
     }
@@ -152,7 +178,7 @@ mod tests {
             id,
             sample_title()?,
             updated_at,
-            sample_url()?,
+            crate::entities::Url::for_test(),
             user_id,
         );
         assert_eq!(b.id(), id);

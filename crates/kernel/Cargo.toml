@@ -9,3 +9,6 @@ uuid = { version = "1.23.0", features = ["v7"] }
 edition.workspace = true
 name = "kernel"
 publish.workspace = true
+
+[dev-dependencies]
+rand = "0.10.1"

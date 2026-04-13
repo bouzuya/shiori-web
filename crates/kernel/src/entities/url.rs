@@ -27,6 +27,25 @@ impl std::str::FromStr for Url {
 }
 
 #[cfg(test)]
+impl Url {
+    pub fn for_test() -> Self {
+        use rand::RngExt as _;
+        let mut rng = rand::rng();
+        let base = "https://example.com/";
+        let max_path_len = 2048 - base.len();
+        let path_len = rng.random_range(0..=max_path_len);
+        let path: String = rng
+            .sample_iter(rand::distr::Alphanumeric)
+            .take(path_len)
+            .map(char::from)
+            .collect();
+        format!("{base}{path}")
+            .parse()
+            .expect("generated URL must be valid")
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
