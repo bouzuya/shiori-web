@@ -16,11 +16,11 @@ struct UserDocumentData {
     user_id: String,
 }
 
-fn try_user_from_doc(doc: UserDocumentData) -> anyhow::Result<crate::model::User> {
+fn try_user_from_data(data: UserDocumentData) -> anyhow::Result<crate::model::User> {
     Ok(crate::model::User::new(
-        crate::model::DateTime::from_rfc3339(&doc.created_at)?,
-        doc.google_user_id.parse::<crate::model::GoogleUserId>()?,
-        doc.user_id.parse::<crate::model::UserId>()?,
+        crate::model::DateTime::from_rfc3339(&data.created_at)?,
+        data.google_user_id.parse::<crate::model::GoogleUserId>()?,
+        data.user_id.parse::<crate::model::UserId>()?,
     ))
 }
 
@@ -46,11 +46,11 @@ impl UserRepository for FirestoreUserRepository {
         if !snapshot.exists() {
             return Ok(None);
         }
-        let doc: UserDocumentData = snapshot
+        let data = snapshot
             .data::<UserDocumentData>()
             .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
             .map_err(|e| anyhow::anyhow!(e))?;
-        Ok(Some(try_user_from_doc(doc)?))
+        Ok(Some(try_user_from_data(data)?))
     }
 
     async fn find_by_google_user_id(
@@ -69,12 +69,12 @@ impl UserRepository for FirestoreUserRepository {
         if !snapshot.exists() {
             return Ok(None);
         }
-        let google_user_id_doc: GoogleUserIdDocumentData = snapshot
+        let google_user_id_data = snapshot
             .data::<GoogleUserIdDocumentData>()
             .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
             .map_err(|e| anyhow::anyhow!(e))?;
 
-        let user_document_id = google_user_id_doc.user_id;
+        let user_document_id = google_user_id_data.user_id;
         let user_doc_ref = self
             .firestore
             .doc(format!("users/{user_document_id}"))
@@ -83,11 +83,11 @@ impl UserRepository for FirestoreUserRepository {
         if !snapshot.exists() {
             return Ok(None);
         }
-        let doc: UserDocumentData = snapshot
+        let user_data = snapshot
             .data::<UserDocumentData>()
             .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
             .map_err(|e| anyhow::anyhow!(e))?;
-        Ok(Some(try_user_from_doc(doc)?))
+        Ok(Some(try_user_from_data(user_data)?))
     }
 
     async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
