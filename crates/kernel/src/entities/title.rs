@@ -21,6 +21,21 @@ impl std::str::FromStr for Title {
 }
 
 #[cfg(test)]
+impl Title {
+    pub fn for_test() -> Self {
+        use rand::RngExt as _;
+        let mut rng = rand::rng();
+        let len = rng.random_range(0..=255);
+        let s: String = rng
+            .sample_iter(rand::distr::Alphanumeric)
+            .take(len)
+            .map(char::from)
+            .collect();
+        s.parse().expect("generated title must be valid")
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
