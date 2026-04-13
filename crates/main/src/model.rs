@@ -1,5 +1,8 @@
+mod bookmark;
 mod user;
 
+pub(crate) use self::bookmark::BookmarkRepository;
+pub(crate) use self::bookmark::FirestoreBookmarkRepository;
 pub(crate) use self::user::FirestoreUserRepository;
 pub(crate) use self::user::UserRepository;
 pub(crate) use kernel::DateTime;
