@@ -60,6 +60,7 @@ mod tests {
 
     use crate::AppState;
     use crate::extractor::{self};
+    use crate::model::FirestoreBookmarkRepository;
     use crate::model::FirestoreUserRepository;
     use crate::model::User;
     use crate::model::UserRepository;
@@ -147,16 +148,24 @@ mod tests {
         format!("u{nanos}")
     }
 
-    fn firestore_user_repo() -> anyhow::Result<Arc<dyn UserRepository>> {
-        let firestore = bouzuya_firestore_client::Firestore::new(
+    fn firestore() -> anyhow::Result<bouzuya_firestore_client::Firestore> {
+        Ok(bouzuya_firestore_client::Firestore::new(
             bouzuya_firestore_client::FirestoreOptions::default(),
-        )?;
-        Ok(Arc::new(FirestoreUserRepository::new(firestore)))
+        )?)
+    }
+
+    fn firestore_user_repo() -> anyhow::Result<Arc<dyn UserRepository>> {
+        Ok(Arc::new(FirestoreUserRepository::new(firestore()?)))
+    }
+
+    fn firestore_bookmark_repo() -> anyhow::Result<Arc<dyn crate::model::BookmarkRepository>> {
+        Ok(Arc::new(FirestoreBookmarkRepository::new(firestore()?)))
     }
 
     fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
         let state = AppState::new(
             "".to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(sub)),
             firestore_user_repo()?,
@@ -262,6 +271,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
@@ -319,6 +329,7 @@ mod tests {
             .await?;
         let state = AppState::new(
             "".to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             user_repo,
@@ -356,6 +367,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
@@ -414,6 +426,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
@@ -466,6 +479,7 @@ mod tests {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new("base_path_route_user")),
             firestore_user_repo()?,
@@ -508,6 +522,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             base_path.to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
@@ -552,6 +567,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             base_path.to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
@@ -708,6 +724,7 @@ mod tests {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new("base_path_links_user")),
             firestore_user_repo()?,
