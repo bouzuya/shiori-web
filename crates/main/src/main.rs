@@ -4,6 +4,8 @@ mod extractor;
 mod model;
 mod router;
 mod state;
+#[cfg(test)]
+mod test_helpers;
 
 pub(crate) use self::cookie_jar::CookieJar;
 pub(crate) use self::state::AppState;
@@ -59,42 +61,11 @@ mod tests {
     }
 
     use crate::AppState;
-    use crate::extractor::{self};
     use crate::model::FirestoreBookmarkRepository;
     use crate::model::FirestoreUserRepository;
     use crate::model::User;
     use crate::model::UserRepository;
-
-    struct MockOidcClient {
-        sub: String,
-    }
-
-    impl MockOidcClient {
-        fn new(sub: impl Into<String>) -> Self {
-            Self { sub: sub.into() }
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl extractor::OidcClient for MockOidcClient {
-        fn build_authentication_request(&self) -> extractor::AuthenticationRequest {
-            extractor::AuthenticationRequest {
-                nonce: "test_nonce".to_string(),
-                state: "test_state".to_string(),
-                url: "https://provider.example.com/authorize?client_id=test".to_string(),
-            }
-        }
-
-        async fn exchange_code(
-            &self,
-            _code: &str,
-            _nonce: &str,
-        ) -> anyhow::Result<extractor::OidcClaims> {
-            Ok(extractor::OidcClaims {
-                sub: self.sub.clone(),
-            })
-        }
-    }
+    use crate::test_helpers::MockOidcClient;
 
     struct MockUserRepository {
         users: std::sync::Mutex<Vec<crate::model::User>>,
@@ -174,8 +145,15 @@ mod tests {
     }
 
     fn test_app_with_mock_repo(sub: impl Into<String>) -> axum::Router {
+        let firestore = bouzuya_firestore_client::Firestore::new(
+            bouzuya_firestore_client::FirestoreOptions::default(),
+        )
+        .expect("firestore");
+        let bookmark_repository = Arc::new(FirestoreBookmarkRepository::new(firestore))
+            as Arc<dyn crate::model::BookmarkRepository>;
         let state = AppState::new(
             "".to_string(),
+            bookmark_repository,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(sub)),
             Arc::new(MockUserRepository::new()),
@@ -635,6 +613,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             Arc::new(MockUserRepository::new()),
@@ -694,6 +673,7 @@ mod tests {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
+            firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new("signout_base_path_user")),
             Arc::new(MockUserRepository::new()),
@@ -749,32 +729,7 @@ mod tests {
         Ok(())
     }
 
-    fn extract_cookies(response: &axum::response::Response<axum::body::Body>) -> String {
-        response
-            .headers()
-            .get_all(axum::http::header::SET_COOKIE)
-            .iter()
-            .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
-            .collect::<Vec<_>>()
-            .join("; ")
-    }
-
-    async fn send_request(
-        router: axum::Router<()>,
-        request: axum::http::Request<axum::body::Body>,
-    ) -> anyhow::Result<axum::response::Response<axum::body::Body>> {
-        let response = tower::ServiceExt::oneshot(router, request).await?;
-        Ok(response)
-    }
-
-    trait ResponseExt {
-        async fn into_body_string(self) -> anyhow::Result<String>;
-    }
-
-    impl ResponseExt for axum::response::Response<axum::body::Body> {
-        async fn into_body_string(self) -> anyhow::Result<String> {
-            let bytes = axum::body::to_bytes(self.into_body(), usize::MAX).await?;
-            Ok(String::from_utf8(bytes.to_vec())?)
-        }
-    }
+    use crate::test_helpers::ResponseExt as _;
+    use crate::test_helpers::extract_cookies;
+    use crate::test_helpers::send_request;
 }
