@@ -1,3 +1,4 @@
+mod bookmark;
 mod bookmark_id;
 mod comment;
 mod date_time;
@@ -7,6 +8,7 @@ mod url;
 mod user;
 mod user_id;
 
+pub use self::bookmark::Bookmark;
 pub use self::bookmark_id::BookmarkId;
 pub use self::comment::Comment;
 pub use self::date_time::DateTime;
