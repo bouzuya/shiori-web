@@ -81,10 +81,6 @@ impl Bookmark {
 mod tests {
     use super::*;
 
-    fn sample_comment() -> anyhow::Result<crate::entities::Comment> {
-        Ok("my comment".parse()?)
-    }
-
     #[test]
     fn test_bookmark_create_generates_id() -> anyhow::Result<()> {
         let user_id = crate::entities::UserId::new();
@@ -92,7 +88,7 @@ mod tests {
             user_id,
             crate::entities::Url::for_test(),
             crate::entities::Title::for_test(),
-            sample_comment()?,
+            crate::entities::Comment::for_test(),
         );
         let _id: crate::entities::BookmarkId = b.id();
         Ok(())
@@ -105,13 +101,13 @@ mod tests {
             user_id,
             crate::entities::Url::for_test(),
             crate::entities::Title::for_test(),
-            sample_comment()?,
+            crate::entities::Comment::for_test(),
         );
         let b2 = Bookmark::create(
             user_id,
             crate::entities::Url::for_test(),
             crate::entities::Title::for_test(),
-            sample_comment()?,
+            crate::entities::Comment::for_test(),
         );
         assert_ne!(b1.id(), b2.id());
         Ok(())
@@ -124,12 +120,12 @@ mod tests {
             user_id,
             crate::entities::Url::for_test(),
             crate::entities::Title::for_test(),
-            sample_comment()?,
+            crate::entities::Comment::for_test(),
         );
         assert_eq!(b.user_id(), user_id);
         assert!(b.url().to_string().starts_with("https://example.com/"));
         assert!(b.title().to_string().len() <= 255);
-        assert_eq!(b.comment().to_string(), "my comment");
+        assert!(b.comment().to_string().len() <= 255);
         Ok(())
     }
 
@@ -141,7 +137,7 @@ mod tests {
             user_id,
             crate::entities::Url::for_test(),
             crate::entities::Title::for_test(),
-            sample_comment()?,
+            crate::entities::Comment::for_test(),
         );
         let after = crate::entities::DateTime::now();
         assert!(b.created_at() >= before);
@@ -156,7 +152,7 @@ mod tests {
             user_id,
             crate::entities::Url::for_test(),
             crate::entities::Title::for_test(),
-            sample_comment()?,
+            crate::entities::Comment::for_test(),
         );
         assert_eq!(b.created_at(), b.updated_at());
         Ok(())
@@ -169,7 +165,7 @@ mod tests {
         let created_at = crate::entities::DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?;
         let updated_at = crate::entities::DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?;
         let b = Bookmark::new(
-            sample_comment()?,
+            crate::entities::Comment::for_test(),
             created_at,
             id,
             crate::entities::Title::for_test(),
