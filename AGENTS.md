@@ -11,6 +11,10 @@
   - 例: `#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, serde::Deserialize, serde::Serialize)]`
 - テストは `#[cfg(test)] mod tests` 内にインラインで書くこと
 - コード編集後は `cargo +nightly fmt` を実行すること
+- 型にテスト用のインスタンス生成メソッド `for_test` を用意すること
+  - `#[cfg(test)] impl T { pub fn for_test() -> Self { ... } }` の形で、全フィールドをランダム生成する
+  - テストでは `T::for_test()` を基点とし、検証したいフィールドだけを構造体更新構文 (`T { field: ..., ..T::for_test() }`) で上書きして使う
+  - テスト固有の値を毎回手書きせず、本質的な差分だけがテストに現れるようにするのが目的
 
 ## 開発スタイル
 
