@@ -1,4 +1,5 @@
 mod bookmark;
+mod bookmark_reader;
 mod user;
 
 pub(crate) use self::bookmark::BookmarkRepository;
