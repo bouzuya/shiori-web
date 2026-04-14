@@ -21,15 +21,7 @@ mod tests {
 
     #[test]
     fn test_bookmark_list_with_items_and_token() -> anyhow::Result<()> {
-        let view = crate::read_models::BookmarkView {
-            comment: "c".to_string(),
-            created_at: "2024-01-01T00:00:00.000Z".to_string(),
-            id: "id".to_string(),
-            title: "t".to_string(),
-            updated_at: "2024-01-01T00:00:00.000Z".to_string(),
-            url: "https://example.com/".to_string(),
-            user_id: "u".to_string(),
-        };
+        let view = crate::read_models::BookmarkView::for_test();
         let list = BookmarkList {
             items: vec![view.clone()],
             next_page_token: Some("token".to_string()),

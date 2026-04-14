@@ -74,18 +74,6 @@ mod tests {
         }
     }
 
-    fn make_view(id: &str, created_at: &str) -> crate::read_models::BookmarkView {
-        crate::read_models::BookmarkView {
-            comment: "c".to_string(),
-            created_at: created_at.to_string(),
-            id: id.to_string(),
-            title: "t".to_string(),
-            updated_at: created_at.to_string(),
-            url: "https://example.com/".to_string(),
-            user_id: "u".to_string(),
-        }
-    }
-
     #[tokio::test]
     async fn test_list_empty_returns_empty() -> anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
@@ -103,10 +91,11 @@ mod tests {
         for i in 0..5 {
             reader.insert(
                 user_id,
-                make_view(
-                    &format!("id{i}"),
-                    &format!("2024-01-0{}T00:00:00.000Z", i + 1),
-                ),
+                crate::read_models::BookmarkView {
+                    id: format!("id{i}"),
+                    created_at: format!("2024-01-0{}T00:00:00.000Z", i + 1),
+                    ..crate::read_models::BookmarkView::for_test()
+                },
             )?;
         }
         let result = reader.list(user_id, None).await?;
@@ -125,10 +114,11 @@ mod tests {
         for i in 0..15 {
             reader.insert(
                 user_id,
-                make_view(
-                    &format!("id{i:02}"),
-                    &format!("2024-01-{:02}T00:00:00.000Z", i + 1),
-                ),
+                crate::read_models::BookmarkView {
+                    id: format!("id{i:02}"),
+                    created_at: format!("2024-01-{:02}T00:00:00.000Z", i + 1),
+                    ..crate::read_models::BookmarkView::for_test()
+                },
             )?;
         }
         let result = reader.list(user_id, None).await?;
@@ -147,10 +137,11 @@ mod tests {
         for i in 0..15 {
             reader.insert(
                 user_id,
-                make_view(
-                    &format!("id{i:02}"),
-                    &format!("2024-01-{:02}T00:00:00.000Z", i + 1),
-                ),
+                crate::read_models::BookmarkView {
+                    id: format!("id{i:02}"),
+                    created_at: format!("2024-01-{:02}T00:00:00.000Z", i + 1),
+                    ..crate::read_models::BookmarkView::for_test()
+                },
             )?;
         }
         let first = reader.list(user_id, None).await?;
@@ -170,8 +161,22 @@ mod tests {
         let reader = InMemoryBookmarkReader::new();
         let user_a = crate::entities::UserId::new();
         let user_b = crate::entities::UserId::new();
-        reader.insert(user_a, make_view("a1", "2024-01-01T00:00:00.000Z"))?;
-        reader.insert(user_b, make_view("b1", "2024-01-02T00:00:00.000Z"))?;
+        reader.insert(
+            user_a,
+            crate::read_models::BookmarkView {
+                id: "a1".to_string(),
+                created_at: "2024-01-01T00:00:00.000Z".to_string(),
+                ..crate::read_models::BookmarkView::for_test()
+            },
+        )?;
+        reader.insert(
+            user_b,
+            crate::read_models::BookmarkView {
+                id: "b1".to_string(),
+                created_at: "2024-01-02T00:00:00.000Z".to_string(),
+                ..crate::read_models::BookmarkView::for_test()
+            },
+        )?;
         let result = reader.list(user_a, None).await?;
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.items[0].id, "a1");
