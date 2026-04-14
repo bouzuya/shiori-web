@@ -14,6 +14,8 @@ pub(crate) struct Env {
     pub oidc_issuer_url: String,
     /// OIDC の認証コールバック URI (例: `http://localhost:3000/auth/callback`)
     pub oidc_redirect_uri: String,
+    /// listen するポート番号 (デフォルト: `3000`)
+    pub port: u16,
 }
 
 impl Env {
@@ -29,6 +31,12 @@ impl Env {
             oidc_client_secret: read_var("OIDC_CLIENT_SECRET")?,
             oidc_issuer_url: read_var("OIDC_ISSUER_URL")?,
             oidc_redirect_uri: read_var("OIDC_REDIRECT_URI")?,
+            port: std::env::var("PORT")
+                .ok()
+                .map(|v| v.parse::<u16>())
+                .transpose()
+                .with_context(|| "environment variable PORT is not a valid port number")?
+                .unwrap_or(3000),
         })
     }
 }
@@ -53,6 +61,7 @@ mod tests {
                     "OIDC_REDIRECT_URI",
                     Some("http://localhost:3000/auth/callback"),
                 ),
+                ("PORT", Some("8080")),
             ],
             || {
                 let env = Env::from_env()?;
@@ -65,6 +74,33 @@ mod tests {
                 assert_eq!(env.oidc_client_secret, "test_client_secret");
                 assert_eq!(env.oidc_issuer_url, "https://issuer.example.com");
                 assert_eq!(env.oidc_redirect_uri, "http://localhost:3000/auth/callback");
+                assert_eq!(env.port, 8080_u16);
+                Ok(())
+            },
+        )
+    }
+
+    #[test]
+    fn from_env_port_defaults_to_3000() -> anyhow::Result<()> {
+        temp_env::with_vars(
+            [
+                ("BASE_PATH", None::<&str>),
+                (
+                    "COOKIE_SIGNING_SECRET",
+                    Some("test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"),
+                ),
+                ("OIDC_CLIENT_ID", Some("test_client_id")),
+                ("OIDC_CLIENT_SECRET", Some("test_client_secret")),
+                ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
+                (
+                    "OIDC_REDIRECT_URI",
+                    Some("http://localhost:3000/auth/callback"),
+                ),
+                ("PORT", None::<&str>),
+            ],
+            || {
+                let env = Env::from_env()?;
+                assert_eq!(env.port, 3000_u16);
                 Ok(())
             },
         )
