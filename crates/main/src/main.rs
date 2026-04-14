@@ -26,8 +26,8 @@ async fn run_server() -> anyhow::Result<()> {
 
     let env = env::Env::from_env()?;
     let state = AppState::from_env(&env).await?;
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    tracing::info!("listening on 0.0.0.0:3000");
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", env.port)).await?;
+    tracing::info!("listening on 0.0.0.0:{}", env.port);
     axum::serve(listener, router::router(&env.base_path).with_state(state)).await?;
     Ok(())
 }
