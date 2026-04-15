@@ -76,11 +76,15 @@ mod tests {
         let firestore = bouzuya_firestore_client::Firestore::new(
             bouzuya_firestore_client::FirestoreOptions::default(),
         )?;
+        let bookmark_reader = Arc::new(crate::model::FirestoreBookmarkReader::new(
+            firestore.clone(),
+        ));
         let bookmark_repository = Arc::new(FirestoreBookmarkRepository::new(firestore.clone()));
         let user_repository: Arc<dyn UserRepository> =
             Arc::new(FirestoreUserRepository::new(firestore));
         let state = crate::AppState::new(
             "".to_string(),
+            bookmark_reader,
             bookmark_repository,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(sub)),

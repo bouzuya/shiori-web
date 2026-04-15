@@ -25,6 +25,7 @@ mod tests {
     use crate::AppState;
     use crate::test_helpers::MockOidcClient;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
+    use crate::test_helpers::firestore_bookmark_reader;
     use crate::test_helpers::firestore_bookmark_repo;
     use crate::test_helpers::firestore_user_repo;
     use crate::test_helpers::send_request;
@@ -35,6 +36,7 @@ mod tests {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
+            firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new("base_path_route_user")),

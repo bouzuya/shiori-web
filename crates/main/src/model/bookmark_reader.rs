@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 pub(crate) use kernel::BookmarkReader;
 
 const PAGE_SIZE: usize = 10;

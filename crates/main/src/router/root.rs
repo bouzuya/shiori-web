@@ -41,6 +41,7 @@ mod tests {
     use crate::test_helpers::ResponseExt as _;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
     use crate::test_helpers::extract_cookies;
+    use crate::test_helpers::firestore_bookmark_reader;
     use crate::test_helpers::firestore_bookmark_repo;
     use crate::test_helpers::firestore_user_repo;
     use crate::test_helpers::send_request;
@@ -77,6 +78,7 @@ mod tests {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
+            firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
@@ -128,6 +130,7 @@ mod tests {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
+            firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new("base_path_links_user")),

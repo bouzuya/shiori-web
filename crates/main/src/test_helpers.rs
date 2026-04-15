@@ -92,6 +92,12 @@ pub(crate) fn firestore_user_repo() -> anyhow::Result<Arc<dyn crate::model::User
     )))
 }
 
+pub(crate) fn firestore_bookmark_reader() -> anyhow::Result<Arc<dyn crate::model::BookmarkReader>> {
+    Ok(Arc::new(crate::model::FirestoreBookmarkReader::new(
+        firestore()?,
+    )))
+}
+
 pub(crate) fn firestore_bookmark_repo() -> anyhow::Result<Arc<dyn crate::model::BookmarkRepository>>
 {
     Ok(Arc::new(crate::model::FirestoreBookmarkRepository::new(
@@ -102,6 +108,7 @@ pub(crate) fn firestore_bookmark_repo() -> anyhow::Result<Arc<dyn crate::model::
 pub(crate) fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
     let state = crate::AppState::new(
         "".to_string(),
+        firestore_bookmark_reader()?,
         firestore_bookmark_repo()?,
         TEST_COOKIE_SIGNING_SECRET,
         Arc::new(MockOidcClient::new(sub)),
@@ -115,6 +122,7 @@ pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> anyhow::Result<
         as Arc<dyn crate::model::BookmarkRepository>;
     let state = crate::AppState::new(
         "".to_string(),
+        firestore_bookmark_reader()?,
         bookmark_repository,
         TEST_COOKIE_SIGNING_SECRET,
         Arc::new(MockOidcClient::new(sub)),
