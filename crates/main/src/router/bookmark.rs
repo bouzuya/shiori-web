@@ -7,7 +7,63 @@ use crate::AppState;
 use crate::extractor::CurrentUserId;
 
 pub(crate) fn router() -> axum::Router<AppState> {
-    axum::Router::new().route("/bookmarks", axum::routing::post(post_bookmarks))
+    axum::Router::new().route(
+        "/bookmarks",
+        axum::routing::get(get_bookmarks).post(post_bookmarks),
+    )
+}
+
+#[derive(serde::Deserialize)]
+struct GetBookmarksQuery {
+    page_token: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+struct GetBookmarksResponseItem {
+    bookmark_id: String,
+    comment: String,
+    created_at: String,
+    title: String,
+    updated_at: String,
+    url: String,
+}
+
+#[derive(serde::Serialize)]
+struct GetBookmarksResponse {
+    items: Vec<GetBookmarksResponseItem>,
+    next_page_token: Option<String>,
+}
+
+async fn get_bookmarks(
+    CurrentUserId(user_id): CurrentUserId,
+    State(state): State<AppState>,
+    axum::extract::Query(query): axum::extract::Query<GetBookmarksQuery>,
+) -> impl IntoResponse {
+    match state.bookmark_reader.list(user_id, query.page_token).await {
+        Ok(list) => {
+            let items = list
+                .items
+                .into_iter()
+                .map(|v| GetBookmarksResponseItem {
+                    bookmark_id: v.id,
+                    comment: v.comment,
+                    created_at: v.created_at,
+                    title: v.title,
+                    updated_at: v.updated_at,
+                    url: v.url,
+                })
+                .collect();
+            Json(GetBookmarksResponse {
+                items,
+                next_page_token: list.next_page_token,
+            })
+            .into_response()
+        }
+        Err(e) => {
+            tracing::error!("failed to list bookmarks: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -169,6 +225,82 @@ mod tests {
         let body = response.into_body_string().await?;
         let json: serde_json::Value = serde_json::from_str(&body)?;
         assert!(json["bookmark_id"].is_string());
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_bookmarks_requires_auth() -> anyhow::Result<()> {
+        let app = test_app("bookmark_list_auth_test_user")?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/bookmarks")
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_bookmarks_returns_stored_bookmarks() -> anyhow::Result<()> {
+        let sub = format!(
+            "bookmark_list_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let created = send_request(
+            app.clone(),
+            Request::builder()
+                .method("POST")
+                .uri("/bookmarks")
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::COOKIE, session.clone())
+                .body(Body::from(
+                    r#"{"url":"https://example.com/list","title":"ListItem","comment":"c"}"#,
+                ))?,
+        )
+        .await?;
+        assert_eq!(created.status(), StatusCode::CREATED);
+        let created_body = created.into_body_string().await?;
+        let created_json: serde_json::Value = serde_json::from_str(&created_body)?;
+        let created_bookmark_id = created_json["bookmark_id"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("bookmark_id missing"))?
+            .to_string();
+
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/bookmarks")
+                .header(header::COOKIE, session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body_string().await?;
+        let json: serde_json::Value = serde_json::from_str(&body)?;
+        let items = json["items"]
+            .as_array()
+            .ok_or_else(|| anyhow::anyhow!("items is not an array"))?;
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0]["bookmark_id"].as_str(),
+            Some(created_bookmark_id.as_str())
+        );
+        assert_eq!(items[0]["url"].as_str(), Some("https://example.com/list"));
+        assert_eq!(items[0]["title"].as_str(), Some("ListItem"));
+        assert_eq!(items[0]["comment"].as_str(), Some("c"));
+        assert!(items[0]["created_at"].is_string());
+        assert!(items[0]["updated_at"].is_string());
+        assert!(json["next_page_token"].is_null());
         Ok(())
     }
 
