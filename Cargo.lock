@@ -1547,6 +1547,7 @@ dependencies = [
  "openidconnect",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "serial_test",
  "temp-env",
  "tokio",

@@ -131,6 +131,11 @@ pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> anyhow::Result<
     Ok(crate::router::router("").with_state(state))
 }
 
+pub(crate) fn form_body<T: serde::Serialize>(data: &T) -> anyhow::Result<axum::body::Body> {
+    let encoded = serde_urlencoded::to_string(data)?;
+    Ok(axum::body::Body::from(encoded))
+}
+
 pub(crate) fn extract_cookies(response: &axum::response::Response<axum::body::Body>) -> String {
     response
         .headers()

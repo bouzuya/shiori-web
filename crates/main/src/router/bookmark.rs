@@ -11,11 +11,11 @@ pub(crate) fn router() -> axum::Router<AppState> {
     axum::Router::new().route("/bookmarks", axum::routing::post(post_bookmarks))
 }
 
-#[derive(serde::Deserialize)]
-struct PostBookmarksRequest {
-    comment: String,
-    title: String,
-    url: String,
+#[derive(serde::Deserialize, serde::Serialize)]
+pub(crate) struct PostBookmarksRequest {
+    pub(crate) comment: String,
+    pub(crate) title: String,
+    pub(crate) url: String,
 }
 
 #[derive(serde::Serialize)]
@@ -55,43 +55,18 @@ async fn post_bookmarks(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use axum::body::Body;
     use axum::http::Request;
     use axum::http::StatusCode;
     use axum::http::header;
 
-    use crate::model::FirestoreBookmarkReader;
-    use crate::model::FirestoreBookmarkRepository;
-    use crate::model::FirestoreUserRepository;
-    use crate::model::UserRepository;
-    use crate::test_helpers::MockOidcClient;
     use crate::test_helpers::ResponseExt as _;
     use crate::test_helpers::extract_cookies;
+    use crate::test_helpers::form_body;
     use crate::test_helpers::send_request;
+    use crate::test_helpers::test_app;
 
-    const TEST_COOKIE_SIGNING_SECRET: &str =
-        "test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding";
-
-    fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
-        let firestore = bouzuya_firestore_client::Firestore::new(
-            bouzuya_firestore_client::FirestoreOptions::default(),
-        )?;
-        let bookmark_reader = Arc::new(FirestoreBookmarkReader::new(firestore.clone()));
-        let bookmark_repository = Arc::new(FirestoreBookmarkRepository::new(firestore.clone()));
-        let user_repository: Arc<dyn UserRepository> =
-            Arc::new(FirestoreUserRepository::new(firestore));
-        let state = crate::AppState::new(
-            "".to_string(),
-            bookmark_reader,
-            bookmark_repository,
-            TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(sub)),
-            user_repository,
-        );
-        Ok(crate::router::router("").with_state(state))
-    }
+    use super::PostBookmarksRequest;
 
     async fn session_cookie(app: axum::Router, sub: &str) -> anyhow::Result<String> {
         let signup = send_request(
@@ -133,7 +108,11 @@ mod tests {
                 .method("POST")
                 .uri("/bookmarks")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .body(Body::from("url=https%3A%2F%2Fexample.com&title=&comment="))?,
+                .body(form_body(&PostBookmarksRequest {
+                    comment: "".to_string(),
+                    title: "".to_string(),
+                    url: "https://example.com".to_string(),
+                })?)?,
         )
         .await?;
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -158,9 +137,11 @@ mod tests {
                 .uri("/bookmarks")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, session)
-                .body(Body::from(
-                    "url=https%3A%2F%2Fexample.com&title=Example&comment=my+note",
-                ))?,
+                .body(form_body(&PostBookmarksRequest {
+                    comment: "my note".to_string(),
+                    title: "Example".to_string(),
+                    url: "https://example.com".to_string(),
+                })?)?,
         )
         .await?;
         assert_eq!(response.status(), StatusCode::CREATED);
@@ -188,7 +169,11 @@ mod tests {
                 .uri("/bookmarks")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, session)
-                .body(Body::from("url=not-a-url&title=&comment="))?,
+                .body(form_body(&PostBookmarksRequest {
+                    comment: "".to_string(),
+                    title: "".to_string(),
+                    url: "not-a-url".to_string(),
+                })?)?,
         )
         .await?;
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
