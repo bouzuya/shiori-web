@@ -223,10 +223,10 @@ mod tests {
             axum::http::Request::builder()
                 .method("POST")
                 .uri("/bookmarks")
-                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, &session)
                 .body(Body::from(
-                    r#"{"url":"https://example.com","title":"Example Title","comment":""}"#,
+                    "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
         .await?;
@@ -311,10 +311,10 @@ mod tests {
             axum::http::Request::builder()
                 .method("POST")
                 .uri("/bookmarks")
-                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, &session)
                 .body(Body::from(
-                    r#"{"url":"https://example.com","title":"Example","comment":""}"#,
+                    "url=https%3A%2F%2Fexample.com&title=Example&comment=",
                 ))?,
         )
         .await?;

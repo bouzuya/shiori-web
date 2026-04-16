@@ -1,4 +1,5 @@
 use axum::Json;
+use axum::extract::Form;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -25,7 +26,7 @@ struct PostBookmarksResponse {
 async fn post_bookmarks(
     CurrentUserId(user_id): CurrentUserId,
     State(state): State<AppState>,
-    Json(body): Json<PostBookmarksRequest>,
+    Form(body): Form<PostBookmarksRequest>,
 ) -> impl IntoResponse {
     let url = match body.url.parse::<kernel::Url>() {
         Ok(u) => u,
@@ -131,10 +132,8 @@ mod tests {
             Request::builder()
                 .method("POST")
                 .uri("/bookmarks")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"url":"https://example.com","title":"","comment":""}"#,
-                ))?,
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from("url=https%3A%2F%2Fexample.com&title=&comment="))?,
         )
         .await?;
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
@@ -157,10 +156,10 @@ mod tests {
             Request::builder()
                 .method("POST")
                 .uri("/bookmarks")
-                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, session)
                 .body(Body::from(
-                    r#"{"url":"https://example.com","title":"Example","comment":"my note"}"#,
+                    "url=https%3A%2F%2Fexample.com&title=Example&comment=my+note",
                 ))?,
         )
         .await?;
@@ -187,9 +186,9 @@ mod tests {
             Request::builder()
                 .method("POST")
                 .uri("/bookmarks")
-                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, session)
-                .body(Body::from(r#"{"url":"not-a-url","title":"","comment":""}"#))?,
+                .body(Body::from("url=not-a-url&title=&comment="))?,
         )
         .await?;
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
