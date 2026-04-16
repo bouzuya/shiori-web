@@ -1,4 +1,5 @@
 use axum::Router;
+use axum::extract::Query;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::Html;
@@ -12,22 +13,32 @@ pub(crate) fn router() -> Router<AppState> {
     Router::new().route("/", get(handler))
 }
 
-async fn handler(State(state): State<AppState>, auth: Option<CurrentUserId>) -> impl IntoResponse {
+#[derive(serde::Deserialize)]
+struct RootQuery {
+    page_token: Option<String>,
+}
+
+async fn handler(
+    State(state): State<AppState>,
+    auth: Option<CurrentUserId>,
+    Query(query): Query<RootQuery>,
+) -> impl IntoResponse {
     match auth {
-        Some(CurrentUserId(user_id)) => match state.bookmark_reader.list(user_id, None).await {
-            Ok(list) => {
-                let body_content = if list.items.is_empty() {
-                    "<p>No bookmarks</p>".to_string()
-                } else {
-                    let items: String = list
-                        .items
-                        .iter()
-                        .map(|b| format!("<li><a href=\"{}\">{}</a></li>\n", b.url, b.title))
-                        .collect();
-                    format!("<ul>\n{items}</ul>")
-                };
-                Html(format!(
-                    r#"<!DOCTYPE html>
+        Some(CurrentUserId(user_id)) => {
+            match state.bookmark_reader.list(user_id, query.page_token).await {
+                Ok(list) => {
+                    let body_content = if list.items.is_empty() {
+                        "<p>No bookmarks</p>".to_string()
+                    } else {
+                        let items: String = list
+                            .items
+                            .iter()
+                            .map(|b| format!("<li><a href=\"{}\">{}</a></li>\n", b.url, b.title))
+                            .collect();
+                        format!("<ul>\n{items}</ul>")
+                    };
+                    Html(format!(
+                        r#"<!DOCTYPE html>
 <html>
 <head><title>shiori</title></head>
 <body>
@@ -35,14 +46,15 @@ async fn handler(State(state): State<AppState>, auth: Option<CurrentUserId>) -> 
 {body_content}
 </body>
 </html>"#
-                ))
-                .into_response()
+                    ))
+                    .into_response()
+                }
+                Err(e) => {
+                    tracing::error!("failed to list bookmarks: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                }
             }
-            Err(e) => {
-                tracing::error!("failed to list bookmarks: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
+        }
         None => {
             let base = &state.base_path;
             Html(format!(
@@ -275,6 +287,52 @@ mod tests {
         assert!(
             body.contains("No bookmarks"),
             "Expected 'No bookmarks', got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_with_page_token_filters_bookmarks() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        // ブックマークを1件作成
+        let created = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/bookmarks")
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::COOKIE, &session)
+                .body(Body::from(
+                    r#"{"url":"https://example.com","title":"Example","comment":""}"#,
+                ))?,
+        )
+        .await?;
+        assert_eq!(created.status(), axum::http::StatusCode::CREATED);
+        // 過去のトークンを渡すと全件より古いものが存在しないため空になる
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/?page_token=2000-01-01T00:00:00.000Z")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains("No bookmarks"),
+            "Expected 'No bookmarks' when page_token filters out all items, got: {body}"
         );
         Ok(())
     }
