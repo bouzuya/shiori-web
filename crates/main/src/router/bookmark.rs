@@ -2,13 +2,38 @@ use axum::Json;
 use axum::extract::Form;
 use axum::extract::State;
 use axum::http::StatusCode;
+use axum::response::Html;
 use axum::response::IntoResponse;
 
 use crate::AppState;
 use crate::extractor::CurrentUserId;
 
 pub(crate) fn router() -> axum::Router<AppState> {
-    axum::Router::new().route("/bookmarks", axum::routing::post(post_bookmarks))
+    axum::Router::new()
+        .route("/bookmarks", axum::routing::post(post_bookmarks))
+        .route("/new", axum::routing::get(get_new))
+}
+
+async fn get_new(
+    CurrentUserId(_user_id): CurrentUserId,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let base = &state.base_path;
+    Html(format!(
+        r#"<!DOCTYPE html>
+<html>
+<head><title>New Bookmark</title></head>
+<body>
+<h1>New Bookmark</h1>
+<form action="{base}/bookmarks" method="post">
+<label>URL: <input type="url" name="url" required></label><br>
+<label>Title: <input type="text" name="title"></label><br>
+<label>Comment: <input type="text" name="comment"></label><br>
+<button type="submit">Add</button>
+</form>
+</body>
+</html>"#
+    ))
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -96,6 +121,64 @@ mod tests {
             })
             .ok_or_else(|| anyhow::anyhow!("session cookie not found for {sub}"))?;
         Ok(session)
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_new_requires_auth() -> anyhow::Result<()> {
+        let app = test_app("get_new_auth_test_user")?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/new")
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_new_returns_form() -> anyhow::Result<()> {
+        let sub = format!(
+            "get_new_form_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/new")
+                .header(header::COOKIE, session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains(r#"action="/bookmarks""#),
+            "form action missing: {body}"
+        );
+        assert!(
+            body.contains(r#"method="post""#),
+            "form method missing: {body}"
+        );
+        assert!(body.contains(r#"name="url""#), "url field missing: {body}");
+        assert!(
+            body.contains(r#"name="title""#),
+            "title field missing: {body}"
+        );
+        assert!(
+            body.contains(r#"name="comment""#),
+            "comment field missing: {body}"
+        );
+        Ok(())
     }
 
     #[tokio::test]
