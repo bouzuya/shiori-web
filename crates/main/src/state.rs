@@ -16,7 +16,6 @@ pub(crate) struct BasePath(pub String);
 pub(crate) struct AppState {
     /// アプリケーションのベースパス (例: `/app`、空文字はルート)
     pub base_path: String,
-    #[allow(dead_code)]
     pub bookmark_reader: Arc<dyn BookmarkReader>,
     pub bookmark_repository: Arc<dyn BookmarkRepository>,
     pub cookie_key: Key,
