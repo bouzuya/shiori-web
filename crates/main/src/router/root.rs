@@ -37,12 +37,14 @@ async fn handler(
                             .collect();
                         format!("<ul>\n{items}</ul>")
                     };
+                    let base = &state.base_path;
                     Html(format!(
                         r#"<!DOCTYPE html>
 <html>
 <head><title>shiori</title></head>
 <body>
 <h1>shiori</h1>
+<p><a href="{base}/new">New</a></p>
 {body_content}
 </body>
 </html>"#
@@ -143,6 +145,37 @@ mod tests {
         assert!(
             body.contains("/auth/signin"),
             "Expected landing page to contain signin link"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_with_session_contains_new_link() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/")
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains("/new"),
+            "Expected link to /new in root page, got: {body}"
         );
         Ok(())
     }
