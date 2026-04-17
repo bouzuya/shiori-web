@@ -255,7 +255,7 @@ mod tests {
             app.clone(),
             axum::http::Request::builder()
                 .method("POST")
-                .uri("/bookmarks")
+                .uri("/")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, &session)
                 .body(Body::from(
@@ -263,7 +263,7 @@ mod tests {
                 ))?,
         )
         .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::CREATED);
+        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
         let response = send_request(
             app,
             axum::http::Request::builder()
@@ -343,7 +343,7 @@ mod tests {
             app.clone(),
             axum::http::Request::builder()
                 .method("POST")
-                .uri("/bookmarks")
+                .uri("/")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, &session)
                 .body(Body::from(
@@ -351,7 +351,7 @@ mod tests {
                 ))?,
         )
         .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::CREATED);
+        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
         // 過去のトークンを渡すと全件より古いものが存在しないため空になる
         let response = send_request(
             app,

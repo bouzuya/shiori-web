@@ -1,16 +1,16 @@
-use axum::Json;
 use axum::extract::Form;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::Html;
 use axum::response::IntoResponse;
+use axum::response::Redirect;
 
 use crate::AppState;
 use crate::extractor::CurrentUserId;
 
 pub(crate) fn router() -> axum::Router<AppState> {
     axum::Router::new()
-        .route("/bookmarks", axum::routing::post(post_bookmarks))
+        .route("/", axum::routing::post(post_root))
         .route("/new", axum::routing::get(get_new))
 }
 
@@ -25,7 +25,7 @@ async fn get_new(
 <head><title>New Bookmark</title></head>
 <body>
 <h1>New Bookmark</h1>
-<form action="{base}/bookmarks" method="post">
+<form action="{base}/" method="post">
 <label>URL: <input type="url" name="url" required></label><br>
 <label>Title: <input type="text" name="title"></label><br>
 <label>Comment: <input type="text" name="comment"></label><br>
@@ -37,21 +37,16 @@ async fn get_new(
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub(crate) struct PostBookmarksRequest {
+pub(crate) struct PostRootRequest {
     pub(crate) comment: String,
     pub(crate) title: String,
     pub(crate) url: String,
 }
 
-#[derive(serde::Serialize)]
-struct PostBookmarksResponse {
-    bookmark_id: String,
-}
-
-async fn post_bookmarks(
+async fn post_root(
     CurrentUserId(user_id): CurrentUserId,
     State(state): State<AppState>,
-    Form(body): Form<PostBookmarksRequest>,
+    Form(body): Form<PostRootRequest>,
 ) -> impl IntoResponse {
     let url = match body.url.parse::<kernel::Url>() {
         Ok(u) => u,
@@ -66,16 +61,12 @@ async fn post_bookmarks(
         Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
     };
     let bookmark = kernel::Bookmark::create(user_id, url, title, comment);
-    let bookmark_id = bookmark.id().to_string();
     if let Err(e) = state.bookmark_repository.store(None, bookmark).await {
         tracing::error!("failed to store bookmark: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
-    (
-        StatusCode::CREATED,
-        Json(PostBookmarksResponse { bookmark_id }),
-    )
-        .into_response()
+    let base = &state.base_path;
+    Redirect::to(&format!("{base}/")).into_response()
 }
 
 #[cfg(test)]
@@ -91,7 +82,7 @@ mod tests {
     use crate::test_helpers::send_request;
     use crate::test_helpers::test_app;
 
-    use super::PostBookmarksRequest;
+    use super::PostRootRequest;
 
     async fn session_cookie(app: axum::Router, sub: &str) -> anyhow::Result<String> {
         let signup = send_request(
@@ -162,7 +153,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
-            body.contains(r#"action="/bookmarks""#),
+            body.contains(r#"action="/""#),
             "form action missing: {body}"
         );
         assert!(
@@ -183,15 +174,15 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
-    async fn test_post_bookmarks_requires_auth() -> anyhow::Result<()> {
-        let app = test_app("bookmark_auth_test_user")?;
+    async fn test_post_root_requires_auth() -> anyhow::Result<()> {
+        let app = test_app("post_root_auth_test_user")?;
         let response = send_request(
             app,
             Request::builder()
                 .method("POST")
-                .uri("/bookmarks")
+                .uri("/")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .body(form_body(&PostBookmarksRequest {
+                .body(form_body(&PostRootRequest {
                     comment: "".to_string(),
                     title: "".to_string(),
                     url: "https://example.com".to_string(),
@@ -204,9 +195,9 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
-    async fn test_post_bookmarks_creates_bookmark() -> anyhow::Result<()> {
+    async fn test_post_root_creates_bookmark_and_redirects() -> anyhow::Result<()> {
         let sub = format!(
-            "bookmark_create_user_{}",
+            "post_root_create_user_{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)?
                 .as_nanos()
@@ -217,28 +208,32 @@ mod tests {
             app,
             Request::builder()
                 .method("POST")
-                .uri("/bookmarks")
+                .uri("/")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, session)
-                .body(form_body(&PostBookmarksRequest {
+                .body(form_body(&PostRootRequest {
                     comment: "my note".to_string(),
                     title: "Example".to_string(),
                     url: "https://example.com".to_string(),
                 })?)?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::CREATED);
-        let body = response.into_body_string().await?;
-        let json: serde_json::Value = serde_json::from_str(&body)?;
-        assert!(json["bookmark_id"].is_string());
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::LOCATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("/")
+        );
         Ok(())
     }
 
     #[tokio::test]
     #[serial_test::serial]
-    async fn test_post_bookmarks_rejects_invalid_url() -> anyhow::Result<()> {
+    async fn test_post_root_rejects_invalid_url() -> anyhow::Result<()> {
         let sub = format!(
-            "bookmark_invalid_url_user_{}",
+            "post_root_invalid_url_user_{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)?
                 .as_nanos()
@@ -249,10 +244,10 @@ mod tests {
             app,
             Request::builder()
                 .method("POST")
-                .uri("/bookmarks")
+                .uri("/")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, session)
-                .body(form_body(&PostBookmarksRequest {
+                .body(form_body(&PostRootRequest {
                     comment: "".to_string(),
                     title: "".to_string(),
                     url: "not-a-url".to_string(),
