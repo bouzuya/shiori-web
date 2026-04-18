@@ -1,1 +1,163 @@
-/* shiori */
+:root {
+    --color-black: #000000;
+    --color-blue: #0000ff;
+    --color-gray: #f0f0f0;
+}
+
+html {
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    height: 100%;
+    margin: 0;
+    width: 100%;
+}
+
+h1 {
+    display: none;
+}
+
+h2 {
+    font-size: 16px;
+    font-weight: normal;
+    margin: 0;
+}
+
+p {
+    margin: 0;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: var(--color-blue);
+}
+
+.page-container {
+    box-sizing: border-box;
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 8px;
+    height: 100%;
+    max-width: 480px;
+    min-width: 240px;
+    padding: 8px;
+}
+
+.page-header {
+    flex: none;
+}
+
+.site-title a {
+    color: var(--color-black);
+    display: block;
+    font-weight: bold;
+    overflow: hidden;
+    padding: 8px;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+        background-color: var(--color-gray);
+    }
+}
+
+main {
+    flex: 1;
+}
+
+.no-bookmarks {
+    display: block;
+    padding: 8px;
+}
+
+.bookmark-group-name {
+    display: block;
+    padding: 8px;
+}
+
+.bookmark-item a {
+    display: block;
+    overflow: hidden;
+    padding: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+        background-color: var(--color-gray);
+    }
+}
+
+.new-bookmark-link a {
+    display: block;
+    overflow: hidden;
+    padding: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+        background-color: var(--color-gray);
+    }
+}
+
+.new-bookmark-form {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 8px;
+    padding: 8px;
+}
+
+.form-field {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 4px;
+}
+
+.form-field label {
+    font-size: 16px;
+}
+
+.form-field input {
+    border: 1px solid var(--color-black);
+    box-sizing: border-box;
+    font-size: 16px;
+    outline: none;
+    padding: 4px;
+    width: 100%;
+}
+
+.form-submit button {
+    background-color: var(--color-black);
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 8px 16px;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+.page-footer {
+    flex: none;
+}
+
+.page-footer a {
+    display: block;
+    overflow: hidden;
+    padding: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+        background-color: var(--color-gray);
+    }
+}

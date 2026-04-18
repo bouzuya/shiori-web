@@ -14,17 +14,28 @@
         </header>
         <main>
             <h1>Bookmark List</h1>
-            <p><a href="{{ base }}/new">New</a></p>
+            <div class="new-bookmark-link">
+                <a href="{{ base }}/new">New</a>
+            </div>
+
             {% if groups.is_empty() %}
-            <p>No bookmarks</p>
+            <div class="no-bookmarks">
+                No bookmarks
+            </div>
             {% else %}
             {% for group in groups %}
-            <h2>{{ group.date }}</h2>
-            <ul>
-                {% for item in group.items %}
-                <li><a href="{{ item.url }}" rel="noreferrer noopener" target="_blank">{{ item.title }}</a></li>
-                {% endfor %}
-            </ul>
+            <div class="bookmark-group">
+                <h2 class="bookmark-group-name">{{ group.date }}</h2>
+                <ul>
+                    {% for item in group.items %}
+                    <li>
+                        <div class="bookmark-item">
+                            <a href="{{ item.url }}" rel="noreferrer noopener" target="_blank">{{ item.title }}</a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
             {% endfor %}
             {% endif %}
         </main>
