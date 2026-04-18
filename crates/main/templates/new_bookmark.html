@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head><meta charset="UTF-8"><title>New Bookmark</title><link rel="stylesheet" href="{{ base }}/index.css"></head>
+
+<head>
+    <meta charset="UTF-8">
+    <title>New Bookmark</title>
+    <link rel="stylesheet" href="{{ base }}/index.css">
+</head>
+
 <body>
-<h1>New Bookmark</h1>
-<form action="{{ base }}/" method="post">
-<label>URL: <input type="url" name="url" required></label><br>
-<label>Title: <input type="text" name="title"></label><br>
-<label>Comment: <input type="text" name="comment"></label><br>
-<button type="submit">Add</button>
-</form>
+    <h1>New Bookmark</h1>
+    <form action="{{ base }}/" method="post">
+        <label>URL: <input type="url" name="url" required></label><br>
+        <label>Title: <input type="text" name="title"></label><br>
+        <label>Comment: <input type="text" name="comment"></label><br>
+        <button type="submit">Add</button>
+    </form>
 </body>
+
 </html>
