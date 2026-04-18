@@ -22,7 +22,7 @@ async fn get_new(
     Html(format!(
         r#"<!DOCTYPE html>
 <html>
-<head><title>New Bookmark</title></head>
+<head><title>New Bookmark</title><link rel="stylesheet" href="{base}/index.css"></head>
 <body>
 <h1>New Bookmark</h1>
 <form action="{base}/" method="post">
@@ -112,6 +112,38 @@ mod tests {
             })
             .ok_or_else(|| anyhow::anyhow!("session cookie not found for {sub}"))?;
         Ok(session)
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_new_contains_css_link() -> anyhow::Result<()> {
+        let sub = format!(
+            "get_new_css_link_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/new")
+                .header(header::COOKIE, session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains(r#"rel="stylesheet""#),
+            "Expected stylesheet link in /new page, got: {body}"
+        );
+        assert!(
+            body.contains("/index.css"),
+            "Expected /index.css href in /new page, got: {body}"
+        );
+        Ok(())
     }
 
     #[tokio::test]

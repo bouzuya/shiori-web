@@ -60,7 +60,7 @@ async fn handler(
                     Html(format!(
                         r#"<!DOCTYPE html>
 <html>
-<head><title>shiori</title></head>
+<head><title>shiori</title><link rel="stylesheet" href="{base}/index.css"></head>
 <body>
 <h1>shiori</h1>
 <p><a href="{base}/new">New</a></p>
@@ -81,7 +81,7 @@ async fn handler(
             Html(format!(
                 r#"<!DOCTYPE html>
 <html>
-<head><title>shiori</title></head>
+<head><title>shiori</title><link rel="stylesheet" href="{base}/index.css"></head>
 <body>
 <h1>shiori</h1>
 <p><a href="{base}/auth/signup">Sign Up</a></p>
@@ -430,6 +430,28 @@ mod tests {
         assert!(
             body.contains("No bookmarks"),
             "Expected 'No bookmarks' when page_token filters out all items, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_contains_css_link() -> anyhow::Result<()> {
+        let response = send_request(
+            test_app("root_css_link_user")?,
+            axum::http::Request::builder()
+                .uri("/")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains(r#"rel="stylesheet""#),
+            "Expected stylesheet link in root page, got: {body}"
+        );
+        assert!(
+            body.contains("/index.css"),
+            "Expected /index.css href in root page, got: {body}"
         );
         Ok(())
     }
