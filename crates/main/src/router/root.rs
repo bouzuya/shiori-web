@@ -59,8 +59,8 @@ async fn handler(
                     let base = &state.base_path;
                     Html(format!(
                         r#"<!DOCTYPE html>
-<html>
-<head><title>shiori</title><link rel="stylesheet" href="{base}/index.css"></head>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>shiori</title><link rel="stylesheet" href="{base}/index.css"></head>
 <body>
 <h1>shiori</h1>
 <p><a href="{base}/new">New</a></p>
@@ -80,8 +80,8 @@ async fn handler(
             let base = &state.base_path;
             Html(format!(
                 r#"<!DOCTYPE html>
-<html>
-<head><title>shiori</title><link rel="stylesheet" href="{base}/index.css"></head>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>shiori</title><link rel="stylesheet" href="{base}/index.css"></head>
 <body>
 <h1>shiori</h1>
 <p><a href="{base}/auth/signup">Sign Up</a></p>
@@ -430,6 +430,28 @@ mod tests {
         assert!(
             body.contains("No bookmarks"),
             "Expected 'No bookmarks' when page_token filters out all items, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_html_has_lang_ja_and_utf8() -> anyhow::Result<()> {
+        let response = send_request(
+            test_app("root_lang_charset_user")?,
+            axum::http::Request::builder()
+                .uri("/")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains(r#"<html lang="ja">"#),
+            "Expected lang=ja on html element, got: {body}"
+        );
+        assert!(
+            body.contains(r#"<meta charset="UTF-8">"#),
+            "Expected charset=UTF-8 meta tag, got: {body}"
         );
         Ok(())
     }
