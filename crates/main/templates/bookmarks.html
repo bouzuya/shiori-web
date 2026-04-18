@@ -22,7 +22,7 @@
             <h2>{{ group.date }}</h2>
             <ul>
                 {% for item in group.items %}
-                <li><a href="{{ item.url }}">{{ item.title }}</a></li>
+                <li><a href="{{ item.url }}" rel="noreferrer noopener" target="_blank">{{ item.title }}</a></li>
                 {% endfor %}
             </ul>
             {% endfor %}
