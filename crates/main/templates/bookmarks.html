@@ -8,20 +8,30 @@
 </head>
 
 <body>
-    <h1>Bookmark List</h1>
-    <p><a href="{{ base }}/new">New</a></p>
-    {% if groups.is_empty() %}
-    <p>No bookmarks</p>
-    {% else %}
-    {% for group in groups %}
-    <h2>{{ group.date }}</h2>
-    <ul>
-        {% for item in group.items %}
-        <li><a href="{{ item.url }}">{{ item.title }}</a></li>
-        {% endfor %}
-    </ul>
-    {% endfor %}
-    {% endif %}
+    <div class="page-container">
+        <header class="page-header">
+            <div class="site-title"><a href="{{ base }}/">shiori</a></div>
+        </header>
+        <main>
+            <h1>Bookmark List</h1>
+            <p><a href="{{ base }}/new">New</a></p>
+            {% if groups.is_empty() %}
+            <p>No bookmarks</p>
+            {% else %}
+            {% for group in groups %}
+            <h2>{{ group.date }}</h2>
+            <ul>
+                {% for item in group.items %}
+                <li><a href="{{ item.url }}">{{ item.title }}</a></li>
+                {% endfor %}
+            </ul>
+            {% endfor %}
+            {% endif %}
+        </main>
+        <footer class="page-footer">
+            <div><a href="https://github.com/bouzuya/shiori-web">GitHub</a></div>
+        </footer>
+    </div>
 </body>
 
 </html>
