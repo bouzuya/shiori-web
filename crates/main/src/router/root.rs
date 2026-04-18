@@ -30,12 +30,31 @@ async fn handler(
                     let body_content = if list.items.is_empty() {
                         "<p>No bookmarks</p>".to_string()
                     } else {
-                        let items: String = list
-                            .items
-                            .iter()
-                            .map(|b| format!("<li><a href=\"{}\">{}</a></li>\n", b.url, b.title))
-                            .collect();
-                        format!("<ul>\n{items}</ul>")
+                        let mut sections = String::new();
+                        let mut current_date = String::new();
+                        let mut current_items = String::new();
+                        for b in &list.items {
+                            let date = b.created_at.chars().take(10).collect::<String>();
+                            if date != current_date {
+                                if !current_date.is_empty() {
+                                    sections.push_str(&format!(
+                                        "<h2>{current_date}</h2>\n<ul>\n{current_items}</ul>\n"
+                                    ));
+                                    current_items.clear();
+                                }
+                                current_date = date;
+                            }
+                            current_items.push_str(&format!(
+                                "<li><a href=\"{}\">{}</a></li>\n",
+                                b.url, b.title
+                            ));
+                        }
+                        if !current_date.is_empty() {
+                            sections.push_str(&format!(
+                                "<h2>{current_date}</h2>\n<ul>\n{current_items}</ul>\n"
+                            ));
+                        }
+                        sections
                     };
                     let base = &state.base_path;
                     Html(format!(
@@ -320,6 +339,51 @@ mod tests {
         assert!(
             body.contains("No bookmarks"),
             "Expected 'No bookmarks', got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_groups_bookmarks_by_date() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        let created = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(Body::from(
+                    "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
+                ))?,
+        )
+        .await?;
+        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        assert!(
+            body.contains(&format!("<h2>{today}</h2>")),
+            "Expected date heading <h2>{today}</h2> in body, got: {body}"
         );
         Ok(())
     }
