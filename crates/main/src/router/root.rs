@@ -1,3 +1,4 @@
+use askama::Template;
 use axum::Router;
 use axum::extract::Query;
 use axum::extract::State;
@@ -18,6 +19,39 @@ struct RootQuery {
     page_token: Option<String>,
 }
 
+#[derive(Template)]
+#[template(path = "landing.html")]
+struct LandingTemplate<'a> {
+    base: &'a str,
+}
+
+struct BookmarkItem {
+    title: String,
+    url: String,
+}
+
+struct DateGroup {
+    date: String,
+    items: Vec<BookmarkItem>,
+}
+
+#[derive(Template)]
+#[template(path = "bookmarks.html")]
+struct BookmarksTemplate<'a> {
+    base: &'a str,
+    groups: Vec<DateGroup>,
+}
+
+fn render_template(html: Result<String, askama::Error>) -> axum::response::Response {
+    match html {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => {
+            tracing::error!("template render failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
 async fn handler(
     State(state): State<AppState>,
     auth: Option<CurrentUserId>,
@@ -27,48 +61,32 @@ async fn handler(
         Some(CurrentUserId(user_id)) => {
             match state.bookmark_reader.list(user_id, query.page_token).await {
                 Ok(list) => {
-                    let body_content = if list.items.is_empty() {
-                        "<p>No bookmarks</p>".to_string()
-                    } else {
-                        let mut sections = String::new();
-                        let mut current_date = String::new();
-                        let mut current_items = String::new();
-                        for b in &list.items {
-                            let date = b.created_at.chars().take(10).collect::<String>();
-                            if date != current_date {
-                                if !current_date.is_empty() {
-                                    sections.push_str(&format!(
-                                        "<h2>{current_date}</h2>\n<ul>\n{current_items}</ul>\n"
-                                    ));
-                                    current_items.clear();
-                                }
-                                current_date = date;
+                    let mut groups: Vec<DateGroup> = Vec::new();
+                    for b in &list.items {
+                        let date = b.created_at.chars().take(10).collect::<String>();
+                        match groups.last_mut() {
+                            Some(g) if g.date == date => {
+                                g.items.push(BookmarkItem {
+                                    title: b.title.clone(),
+                                    url: b.url.clone(),
+                                });
                             }
-                            current_items.push_str(&format!(
-                                "<li><a href=\"{}\">{}</a></li>\n",
-                                b.url, b.title
-                            ));
+                            _ => {
+                                groups.push(DateGroup {
+                                    date,
+                                    items: vec![BookmarkItem {
+                                        title: b.title.clone(),
+                                        url: b.url.clone(),
+                                    }],
+                                });
+                            }
                         }
-                        if !current_date.is_empty() {
-                            sections.push_str(&format!(
-                                "<h2>{current_date}</h2>\n<ul>\n{current_items}</ul>\n"
-                            ));
-                        }
-                        sections
+                    }
+                    let template = BookmarksTemplate {
+                        base: &state.base_path,
+                        groups,
                     };
-                    let base = &state.base_path;
-                    Html(format!(
-                        r#"<!DOCTYPE html>
-<html lang="ja">
-<head><meta charset="UTF-8"><title>shiori</title><link rel="stylesheet" href="{base}/index.css"></head>
-<body>
-<h1>shiori</h1>
-<p><a href="{base}/new">New</a></p>
-{body_content}
-</body>
-</html>"#
-                    ))
-                    .into_response()
+                    render_template(template.render())
                 }
                 Err(e) => {
                     tracing::error!("failed to list bookmarks: {e}");
@@ -77,19 +95,10 @@ async fn handler(
             }
         }
         None => {
-            let base = &state.base_path;
-            Html(format!(
-                r#"<!DOCTYPE html>
-<html lang="ja">
-<head><meta charset="UTF-8"><title>shiori</title><link rel="stylesheet" href="{base}/index.css"></head>
-<body>
-<h1>shiori</h1>
-<p><a href="{base}/auth/signup">Sign Up</a></p>
-<p><a href="{base}/auth/signin">Sign In</a></p>
-</body>
-</html>"#
-            ))
-            .into_response()
+            let template = LandingTemplate {
+                base: &state.base_path,
+            };
+            render_template(template.render())
         }
     }
 }

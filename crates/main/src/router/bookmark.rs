@@ -1,3 +1,4 @@
+use askama::Template;
 use axum::extract::Form;
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -14,26 +15,26 @@ pub(crate) fn router() -> axum::Router<AppState> {
         .route("/new", axum::routing::get(get_new))
 }
 
+#[derive(Template)]
+#[template(path = "new_bookmark.html")]
+struct NewBookmarkTemplate<'a> {
+    base: &'a str,
+}
+
 async fn get_new(
     CurrentUserId(_user_id): CurrentUserId,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let base = &state.base_path;
-    Html(format!(
-        r#"<!DOCTYPE html>
-<html lang="ja">
-<head><meta charset="UTF-8"><title>New Bookmark</title><link rel="stylesheet" href="{base}/index.css"></head>
-<body>
-<h1>New Bookmark</h1>
-<form action="{base}/" method="post">
-<label>URL: <input type="url" name="url" required></label><br>
-<label>Title: <input type="text" name="title"></label><br>
-<label>Comment: <input type="text" name="comment"></label><br>
-<button type="submit">Add</button>
-</form>
-</body>
-</html>"#
-    ))
+    let template = NewBookmarkTemplate {
+        base: &state.base_path,
+    };
+    match template.render() {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => {
+            tracing::error!("template render failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]

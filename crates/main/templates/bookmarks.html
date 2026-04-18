@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>shiori</title><link rel="stylesheet" href="{{ base }}/index.css"></head>
+<body>
+<h1>shiori</h1>
+<p><a href="{{ base }}/new">New</a></p>
+{% if groups.is_empty() %}
+<p>No bookmarks</p>
+{% else %}
+{% for group in groups %}
+<h2>{{ group.date }}</h2>
+<ul>
+{% for item in group.items %}
+<li><a href="{{ item.url }}">{{ item.title }}</a></li>
+{% endfor %}
+</ul>
+{% endfor %}
+{% endif %}
+</body>
+</html>
