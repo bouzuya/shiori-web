@@ -253,8 +253,8 @@ dependencies = [
 
 [[package]]
 name = "bouzuya-firestore-client"
-version = "1.0.0"
-source = "git+https://github.com/bouzuya/bouzuya-firestore-client#d2f54afeae88cfe41c5618de3e27add881a9aa7b"
+version = "2.0.0"
+source = "git+https://github.com/bouzuya/bouzuya-firestore-client?tag=2.0.0#fa2656ae5e18a19920a2139bb7d88b68c214d9d4"
 dependencies = [
  "firestore-path",
  "google-cloud-auth",
