@@ -1604,7 +1604,6 @@ dependencies = [
  "axum",
  "axum-extra",
  "bouzuya-firestore-client",
- "chrono",
  "http-body-util",
  "kernel",
  "openidconnect",

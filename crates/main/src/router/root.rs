@@ -389,10 +389,15 @@ mod tests {
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
-        let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        let today = kernel::DateTime::now()
+            .to_rfc3339()
+            .to_string()
+            .chars()
+            .take(10)
+            .collect::<String>();
         assert!(
-            body.contains(&format!("<h2>{today}</h2>")),
-            "Expected date heading <h2>{today}</h2> in body, got: {body}"
+            body.contains(&format!("<h2 class=\"bookmark-group-name\">{today}</h2>")),
+            "Expected date heading <h2 class=\"bookmark-group-name\">{today}</h2> in body, got: {body}"
         );
         Ok(())
     }
