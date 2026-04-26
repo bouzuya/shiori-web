@@ -253,10 +253,11 @@ dependencies = [
 
 [[package]]
 name = "bouzuya-firestore-client"
-version = "2.0.0"
-source = "git+https://github.com/bouzuya/bouzuya-firestore-client?tag=2.0.0#fa2656ae5e18a19920a2139bb7d88b68c214d9d4"
+version = "2.1.0"
+source = "git+https://github.com/bouzuya/bouzuya-firestore-client?tag=2.1.0#67b8b90da141d1398cc3edd63ed8000273bc29f0"
 dependencies = [
  "firestore-path",
+ "firestore-structured-query",
  "google-cloud-auth",
  "http 1.4.0",
  "prost-types",
@@ -681,6 +682,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba518266ccc6663170ad6463255f1af6452f44b7817325cb972964c9a508331a"
 dependencies = [
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "firestore-structured-query"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aef62d915fc29cf757c968420412e180ca0a13eeafb698832d332b583f68bcb8"
+dependencies = [
+ "googleapis-tonic-google-firestore-v1",
+ "serde-firestore-value",
 ]
 
 [[package]]
