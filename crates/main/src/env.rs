@@ -6,6 +6,8 @@ pub(crate) struct Env {
     pub base_path: String,
     /// クッキー署名用シークレット (64バイト以上必要)
     pub cookie_signing_secret: String,
+    /// Firestore のデータベース ID
+    pub database_id: String,
     /// OIDC の client id
     pub oidc_client_id: String,
     /// OIDC の client secret
@@ -16,6 +18,8 @@ pub(crate) struct Env {
     pub oidc_redirect_uri: String,
     /// listen するポート番号 (デフォルト: `3000`)
     pub port: u16,
+    /// Firestore のプロジェクト ID
+    pub project_id: String,
 }
 
 impl Env {
@@ -27,6 +31,7 @@ impl Env {
         Ok(Self {
             base_path: std::env::var("BASE_PATH").unwrap_or_default(),
             cookie_signing_secret: read_var("COOKIE_SIGNING_SECRET")?,
+            database_id: read_var("DATABASE_ID")?,
             oidc_client_id: read_var("OIDC_CLIENT_ID")?,
             oidc_client_secret: read_var("OIDC_CLIENT_SECRET")?,
             oidc_issuer_url: read_var("OIDC_ISSUER_URL")?,
@@ -37,6 +42,7 @@ impl Env {
                 .transpose()
                 .with_context(|| "environment variable PORT is not a valid port number")?
                 .unwrap_or(3000),
+            project_id: read_var("PROJECT_ID")?,
         })
     }
 }
@@ -54,6 +60,7 @@ mod tests {
                     "COOKIE_SIGNING_SECRET",
                     Some("test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"),
                 ),
+                ("DATABASE_ID", Some("test_database_id")),
                 ("OIDC_CLIENT_ID", Some("test_client_id")),
                 ("OIDC_CLIENT_SECRET", Some("test_client_secret")),
                 ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
@@ -62,6 +69,7 @@ mod tests {
                     Some("http://localhost:3000/auth/callback"),
                 ),
                 ("PORT", Some("8080")),
+                ("PROJECT_ID", Some("test_project_id")),
             ],
             || {
                 let env = Env::from_env()?;
@@ -70,11 +78,13 @@ mod tests {
                     env.cookie_signing_secret,
                     "test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"
                 );
+                assert_eq!(env.database_id, "test_database_id");
                 assert_eq!(env.oidc_client_id, "test_client_id");
                 assert_eq!(env.oidc_client_secret, "test_client_secret");
                 assert_eq!(env.oidc_issuer_url, "https://issuer.example.com");
                 assert_eq!(env.oidc_redirect_uri, "http://localhost:3000/auth/callback");
                 assert_eq!(env.port, 8080_u16);
+                assert_eq!(env.project_id, "test_project_id");
                 Ok(())
             },
         )
@@ -89,6 +99,7 @@ mod tests {
                     "COOKIE_SIGNING_SECRET",
                     Some("test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"),
                 ),
+                ("DATABASE_ID", Some("test_database_id")),
                 ("OIDC_CLIENT_ID", Some("test_client_id")),
                 ("OIDC_CLIENT_SECRET", Some("test_client_secret")),
                 ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
@@ -97,6 +108,7 @@ mod tests {
                     Some("http://localhost:3000/auth/callback"),
                 ),
                 ("PORT", None::<&str>),
+                ("PROJECT_ID", Some("test_project_id")),
             ],
             || {
                 let env = Env::from_env()?;
@@ -115,6 +127,7 @@ mod tests {
                     "COOKIE_SIGNING_SECRET",
                     Some("test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"),
                 ),
+                ("DATABASE_ID", Some("test_database_id")),
                 ("OIDC_CLIENT_ID", Some("test_client_id")),
                 ("OIDC_CLIENT_SECRET", Some("test_client_secret")),
                 ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
@@ -122,6 +135,7 @@ mod tests {
                     "OIDC_REDIRECT_URI",
                     Some("http://localhost:3000/auth/callback"),
                 ),
+                ("PROJECT_ID", Some("test_project_id")),
             ],
             || {
                 let env = Env::from_env()?;
@@ -137,6 +151,7 @@ mod tests {
             [
                 ("BASE_PATH", None::<&str>),
                 ("COOKIE_SIGNING_SECRET", None::<&str>),
+                ("DATABASE_ID", Some("test_database_id")),
                 ("OIDC_CLIENT_ID", Some("test_client_id")),
                 ("OIDC_CLIENT_SECRET", Some("secret")),
                 ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
@@ -144,6 +159,7 @@ mod tests {
                     "OIDC_REDIRECT_URI",
                     Some("http://localhost:3000/auth/callback"),
                 ),
+                ("PROJECT_ID", Some("test_project_id")),
             ],
             || match Env::from_env() {
                 Ok(_) => panic!("should fail"),

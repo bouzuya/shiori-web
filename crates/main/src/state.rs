@@ -51,9 +51,11 @@ impl AppState {
             redirect_uri: env.oidc_redirect_uri.clone(),
         };
         let oidc_client = real_oidc_client::RealOidcClient::new(options).await?;
-        let firestore = bouzuya_firestore_client::Firestore::new(
-            bouzuya_firestore_client::FirestoreOptions::default(),
-        )?;
+        let firestore =
+            bouzuya_firestore_client::Firestore::new(bouzuya_firestore_client::FirestoreOptions {
+                database_id: Some(env.database_id.clone()),
+                project_id: Some(env.project_id.clone()),
+            })?;
         let bookmark_reader = Arc::new(crate::model::FirestoreBookmarkReader::new(
             firestore.clone(),
         ));
