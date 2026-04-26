@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE: shiori-web
+  IMAGE: shiori
   REGION: asia-northeast2
-  REPOSITORY: shiori-web
-  SERVICE: shiori-web
+  REPOSITORY: shiori
+  SERVICE: shiori
 
 jobs:
   build-push-deploy:
