@@ -1,5 +1,6 @@
 use askama::Template;
 use axum::extract::Form;
+use axum::extract::Path;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::Html;
@@ -13,6 +14,7 @@ pub(crate) fn router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/", axum::routing::post(post_root))
         .route("/new", axum::routing::get(get_new))
+        .route("/{bookmark_id}", axum::routing::get(get_show))
 }
 
 #[derive(Template)]
@@ -27,6 +29,47 @@ async fn get_new(
 ) -> impl IntoResponse {
     let template = NewBookmarkTemplate {
         base: &state.base_path,
+    };
+    match template.render() {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => {
+            tracing::error!("template render failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[derive(Template)]
+#[template(path = "bookmark.html")]
+struct ShowBookmarkTemplate<'a> {
+    base: &'a str,
+    comment: String,
+    title: String,
+    url: String,
+}
+
+async fn get_show(
+    CurrentUserId(user_id): CurrentUserId,
+    State(state): State<AppState>,
+    Path(bookmark_id_str): Path<String>,
+) -> impl IntoResponse {
+    let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
+        Ok(id) => id,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+    let bookmark = match state.bookmark_repository.find(user_id, bookmark_id).await {
+        Ok(Some(b)) => b,
+        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Err(e) => {
+            tracing::error!("failed to find bookmark: {e}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+    let template = ShowBookmarkTemplate {
+        base: &state.base_path,
+        comment: bookmark.comment().to_string(),
+        title: bookmark.title().to_string(),
+        url: bookmark.url().to_string(),
     };
     match template.render() {
         Ok(html) => Html(html).into_response(),
@@ -291,6 +334,115 @@ mod tests {
                 .and_then(|v| v.to_str().ok()),
             Some("/")
         );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_show_returns_comment() -> anyhow::Result<()> {
+        let sub = format!(
+            "get_show_comment_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        // ブックマークを作成
+        let create_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(form_body(&PostRootRequest {
+                    comment: "test comment".to_string(),
+                    title: "Test Title".to_string(),
+                    url: "https://example.com".to_string(),
+                })?)?,
+        )
+        .await?;
+        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        // 一覧から bookmark_id を取得
+        let list_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("GET")
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let list_body = list_res.into_body_string().await?;
+        let bookmark_id = list_body
+            .lines()
+            .find_map(|line| {
+                let trimmed = line.trim();
+                let marker = r#"href="/"#;
+                let pos = trimmed.find(marker)?;
+                let rest = &trimmed[pos + marker.len()..];
+                let id = rest.split('"').next()?;
+                if id.is_empty() || id.contains('/') || id.matches('-').count() != 4 {
+                    None
+                } else {
+                    Some(id.to_string())
+                }
+            })
+            .ok_or_else(|| anyhow::anyhow!("bookmark_id not found in list: {list_body}"))?;
+        // 詳細ページを取得
+        let res = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri(format!("/{bookmark_id}"))
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.into_body_string().await?;
+        assert!(body.contains("test comment"), "comment missing: {body}");
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_show_requires_auth() -> anyhow::Result<()> {
+        let app = test_app("get_show_auth_test_user")?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/01939c78-e42a-7000-0000-000000000000")
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_show_returns_404_for_unknown() -> anyhow::Result<()> {
+        let sub = format!(
+            "get_show_404_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/01939c78-e42a-7000-0000-000000000000")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
         Ok(())
     }
 

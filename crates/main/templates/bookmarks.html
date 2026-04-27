@@ -30,7 +30,8 @@
                     {% for item in group.items %}
                     <li>
                         <div class="bookmark-item">
-                            <a href="{{ item.url }}" rel="noreferrer noopener" target="_blank">{{ item.title }}</a>
+                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+                            <a class="detail" href="{{ base }}/{{ item.id }}">...</a>
                         </div>
                     </li>
                     {% endfor %}

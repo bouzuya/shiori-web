@@ -26,6 +26,7 @@ struct LandingTemplate<'a> {
 }
 
 struct BookmarkItem {
+    id: String,
     title: String,
     url: String,
 }
@@ -67,6 +68,7 @@ async fn handler(
                         match groups.last_mut() {
                             Some(g) if g.date == date => {
                                 g.items.push(BookmarkItem {
+                                    id: b.id.clone(),
                                     title: b.title.clone(),
                                     url: b.url.clone(),
                                 });
@@ -75,6 +77,7 @@ async fn handler(
                                 groups.push(DateGroup {
                                     date,
                                     items: vec![BookmarkItem {
+                                        id: b.id.clone(),
                                         title: b.title.clone(),
                                         url: b.url.clone(),
                                     }],

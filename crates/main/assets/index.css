@@ -83,8 +83,15 @@ main {
     padding: 8px;
 }
 
+.bookmark-item {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 4px;
+}
+
 .bookmark-item a {
     display: block;
+    flex: 1;
     overflow: hidden;
     padding: 8px;
     text-overflow: ellipsis;
@@ -93,6 +100,15 @@ main {
     &:hover {
         background-color: var(--color-gray);
     }
+}
+
+.bookmark-item a.detail {
+    color: var(--color-black);
+    display: block;
+    flex: none;
+    text-align: center;
+    text-decoration: none;
+    width: 40px;
 }
 
 .new-bookmark-link a {
