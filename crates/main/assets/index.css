@@ -133,6 +133,7 @@ main {
     padding: 8px;
 }
 
+.edit-bookmark-form,
 .new-bookmark-form {
     display: flex;
     flex-flow: column nowrap;
