@@ -47,6 +47,7 @@ async fn get_new(
 #[template(path = "bookmark.html")]
 struct ShowBookmarkTemplate<'a> {
     base: &'a str,
+    bookmark_id: String,
     comment: String,
     created_at: String,
     title: String,
@@ -72,6 +73,7 @@ async fn get_show(
     };
     let template = ShowBookmarkTemplate {
         base: &state.base_path,
+        bookmark_id: bookmark_id_str,
         comment: bookmark.comment().to_string(),
         created_at: bookmark.created_at().to_rfc3339(),
         title: bookmark.title().to_string(),
@@ -676,6 +678,61 @@ mod tests {
                 }
             })
             .ok_or_else(|| anyhow::anyhow!("bookmark_id not found in list: {list_body}"))
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_show_has_edit_link() -> anyhow::Result<()> {
+        let sub = format!(
+            "get_show_edit_link_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let create_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(form_body(&PostRootRequest {
+                    comment: "".to_string(),
+                    title: "Test Title".to_string(),
+                    url: "https://example.com".to_string(),
+                })?)?,
+        )
+        .await?;
+        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        let list_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("GET")
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let list_body = list_res.into_body_string().await?;
+        let bookmark_id = extract_bookmark_id(&list_body)?;
+        let res = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri(format!("/{bookmark_id}"))
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.into_body_string().await?;
+        assert!(
+            body.contains(&format!(r#"href="/{bookmark_id}/edit""#)),
+            "edit link missing: {body}"
+        );
+        Ok(())
     }
 
     #[tokio::test]
