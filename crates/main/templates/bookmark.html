@@ -18,11 +18,13 @@
                 <a href="{{ base }}/">Back</a>
             </div>
 
-            <div>
-                <a href="{{ url }}" rel="noreferrer noopener" target="_blank">{{ url }}</a>
+            <div class="bookmark-detail">
+                <div>
+                    <a href="{{ url }}" rel="noreferrer noopener" target="_blank">{{ url }}</a>
+                </div>
+                <div class="bookmark-created-at">{{ created_at }}</div>
+                <div class="bookmark-comment">{{ comment }}</div>
             </div>
-            <div class="bookmark-created-at">{{ created_at }}</div>
-            <div class="bookmark-comment">{{ comment }}</div>
         </main>
         <footer class="page-footer">
             <div>

@@ -126,6 +126,13 @@ main {
     }
 }
 
+.bookmark-detail {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 8px;
+    padding: 8px;
+}
+
 .new-bookmark-form {
     display: flex;
     flex-flow: column nowrap;
