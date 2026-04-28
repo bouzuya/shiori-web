@@ -12,12 +12,37 @@ pub(crate) fn router(base_path: &str) -> Router<AppState> {
         .merge(auth::router())
         .merge(bookmark::router())
         .merge(index_css::router())
-        .merge(root::router());
+        .merge(root::router())
+        .layer(axum::middleware::from_fn(method_override));
     if base_path.is_empty() {
         inner
     } else {
         Router::new().nest(base_path, inner)
     }
+}
+
+async fn method_override(
+    mut req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    if req.method() == axum::http::Method::POST {
+        let override_method = req.uri().query().and_then(|q| {
+            q.split('&').find_map(|pair| {
+                let (k, v) = pair.split_once('=')?;
+                if k == "_method" {
+                    Some(v.to_string())
+                } else {
+                    None
+                }
+            })
+        });
+        if let Some(m) = override_method
+            && let Ok(method) = m.parse::<axum::http::Method>()
+        {
+            *req.method_mut() = method;
+        }
+    }
+    next.run(req).await
 }
 
 #[cfg(test)]
