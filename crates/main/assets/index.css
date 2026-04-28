@@ -111,7 +111,10 @@ main {
     width: 40px;
 }
 
-.new-bookmark-link a {
+.back-link a,
+.new-bookmark-link a,
+.sign-in-link a,
+.sign-up-link a {
     display: block;
     overflow: hidden;
     padding: 8px;
