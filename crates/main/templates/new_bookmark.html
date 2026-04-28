@@ -15,17 +15,19 @@
         <main>
             <h1>New Bookmark</h1>
             <form class="new-bookmark-form" action="{{ base }}/" method="post">
-                <div class="form-field">
-                    <label for="url">URL</label>
-                    <input id="url" type="url" name="url" required>
-                </div>
-                <div class="form-field">
-                    <label for="title">Title</label>
-                    <input id="title" type="text" name="title">
-                </div>
-                <div class="form-field">
-                    <label for="comment">Comment</label>
-                    <input id="comment" type="text" name="comment">
+                <div class="form-fields">
+                    <div class="form-field">
+                        <label for="url">URL</label>
+                        <input id="url" type="url" name="url" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="title">Title</label>
+                        <input id="title" type="text" name="title">
+                    </div>
+                    <div class="form-field">
+                        <label for="comment">Comment</label>
+                        <input id="comment" type="text" name="comment">
+                    </div>
                 </div>
                 <div class="form-submit">
                     <button type="submit">Add</button>
