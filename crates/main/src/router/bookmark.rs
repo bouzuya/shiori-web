@@ -18,7 +18,6 @@ pub(crate) fn router() -> axum::Router<AppState> {
             "/{bookmark_id}",
             axum::routing::get(get_show).patch(patch_bookmark),
         )
-        .route("/{bookmark_id}/edit", axum::routing::get(get_edit))
 }
 
 #[derive(Template)]
@@ -49,8 +48,8 @@ struct ShowBookmarkTemplate<'a> {
     base: &'a str,
     bookmark_id: String,
     comment: String,
-    created_at: String,
     title: String,
+    updated_at: String,
     url: String,
 }
 
@@ -72,51 +71,6 @@ async fn get_show(
         }
     };
     let template = ShowBookmarkTemplate {
-        base: &state.base_path,
-        bookmark_id: bookmark_id_str,
-        comment: bookmark.comment().to_string(),
-        created_at: bookmark.created_at().to_rfc3339(),
-        title: bookmark.title().to_string(),
-        url: bookmark.url().to_string(),
-    };
-    match template.render() {
-        Ok(html) => Html(html).into_response(),
-        Err(e) => {
-            tracing::error!("template render failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-    }
-}
-
-#[derive(Template)]
-#[template(path = "edit_bookmark.html")]
-struct EditBookmarkTemplate<'a> {
-    base: &'a str,
-    bookmark_id: String,
-    comment: String,
-    title: String,
-    updated_at: String,
-    url: String,
-}
-
-async fn get_edit(
-    CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
-    Path(bookmark_id_str): Path<String>,
-) -> impl IntoResponse {
-    let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
-        Ok(id) => id,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
-    };
-    let bookmark = match state.bookmark_repository.find(user_id, bookmark_id).await {
-        Ok(Some(b)) => b,
-        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
-        Err(e) => {
-            tracing::error!("failed to find bookmark: {e}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    };
-    let template = EditBookmarkTemplate {
         base: &state.base_path,
         bookmark_id: bookmark_id_str,
         comment: bookmark.comment().to_string(),
@@ -457,75 +411,6 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
-    async fn test_get_show_returns_created_at() -> anyhow::Result<()> {
-        let sub = format!(
-            "get_show_created_at_user_{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_nanos()
-        );
-        let app = test_app(&sub)?;
-        let session = session_cookie(app.clone(), &sub).await?;
-        let create_res = send_request(
-            app.clone(),
-            Request::builder()
-                .method("POST")
-                .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(form_body(&PostRootRequest {
-                    comment: "".to_string(),
-                    title: "Test Title".to_string(),
-                    url: "https://example.com".to_string(),
-                })?)?,
-        )
-        .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
-        let list_res = send_request(
-            app.clone(),
-            Request::builder()
-                .method("GET")
-                .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
-        )
-        .await?;
-        let list_body = list_res.into_body_string().await?;
-        let bookmark_id = list_body
-            .lines()
-            .find_map(|line| {
-                let trimmed = line.trim();
-                let marker = r#"href="/"#;
-                let pos = trimmed.find(marker)?;
-                let rest = &trimmed[pos + marker.len()..];
-                let id = rest.split('"').next()?;
-                if id.is_empty() || id.contains('/') || id.matches('-').count() != 4 {
-                    None
-                } else {
-                    Some(id.to_string())
-                }
-            })
-            .ok_or_else(|| anyhow::anyhow!("bookmark_id not found in list: {list_body}"))?;
-        let res = send_request(
-            app,
-            Request::builder()
-                .method("GET")
-                .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
-        )
-        .await?;
-        assert_eq!(res.status(), StatusCode::OK);
-        let body = res.into_body_string().await?;
-        assert!(
-            body.contains(r#"class="bookmark-created-at""#),
-            "created_at element missing: {body}"
-        );
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial_test::serial]
     async fn test_get_show_returns_comment() -> anyhow::Result<()> {
         let sub = format!(
             "get_show_comment_user_{}",
@@ -682,104 +567,9 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
-    async fn test_get_show_has_edit_link() -> anyhow::Result<()> {
+    async fn test_get_show_returns_edit_form() -> anyhow::Result<()> {
         let sub = format!(
-            "get_show_edit_link_user_{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_nanos()
-        );
-        let app = test_app(&sub)?;
-        let session = session_cookie(app.clone(), &sub).await?;
-        let create_res = send_request(
-            app.clone(),
-            Request::builder()
-                .method("POST")
-                .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(form_body(&PostRootRequest {
-                    comment: "".to_string(),
-                    title: "Test Title".to_string(),
-                    url: "https://example.com".to_string(),
-                })?)?,
-        )
-        .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
-        let list_res = send_request(
-            app.clone(),
-            Request::builder()
-                .method("GET")
-                .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
-        )
-        .await?;
-        let list_body = list_res.into_body_string().await?;
-        let bookmark_id = extract_bookmark_id(&list_body)?;
-        let res = send_request(
-            app,
-            Request::builder()
-                .method("GET")
-                .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
-        )
-        .await?;
-        assert_eq!(res.status(), StatusCode::OK);
-        let body = res.into_body_string().await?;
-        assert!(
-            body.contains(&format!(r#"href="/{bookmark_id}/edit""#)),
-            "edit link missing: {body}"
-        );
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_get_edit_requires_auth() -> anyhow::Result<()> {
-        let app = test_app("get_edit_auth_test_user")?;
-        let response = send_request(
-            app,
-            Request::builder()
-                .method("GET")
-                .uri("/01939c78-e42a-7000-0000-000000000000/edit")
-                .body(Body::empty())?,
-        )
-        .await?;
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_get_edit_returns_404_for_unknown() -> anyhow::Result<()> {
-        let sub = format!(
-            "get_edit_404_user_{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_nanos()
-        );
-        let app = test_app(&sub)?;
-        let session = session_cookie(app.clone(), &sub).await?;
-        let response = send_request(
-            app,
-            Request::builder()
-                .method("GET")
-                .uri("/01939c78-e42a-7000-0000-000000000000/edit")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
-        )
-        .await?;
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_get_edit_returns_form() -> anyhow::Result<()> {
-        let sub = format!(
-            "get_edit_form_user_{}",
+            "get_show_edit_form_user_{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)?
                 .as_nanos()
@@ -816,7 +606,7 @@ mod tests {
             app,
             Request::builder()
                 .method("GET")
-                .uri(format!("/{bookmark_id}/edit"))
+                .uri(format!("/{bookmark_id}"))
                 .header(header::COOKIE, &session)
                 .body(Body::empty())?,
         )
@@ -903,7 +693,7 @@ mod tests {
             app.clone(),
             Request::builder()
                 .method("GET")
-                .uri(format!("/{bookmark_id}/edit"))
+                .uri(format!("/{bookmark_id}"))
                 .header(header::COOKIE, &session)
                 .body(Body::empty())?,
         )
