@@ -26,14 +26,28 @@ pub(crate) fn router() -> axum::Router<AppState> {
 #[template(path = "new_bookmark.html")]
 struct NewBookmarkTemplate<'a> {
     base: &'a str,
+    comment: String,
+    title: String,
+    url: String,
+}
+
+#[derive(serde::Deserialize)]
+struct NewBookmarkQuery {
+    comment: Option<String>,
+    title: Option<String>,
+    url: Option<String>,
 }
 
 async fn get_new(
     CurrentUserId(_user_id): CurrentUserId,
     State(state): State<AppState>,
+    axum::extract::Query(query): axum::extract::Query<NewBookmarkQuery>,
 ) -> impl IntoResponse {
     let template = NewBookmarkTemplate {
         base: &state.base_path,
+        comment: query.comment.unwrap_or_default(),
+        title: query.title.unwrap_or_default(),
+        url: query.url.unwrap_or_default(),
     };
     match template.render() {
         Ok(html) => Html(html).into_response(),
@@ -320,6 +334,43 @@ mod tests {
         )
         .await?;
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_new_with_query_params_sets_default_values() -> anyhow::Result<()> {
+        let sub = format!(
+            "get_new_query_params_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/new?url=https%3A%2F%2Fexample.com&title=My+Title&comment=My+Comment")
+                .header(header::COOKIE, session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains(r#"value="https://example.com""#),
+            "url default value missing: {body}"
+        );
+        assert!(
+            body.contains(r#"value="My Title""#),
+            "title default value missing: {body}"
+        );
+        assert!(
+            body.contains(r#"value="My Comment""#),
+            "comment default value missing: {body}"
+        );
         Ok(())
     }
 
