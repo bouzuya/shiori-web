@@ -526,4 +526,36 @@ mod tests {
         );
         Ok(())
     }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn with_base_path_root_link_has_no_trailing_slash() -> anyhow::Result<()> {
+        let base_path = "/app";
+        let state = AppState::new(
+            base_path.to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new("base_path_trailing_slash_user")),
+            firestore_user_repo()?,
+        );
+        let response = send_request(
+            crate::router::router(base_path).with_state(state),
+            axum::http::Request::builder()
+                .uri("/app")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains(r#"href="/app""#),
+            "Expected site title link to be /app (no trailing slash), got: {body}"
+        );
+        assert!(
+            !body.contains(r#"href="/app/""#),
+            "Expected no href with trailing slash /app/, got: {body}"
+        );
+        Ok(())
+    }
 }

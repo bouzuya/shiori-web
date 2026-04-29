@@ -10,12 +10,12 @@
 <body>
     <div class="page-container">
         <header class="page-header">
-            <div class="site-title"><a href="{{ base }}/">shiori</a></div>
+            <div class="site-title"><a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">shiori</a></div>
         </header>
         <main>
             <h1>{{ title }}</h1>
             <div class="back-link">
-                <a href="{{ base }}/">Back</a>
+                <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">Back</a>
             </div>
 
             <form class="edit-bookmark-form" action="{{ base }}/{{ bookmark_id }}?_method=PATCH" method="post">

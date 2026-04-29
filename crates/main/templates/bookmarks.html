@@ -10,7 +10,7 @@
 <body>
     <div class="page-container">
         <header class="page-header">
-            <div class="site-title"><a href="{{ base }}/">shiori</a></div>
+            <div class="site-title"><a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">shiori</a></div>
         </header>
         <main>
             <h1>Bookmark List</h1>
