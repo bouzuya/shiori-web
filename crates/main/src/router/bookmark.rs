@@ -221,7 +221,7 @@ async fn delete_bookmark_impl(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
     let base = &state.base_path;
-    Redirect::to(&format!("{base}/")).into_response()
+    Redirect::to(if base.is_empty() { "/" } else { base }).into_response()
 }
 
 async fn delete_bookmark(
@@ -282,21 +282,30 @@ async fn post_root(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
     let base = &state.base_path;
-    Redirect::to(&format!("{base}/")).into_response()
+    Redirect::to(if base.is_empty() { "/" } else { base }).into_response()
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use axum::body::Body;
     use axum::http::Request;
     use axum::http::StatusCode;
     use axum::http::header;
 
+    use crate::AppState;
+    use crate::test_helpers::MockOidcClient;
     use crate::test_helpers::ResponseExt as _;
+    use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
     use crate::test_helpers::extract_cookies;
+    use crate::test_helpers::firestore_bookmark_reader;
+    use crate::test_helpers::firestore_bookmark_repo;
+    use crate::test_helpers::firestore_user_repo;
     use crate::test_helpers::form_body;
     use crate::test_helpers::send_request;
     use crate::test_helpers::test_app;
+    use crate::test_helpers::unique_user_id;
 
     use super::PatchBookmarkRequest;
     use super::PostRootRequest;
@@ -1188,6 +1197,82 @@ mod tests {
         )
         .await?;
         assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+        Ok(())
+    }
+
+    async fn session_cookie_with_base(
+        app: axum::Router,
+        base_path: &str,
+    ) -> anyhow::Result<String> {
+        let signup = send_request(
+            app.clone(),
+            Request::builder()
+                .uri(&format!("{base_path}/auth/signup"))
+                .body(Body::empty())?,
+        )
+        .await?;
+        let signup_cookie = extract_cookies(&signup);
+        let callback = send_request(
+            app.clone(),
+            Request::builder()
+                .uri(&format!(
+                    "{base_path}/auth/callback?code=test_code&state=test_state"
+                ))
+                .header(header::COOKIE, &signup_cookie)
+                .body(Body::empty())?,
+        )
+        .await?;
+        callback
+            .headers()
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .find_map(|v| {
+                let s = v.to_str().ok()?;
+                if !s.contains("session") {
+                    return None;
+                }
+                s.split(';').next().map(|p| p.to_string())
+            })
+            .ok_or_else(|| anyhow::anyhow!("session cookie not found"))
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn with_base_path_post_root_redirects_to_base_path() -> anyhow::Result<()> {
+        let base_path = "/app";
+        let sub = unique_user_id();
+        let state = AppState::new(
+            base_path.to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+        );
+        let app = crate::router::router(base_path).with_state(state);
+        let session = session_cookie_with_base(app.clone(), base_path).await?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("POST")
+                .uri("/app")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(form_body(&PostRootRequest {
+                    comment: "".to_string(),
+                    title: "Test".to_string(),
+                    url: "https://example.com".to_string(),
+                })?)?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::LOCATION)
+                .and_then(|v| v.to_str().ok()),
+            Some("/app")
+        );
         Ok(())
     }
 }
