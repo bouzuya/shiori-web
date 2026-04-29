@@ -16,7 +16,9 @@ pub(crate) fn router() -> axum::Router<AppState> {
         .route("/new", axum::routing::get(get_new))
         .route(
             "/{bookmark_id}",
-            axum::routing::get(get_show).patch(patch_bookmark),
+            axum::routing::get(get_show)
+                .patch(patch_bookmark)
+                .post(patch_bookmark),
         )
 }
 
@@ -87,6 +89,12 @@ async fn get_show(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct MethodOverrideQuery {
+    #[serde(rename = "_method")]
+    method: Option<String>,
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub(crate) struct PatchBookmarkRequest {
     pub(crate) comment: String,
@@ -97,10 +105,15 @@ pub(crate) struct PatchBookmarkRequest {
 
 async fn patch_bookmark(
     CurrentUserId(user_id): CurrentUserId,
+    method: axum::http::Method,
     State(state): State<AppState>,
     Path(bookmark_id_str): Path<String>,
+    axum::extract::Query(query): axum::extract::Query<MethodOverrideQuery>,
     Form(body): Form<PatchBookmarkRequest>,
 ) -> impl IntoResponse {
+    if method == axum::http::Method::POST && query.method.as_deref() != Some("PATCH") {
+        return StatusCode::METHOD_NOT_ALLOWED.into_response();
+    }
     let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
         Ok(id) => id,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
@@ -735,6 +748,116 @@ mod tests {
                 .and_then(|v| v.to_str().ok()),
             Some(format!("/{bookmark_id}").as_str())
         );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_patch_via_method_override() -> anyhow::Result<()> {
+        let sub = format!(
+            "patch_method_override_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let create_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(form_body(&PostRootRequest {
+                    comment: "original".to_string(),
+                    title: "Original Title".to_string(),
+                    url: "https://example.com".to_string(),
+                })?)?,
+        )
+        .await?;
+        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        let list_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("GET")
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let list_body = list_res.into_body_string().await?;
+        let bookmark_id = extract_bookmark_id(&list_body)?;
+        let show_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("GET")
+                .uri(format!("/{bookmark_id}"))
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let show_body = show_res.into_body_string().await?;
+        let updated_at = show_body
+            .lines()
+            .find_map(|line| {
+                let line = line.trim();
+                if line.contains(r#"name="updated_at""#) {
+                    let marker = r#"value=""#;
+                    let pos = line.find(marker)?;
+                    let rest = &line[pos + marker.len()..];
+                    rest.split('"').next().map(|s| s.to_string())
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| anyhow::anyhow!("updated_at not found: {show_body}"))?;
+        let res = send_request(
+            app,
+            Request::builder()
+                .method("POST")
+                .uri(format!("/{bookmark_id}?_method=PATCH"))
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(form_body(&PatchBookmarkRequest {
+                    comment: "updated".to_string(),
+                    title: "Updated Title".to_string(),
+                    updated_at,
+                    url: "https://updated.example.com".to_string(),
+                })?)?,
+        )
+        .await?;
+        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_post_without_method_override_returns_405() -> anyhow::Result<()> {
+        let sub = format!(
+            "post_no_method_override_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("POST")
+                .uri("/01939c78-e42a-7000-0000-000000000000")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(form_body(&PatchBookmarkRequest {
+                    comment: "".to_string(),
+                    title: "".to_string(),
+                    updated_at: "2024-01-01T00:00:00.000Z".to_string(),
+                    url: "https://example.com".to_string(),
+                })?)?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
         Ok(())
     }
 }
