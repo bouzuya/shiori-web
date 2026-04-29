@@ -25,3 +25,4 @@ tower = { version = "0.5", features = ["util"] }
 edition.workspace = true
 name = "main"
 publish.workspace = true
+version.workspace = true
