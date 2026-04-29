@@ -133,6 +133,7 @@ main {
     padding: 8px;
 }
 
+.delete-bookmark-form,
 .edit-bookmark-form,
 .new-bookmark-form {
     display: flex;
