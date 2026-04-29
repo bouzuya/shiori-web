@@ -152,6 +152,7 @@ mod tests {
         let older = kernel::Bookmark::new(
             "c".parse::<kernel::Comment>()?,
             kernel::DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
+            None,
             kernel::BookmarkId::new(),
             "t".parse::<kernel::Title>()?,
             kernel::DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
@@ -161,6 +162,7 @@ mod tests {
         let newer = kernel::Bookmark::new(
             "c".parse::<kernel::Comment>()?,
             kernel::DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?,
+            None,
             kernel::BookmarkId::new(),
             "t".parse::<kernel::Title>()?,
             kernel::DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?,

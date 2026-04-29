@@ -17,6 +17,7 @@ fn try_bookmark_from_data(
     Ok(kernel::Bookmark::new(
         data.comment.parse::<kernel::Comment>()?,
         kernel::DateTime::from_rfc3339(&data.created_at)?,
+        None,
         data.bookmark_id.parse::<kernel::BookmarkId>()?,
         data.title.parse::<kernel::Title>()?,
         kernel::DateTime::from_rfc3339(&data.updated_at)?,
@@ -75,6 +76,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
     ) -> anyhow::Result<()> {
         let user_id = bookmark.user_id();
         let bookmark_id = bookmark.id();
+        let deleted_at = bookmark.deleted_at();
         let doc_ref = self
             .firestore
             .doc(format!("users/{user_id}/bookmarks/{bookmark_id}"))
@@ -112,7 +114,14 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                                         "optimistic lock conflict",
                                     ));
                                 }
-                                tx.set(&doc_ref, &data)?;
+                                if deleted_at.is_some() {
+                                    tx.delete(
+                                        &doc_ref,
+                                        bouzuya_firestore_client::Precondition::default(),
+                                    )?;
+                                } else {
+                                    tx.set(&doc_ref, &data)?;
+                                }
                             }
                         }
                         Ok(())
@@ -204,6 +213,7 @@ mod tests {
         let updated = kernel::Bookmark::new(
             "updated comment".parse::<kernel::Comment>()?,
             kernel::DateTime::now(),
+            None,
             id,
             "updated title".parse::<kernel::Title>()?,
             kernel::DateTime::now(),
@@ -232,6 +242,7 @@ mod tests {
         let updated = kernel::Bookmark::new(
             "updated comment".parse::<kernel::Comment>()?,
             kernel::DateTime::now(),
+            None,
             id,
             "updated title".parse::<kernel::Title>()?,
             kernel::DateTime::now(),
@@ -239,6 +250,36 @@ mod tests {
             user_id,
         );
         assert!(repo.store(Some(stale_updated_at), updated).await.is_err());
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_firestore_store_delete_removes_bookmark() -> anyhow::Result<()> {
+        let repo = firestore_repo()?;
+        let user_id = kernel::UserId::new();
+        let bookmark = kernel::Bookmark::create(
+            user_id,
+            "https://example.com".parse::<kernel::Url>()?,
+            "test title".parse::<kernel::Title>()?,
+            "test comment".parse::<kernel::Comment>()?,
+        );
+        let original_updated_at = bookmark.updated_at();
+        let id = bookmark.id();
+        repo.store(None, bookmark).await?;
+        let deleted = kernel::Bookmark::new(
+            "test comment".parse::<kernel::Comment>()?,
+            kernel::DateTime::now(),
+            Some(kernel::DateTime::now()),
+            id,
+            "test title".parse::<kernel::Title>()?,
+            kernel::DateTime::now(),
+            "https://example.com".parse::<kernel::Url>()?,
+            user_id,
+        );
+        repo.store(Some(original_updated_at), deleted).await?;
+        let found = repo.find(user_id, id).await?;
+        assert!(found.is_none());
         Ok(())
     }
 }

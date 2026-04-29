@@ -2,6 +2,7 @@
 pub struct Bookmark {
     comment: crate::entities::Comment,
     created_at: crate::entities::DateTime,
+    deleted_at: Option<crate::entities::DateTime>,
     id: crate::entities::BookmarkId,
     title: crate::entities::Title,
     updated_at: crate::entities::DateTime,
@@ -20,6 +21,7 @@ impl Bookmark {
         Self {
             comment,
             created_at: now,
+            deleted_at: None,
             id: crate::entities::BookmarkId::new(),
             title,
             updated_at: now,
@@ -31,6 +33,7 @@ impl Bookmark {
     pub fn new(
         comment: crate::entities::Comment,
         created_at: crate::entities::DateTime,
+        deleted_at: Option<crate::entities::DateTime>,
         id: crate::entities::BookmarkId,
         title: crate::entities::Title,
         updated_at: crate::entities::DateTime,
@@ -40,6 +43,7 @@ impl Bookmark {
         Self {
             comment,
             created_at,
+            deleted_at,
             id,
             title,
             updated_at,
@@ -54,6 +58,10 @@ impl Bookmark {
 
     pub fn created_at(&self) -> crate::entities::DateTime {
         self.created_at
+    }
+
+    pub fn deleted_at(&self) -> Option<crate::entities::DateTime> {
+        self.deleted_at
     }
 
     pub fn id(&self) -> crate::entities::BookmarkId {
@@ -74,6 +82,22 @@ impl Bookmark {
 
     pub fn user_id(&self) -> crate::entities::UserId {
         self.user_id
+    }
+}
+
+#[cfg(test)]
+impl Bookmark {
+    pub fn for_test() -> Self {
+        Self {
+            comment: crate::entities::Comment::for_test(),
+            created_at: crate::entities::DateTime::now(),
+            deleted_at: None,
+            id: crate::entities::BookmarkId::new(),
+            title: crate::entities::Title::for_test(),
+            updated_at: crate::entities::DateTime::now(),
+            url: crate::entities::Url::for_test(),
+            user_id: crate::entities::UserId::new(),
+        }
     }
 }
 
@@ -167,6 +191,7 @@ mod tests {
         let b = Bookmark::new(
             crate::entities::Comment::for_test(),
             created_at,
+            None,
             id,
             crate::entities::Title::for_test(),
             updated_at,
@@ -176,7 +201,38 @@ mod tests {
         assert_eq!(b.id(), id);
         assert_eq!(b.user_id(), user_id);
         assert_eq!(b.created_at(), created_at);
+        assert_eq!(b.deleted_at(), None);
         assert_eq!(b.updated_at(), updated_at);
+        Ok(())
+    }
+
+    #[test]
+    fn test_bookmark_new_with_deleted_at() -> anyhow::Result<()> {
+        let deleted_at = crate::entities::DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?;
+        let b = Bookmark::new(
+            crate::entities::Comment::for_test(),
+            crate::entities::DateTime::now(),
+            Some(deleted_at),
+            crate::entities::BookmarkId::new(),
+            crate::entities::Title::for_test(),
+            crate::entities::DateTime::now(),
+            crate::entities::Url::for_test(),
+            crate::entities::UserId::new(),
+        );
+        assert_eq!(b.deleted_at(), Some(deleted_at));
+        Ok(())
+    }
+
+    #[test]
+    fn test_bookmark_create_deleted_at_is_none() -> anyhow::Result<()> {
+        let user_id = crate::entities::UserId::new();
+        let b = Bookmark::create(
+            user_id,
+            crate::entities::Url::for_test(),
+            crate::entities::Title::for_test(),
+            crate::entities::Comment::for_test(),
+        );
+        assert_eq!(b.deleted_at(), None);
         Ok(())
     }
 }
