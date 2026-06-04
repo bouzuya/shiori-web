@@ -31,7 +31,14 @@
                     <li>
                         <div class="bookmark-item">
                             <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
-                            <a class="detail" href="{{ base }}/{{ item.id }}">...</a>
+                            <div>
+                                <button class="detail" popovertarget="menu-{{ item.id }}">...</button>
+                                <div class="popover" id="menu-{{ item.id }}" popover="auto">
+                                    <ul>
+                                        <li><a href="{{ base }}/{{ item.id }}">Edit</a></li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </li>
                     {% endfor %}
