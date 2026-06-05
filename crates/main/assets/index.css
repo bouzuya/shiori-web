@@ -110,7 +110,6 @@ main {
     display: block;
     flex: none;
     height: 40px;
-    text-align: center;
     text-decoration: none;
     width: 40px;
 
@@ -139,6 +138,29 @@ main {
 
     & li:hover {
         background-color: var(--color-gray);
+    }
+
+    & li a {
+        text-decoration: none;
+    }
+
+    & .delete-bookmark-form {
+        gap: 0;
+        padding: 0;
+    }
+
+    & .delete-bookmark-form button {
+        background-color: transparent;
+        border: none;
+        color: var(--color-blue);
+        cursor: pointer;
+        display: block;
+        font: inherit;
+        overflow: hidden;
+        padding: 8px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 100%;
     }
 }
 
