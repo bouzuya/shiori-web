@@ -1,3 +1,6 @@
+/* ============================================================
+ * Reset / Base  (common: applies to every page)
+ * ========================================================== */
 :root {
     --color-black: #000000;
     --color-blue: #0000ff;
@@ -15,30 +18,9 @@ body {
     width: 100%;
 }
 
-h1 {
-    display: none;
-}
-
-h2 {
-    font-size: 16px;
-    font-weight: normal;
-    margin: 0;
-}
-
-p {
-    margin: 0;
-}
-
-ul {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-}
-
-a {
-    color: var(--color-blue);
-}
-
+/* ============================================================
+ * Layout  (common: shared shell on every page)
+ * ========================================================== */
 .page-container {
     box-sizing: border-box;
     display: flex;
@@ -52,20 +34,20 @@ a {
 
 .page-header {
     flex: none;
-}
 
-.site-title a {
-    color: var(--color-black);
-    display: block;
-    font-weight: bold;
-    overflow: hidden;
-    padding: 8px;
-    text-decoration: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    .site-title a {
+        color: var(--color-black);
+        display: block;
+        font-weight: bold;
+        overflow: hidden;
+        padding: 8px;
+        text-decoration: none;
+        text-overflow: ellipsis;
+        white-space: nowrap;
 
-    &:hover {
-        background-color: var(--color-gray);
+        &:hover {
+            background-color: var(--color-gray);
+        }
     }
 }
 
@@ -73,189 +55,407 @@ main {
     flex: 1;
 }
 
-.no-bookmarks {
-    display: block;
-    padding: 8px;
-}
-
-.bookmark-group-name {
-    display: block;
-    padding: 8px;
-}
-
-.bookmark-item {
-    display: flex;
-    flex-flow: row nowrap;
-    gap: 4px;
-}
-
-.bookmark-item a {
-    display: block;
-    flex: 1;
-    overflow: hidden;
-    padding: 8px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    &:hover {
-        background-color: var(--color-gray);
-    }
-}
-
-.bookmark-item .detail {
-    background-color: var(--color-white);
-    border: none;
-    color: var(--color-black);
-    cursor: pointer;
-    display: block;
+.page-footer {
     flex: none;
-    height: 40px;
-    text-decoration: none;
-    width: 40px;
 
-    &:hover {
-        background-color: var(--color-gray);
+    a {
+        color: var(--color-blue);
+        display: block;
+        overflow: hidden;
+        padding: 8px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--color-gray);
+        }
     }
 }
 
-.bookmark-item .popover {
-    border: 1px solid var(--color-black);
-    box-shadow: 4px 4px var(--color-black);
-    padding: 0;
-    position-anchor: auto;
-    position-area: bottom span-right;
-    position: absolute;
+/* ============================================================
+ * Page: landing-page
+ * ========================================================== */
+.landing-page {
 
-    & ul {
+    h1 {
+        display: none;
+    }
+
+    h2 {
+        font-size: 16px;
+        font-weight: normal;
+        margin: 0;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    ul {
         list-style-type: none;
         margin: 0;
         padding: 0;
     }
 
-    & li {
-        cursor: pointer;
-    }
-
-    & li:hover {
-        background-color: var(--color-gray);
-    }
-
-    & li a {
-        text-decoration: none;
-    }
-
-    & .delete-bookmark-form {
-        gap: 0;
-        padding: 0;
-    }
-
-    & .delete-bookmark-form button {
-        background-color: transparent;
-        border: none;
+    a {
         color: var(--color-blue);
-        cursor: pointer;
+    }
+
+    /* nav links (shared style) */
+    .sign-up-link a,
+    .sign-in-link a {
         display: block;
-        font: inherit;
         overflow: hidden;
         padding: 8px;
         text-overflow: ellipsis;
         white-space: nowrap;
+
+        &:hover {
+            background-color: var(--color-gray);
+        }
+    }
+}
+
+/* ============================================================
+ * Page: list-page
+ * ========================================================== */
+.list-page {
+
+    h1 {
+        display: none;
+    }
+
+    h2 {
+        font-size: 16px;
+        font-weight: normal;
+        margin: 0;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    a {
+        color: var(--color-blue);
+    }
+
+    /* nav links (shared style) */
+    .new-bookmark-link a {
+        display: block;
+        overflow: hidden;
+        padding: 8px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--color-gray);
+        }
+    }
+
+    .no-bookmarks {
+        display: block;
+        padding: 8px;
+    }
+
+    .bookmark-group-name {
+        display: block;
+        padding: 8px;
+    }
+
+    .bookmark-item {
+        display: flex;
+        flex-flow: row nowrap;
+        gap: 4px;
+    }
+
+    .bookmark-item a {
+        display: block;
+        flex: 1;
+        overflow: hidden;
+        padding: 8px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--color-gray);
+        }
+    }
+
+    .bookmark-item .detail {
+        background-color: var(--color-white);
+        border: none;
+        color: var(--color-black);
+        cursor: pointer;
+        display: block;
+        flex: none;
+        height: 40px;
+        text-decoration: none;
+        width: 40px;
+
+        &:hover {
+            background-color: var(--color-gray);
+        }
+    }
+
+    .bookmark-item .popover {
+        border: 1px solid var(--color-black);
+        box-shadow: 4px 4px var(--color-black);
+        padding: 0;
+        position-anchor: auto;
+        position-area: bottom span-right;
+        position: absolute;
+
+        & ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        & li {
+            cursor: pointer;
+        }
+
+        & li:hover {
+            background-color: var(--color-gray);
+        }
+
+        & li a {
+            text-decoration: none;
+        }
+
+        & .delete-bookmark-form {
+            gap: 0;
+            padding: 0;
+        }
+
+        & .delete-bookmark-form button {
+            background-color: transparent;
+            border: none;
+            color: var(--color-blue);
+            cursor: pointer;
+            display: block;
+            font: inherit;
+            overflow: hidden;
+            padding: 8px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 100%;
+        }
+    }
+
+    /* form container (shared style) */
+    .delete-bookmark-form {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 24px;
+        padding: 8px;
+    }
+}
+
+/* ============================================================
+ * Page: show-page
+ * ========================================================== */
+.show-page {
+
+    h1 {
+        display: none;
+    }
+
+    h2 {
+        font-size: 16px;
+        font-weight: normal;
+        margin: 0;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    a {
+        color: var(--color-blue);
+    }
+
+    /* nav links (shared style) */
+    .back-link a {
+        display: block;
+        overflow: hidden;
+        padding: 8px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--color-gray);
+        }
+    }
+
+    /* form container (shared style) */
+    .edit-bookmark-form {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 24px;
+        padding: 8px;
+    }
+
+    /* form fields / submit (shared style) */
+    .form-fields {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 8px;
+    }
+
+    .form-field {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 4px;
+    }
+
+    .form-field label {
+        font-size: 16px;
+    }
+
+    .form-field input {
+        border: 1px solid var(--color-black);
+        box-sizing: border-box;
+        font-size: 16px;
+        outline: none;
+        padding: 4px;
         width: 100%;
     }
-}
 
-.back-link a,
-.new-bookmark-link a,
-.sign-in-link a,
-.sign-up-link a {
-    display: block;
-    overflow: hidden;
-    padding: 8px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    .form-submit button {
+        background-color: var(--color-white);
+        border: 1px solid var(--color-black);
+        box-shadow: 2px 2px var(--color-black);
+        color: var(--color-black);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 4px 16px;
 
-    &:hover {
-        background-color: var(--color-gray);
+        &:focus:active,
+        &:hover:active,
+        &:active {
+            box-shadow: none;
+            transform: none;
+        }
+
+        &:focus,
+        &:hover {
+            box-shadow: 3px 3px var(--color-black);
+            outline: none;
+            transform: translate(-1px, -1px);
+        }
     }
 }
 
-.bookmark-detail {
-    display: flex;
-    flex-flow: column nowrap;
-    gap: 8px;
-    padding: 8px;
-}
+/* ============================================================
+ * Page: new-page
+ * ========================================================== */
+.new-page {
 
-.delete-bookmark-form,
-.edit-bookmark-form,
-.new-bookmark-form {
-    display: flex;
-    flex-flow: column nowrap;
-    gap: 24px;
-    padding: 8px;
-}
-
-.form-fields {
-    display: flex;
-    flex-flow: column nowrap;
-    gap: 8px;
-}
-
-.form-field {
-    display: flex;
-    flex-flow: column nowrap;
-    gap: 4px;
-}
-
-.form-field label {
-    font-size: 16px;
-}
-
-.form-field input {
-    border: 1px solid var(--color-black);
-    box-sizing: border-box;
-    font-size: 16px;
-    outline: none;
-    padding: 4px;
-    width: 100%;
-}
-
-.form-submit button {
-    background-color: var(--color-white);
-    border: 1px solid var(--color-black);
-    box-shadow: 2px 2px var(--color-black);
-    color: var(--color-black);
-    cursor: pointer;
-    font-size: 16px;
-    padding: 4px 16px;
-
-    &:focus:active,
-    &:hover:active,
-    &:active {
-        box-shadow: none;
-        transform: none;
+    h1 {
+        display: none;
     }
 
-    &:focus,
-    &:hover {
-        box-shadow: 3px 3px var(--color-black);
+    h2 {
+        font-size: 16px;
+        font-weight: normal;
+        margin: 0;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    a {
+        color: var(--color-blue);
+    }
+
+    /* nav links (shared style) */
+    .back-link a {
+        display: block;
+        overflow: hidden;
+        padding: 8px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--color-gray);
+        }
+    }
+
+    /* form container (shared style) */
+    .new-bookmark-form {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 24px;
+        padding: 8px;
+    }
+
+    /* form fields / submit (shared style) */
+    .form-fields {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 8px;
+    }
+
+    .form-field {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 4px;
+    }
+
+    .form-field label {
+        font-size: 16px;
+    }
+
+    .form-field input {
+        border: 1px solid var(--color-black);
+        box-sizing: border-box;
+        font-size: 16px;
         outline: none;
-        transform: translate(-1px, -1px);
+        padding: 4px;
+        width: 100%;
     }
-}
 
-.page-footer {
-    flex: none;
-}
+    .form-submit button {
+        background-color: var(--color-white);
+        border: 1px solid var(--color-black);
+        box-shadow: 2px 2px var(--color-black);
+        color: var(--color-black);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 4px 16px;
 
-.page-footer a {
-    display: block;
-    overflow: hidden;
-    padding: 8px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+        &:focus:active,
+        &:hover:active,
+        &:active {
+            box-shadow: none;
+            transform: none;
+        }
 
-    &:hover {
-        background-color: var(--color-gray);
+        &:focus,
+        &:hover {
+            box-shadow: 3px 3px var(--color-black);
+            outline: none;
+            transform: translate(-1px, -1px);
+        }
     }
 }
