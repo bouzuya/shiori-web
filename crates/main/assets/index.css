@@ -1,10 +1,24 @@
 /* ============================================================
  * Reset / Base  (common: applies to every page)
  * ========================================================== */
-:root {
-    --color-black: #000000;
-    --color-blue: #0000ff;
-    --color-gray: #f0f0f0;
+[data-theme="dark"] {
+    --background-color: #000;
+    --base-background-color: #333;
+    --border-color: #ccc;
+    --hover-background-color: #333;
+    --link-text-color: #09f;
+    --shadow-color: #ccc;
+    --text-color: #ccc;
+}
+
+[data-theme="light"] {
+    --background-color: #fff;
+    --base-background-color: #ccc;
+    --border-color: #333;
+    --hover-background-color: #ccc;
+    --link-text-color: #03f;
+    --shadow-color: #333;
+    --text-color: #333;
 }
 
 html {
@@ -13,7 +27,7 @@ html {
 }
 
 body {
-    background-color: #eeeeee;
+    background-color: var(--base-background-color);
     height: 100%;
     margin: 0;
     width: 100%;
@@ -23,8 +37,9 @@ body {
  * Layout  (common: shared shell on every page)
  * ========================================================== */
 .page-container {
-    background-color: #f4f7f2;
+    background-color: var(--background-color);
     box-sizing: border-box;
+    color: var(--text-color);
     display: flex;
     flex-flow: column nowrap;
     gap: 8px;
@@ -38,7 +53,7 @@ body {
     flex: none;
 
     .site-title a {
-        color: var(--color-black);
+        color: var(--text-color);
         display: block;
         font-weight: bold;
         overflow: hidden;
@@ -48,7 +63,7 @@ body {
         white-space: nowrap;
 
         &:hover {
-            background-color: var(--color-gray);
+            background-color: var(--hover-background-color);
         }
     }
 }
@@ -61,7 +76,7 @@ main {
     flex: none;
 
     a {
-        color: var(--color-blue);
+        color: var(--link-text-color);
         display: block;
         overflow: hidden;
         padding: 8px;
@@ -69,7 +84,7 @@ main {
         white-space: nowrap;
 
         &:hover {
-            background-color: var(--color-gray);
+            background-color: var(--hover-background-color);
         }
     }
 }
@@ -100,7 +115,7 @@ main {
     }
 
     a {
-        color: var(--color-blue);
+        color: var(--link-text-color);
     }
 
     /* nav links (shared style) */
@@ -113,7 +128,7 @@ main {
         white-space: nowrap;
 
         &:hover {
-            background-color: var(--color-gray);
+            background-color: var(--hover-background-color);
         }
     }
 }
@@ -144,7 +159,7 @@ main {
     }
 
     a {
-        color: var(--color-blue);
+        color: var(--link-text-color);
     }
 
     /* nav links (shared style) */
@@ -156,7 +171,7 @@ main {
         white-space: nowrap;
 
         &:hover {
-            background-color: var(--color-gray);
+            background-color: var(--hover-background-color);
         }
     }
 
@@ -185,14 +200,14 @@ main {
         white-space: nowrap;
 
         &:hover {
-            background-color: var(--color-gray);
+            background-color: var(--hover-background-color);
         }
     }
 
     .bookmark-item .detail {
-        background-color: var(--color-white);
+        background-color: var(--background-color);
         border: none;
-        color: var(--color-black);
+        color: var(--text-color);
         cursor: pointer;
         display: block;
         flex: none;
@@ -201,13 +216,13 @@ main {
         width: 40px;
 
         &:hover {
-            background-color: var(--color-gray);
+            background-color: var(--hover-background-color);
         }
     }
 
     .bookmark-item .popover {
-        border: 1px solid var(--color-black);
-        box-shadow: 4px 4px var(--color-black);
+        border: 1px solid var(--text-color);
+        box-shadow: 4px 4px var(--shadow-color);
         padding: 0;
         position-anchor: auto;
         position-area: bottom span-right;
@@ -223,12 +238,14 @@ main {
             cursor: pointer;
         }
 
-        & li:hover {
-            background-color: var(--color-gray);
+        & li a {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            text-decoration: none;
         }
 
-        & li a {
-            text-decoration: none;
+        & li a:hover {
+            background-color: var(--hover-background-color);
         }
 
         & .delete-bookmark-form {
@@ -237,9 +254,9 @@ main {
         }
 
         & .delete-bookmark-form button {
-            background-color: transparent;
+            background-color: var(--background-color);
             border: none;
-            color: var(--color-blue);
+            color: var(--text-color);
             cursor: pointer;
             display: block;
             font: inherit;
@@ -248,6 +265,10 @@ main {
             text-overflow: ellipsis;
             white-space: nowrap;
             width: 100%;
+
+            &:hover {
+                background-color: var(--hover-background-color);
+            }
         }
     }
 
@@ -286,7 +307,7 @@ main {
     }
 
     a {
-        color: var(--color-blue);
+        color: var(--link-text-color);
     }
 
     /* nav links (shared style) */
@@ -298,7 +319,7 @@ main {
         white-space: nowrap;
 
         &:hover {
-            background-color: var(--color-gray);
+            background-color: var(--hover-background-color);
         }
     }
 
@@ -328,7 +349,7 @@ main {
     }
 
     .form-field input {
-        border: 1px solid var(--color-black);
+        border: 1px solid var(--border-color);
         box-sizing: border-box;
         font-size: 16px;
         outline: none;
@@ -337,10 +358,10 @@ main {
     }
 
     .form-submit button {
-        background-color: var(--color-white);
-        border: 1px solid var(--color-black);
-        box-shadow: 2px 2px var(--color-black);
-        color: var(--color-black);
+        background-color: var(--background-color);
+        border: 1px solid var(--border-color);
+        box-shadow: 2px 2px var(--shadow-color);
+        color: var(--text-color);
         cursor: pointer;
         font-size: 16px;
         padding: 4px 16px;
@@ -354,7 +375,7 @@ main {
 
         &:focus,
         &:hover {
-            box-shadow: 3px 3px var(--color-black);
+            box-shadow: 3px 3px var(--shadow-color);
             outline: none;
             transform: translate(-1px, -1px);
         }
@@ -387,7 +408,7 @@ main {
     }
 
     a {
-        color: var(--color-blue);
+        color: var(--link-text-color);
     }
 
     /* nav links (shared style) */
@@ -399,7 +420,7 @@ main {
         white-space: nowrap;
 
         &:hover {
-            background-color: var(--color-gray);
+            background-color: var(--hover-background-color);
         }
     }
 
@@ -429,7 +450,7 @@ main {
     }
 
     .form-field input {
-        border: 1px solid var(--color-black);
+        border: 1px solid var(--border-color);
         box-sizing: border-box;
         font-size: 16px;
         outline: none;
@@ -438,10 +459,10 @@ main {
     }
 
     .form-submit button {
-        background-color: var(--color-white);
-        border: 1px solid var(--color-black);
-        box-shadow: 2px 2px var(--color-black);
-        color: var(--color-black);
+        background-color: var(--background-color);
+        border: 1px solid var(--border-color);
+        box-shadow: 2px 2px var(--shadow-color);
+        color: var(--text-color);
         cursor: pointer;
         font-size: 16px;
         padding: 4px 16px;
@@ -455,7 +476,7 @@ main {
 
         &:focus,
         &:hover {
-            box-shadow: 3px 3px var(--color-black);
+            box-shadow: 3px 3px var(--shadow-color);
             outline: none;
             transform: translate(-1px, -1px);
         }
