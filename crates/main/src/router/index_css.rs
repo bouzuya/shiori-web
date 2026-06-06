@@ -5,7 +5,7 @@ use axum::routing::get;
 
 use crate::AppState;
 
-const INDEX_CSS: &str = include_str!("../../assets/index.css");
+const INDEX_CSS: &str = include_str!("../../assets/index.min.css");
 
 pub(crate) fn router() -> Router<AppState> {
     Router::new().route("/index.css", get(handler))
