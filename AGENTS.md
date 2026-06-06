@@ -9,6 +9,8 @@
   - ただし `Ord` の実装など順序に意味がある場合は除く。その場合はコメントで明示すること
 - `#[derive(...)]` の項目はアルファベット順にソートすること
   - 例: `#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, serde::Deserialize, serde::Serialize)]`
+- HTML テンプレートの要素の属性はアルファベット順に並べること
+  - 例: `<html data-theme="light" lang="ja">`
 - テストは `#[cfg(test)] mod tests` 内にインラインで書くこと
 - コード編集後は `cargo +nightly fmt` を実行すること
 - 型にテスト用のインスタンス生成メソッド `for_test` を用意すること
