@@ -1,9 +1,11 @@
 mod bookmark;
+mod bookmark_document_data;
 mod bookmark_reader;
 mod user;
 
 pub(crate) use self::bookmark::BookmarkRepository;
 pub(crate) use self::bookmark::FirestoreBookmarkRepository;
+pub(crate) use self::bookmark_document_data::BookmarkDocumentData;
 pub(crate) use self::bookmark_reader::BookmarkReader;
 pub(crate) use self::bookmark_reader::FirestoreBookmarkReader;
 pub(crate) use self::user::FirestoreUserRepository;

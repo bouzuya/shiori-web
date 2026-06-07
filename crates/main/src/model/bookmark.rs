@@ -1,41 +1,6 @@
 pub(crate) use kernel::BookmarkRepository;
 
-#[derive(serde::Deserialize, serde::Serialize)]
-struct BookmarkDocumentData {
-    bookmark_id: String,
-    comment: String,
-    created_at: String,
-    title: String,
-    updated_at: String,
-    url: String,
-}
-
-fn try_bookmark_from_data(
-    data: BookmarkDocumentData,
-    user_id: kernel::UserId,
-) -> anyhow::Result<kernel::Bookmark> {
-    Ok(kernel::Bookmark::new(
-        data.comment.parse::<kernel::Comment>()?,
-        kernel::DateTime::from_rfc3339(&data.created_at)?,
-        None,
-        data.bookmark_id.parse::<kernel::BookmarkId>()?,
-        data.title.parse::<kernel::Title>()?,
-        kernel::DateTime::from_rfc3339(&data.updated_at)?,
-        data.url.parse::<kernel::Url>()?,
-        user_id,
-    ))
-}
-
-fn bookmark_to_data(bookmark: &kernel::Bookmark) -> BookmarkDocumentData {
-    BookmarkDocumentData {
-        bookmark_id: bookmark.id().to_string(),
-        comment: bookmark.comment().to_string(),
-        created_at: bookmark.created_at().to_rfc3339(),
-        title: bookmark.title().to_string(),
-        updated_at: bookmark.updated_at().to_rfc3339(),
-        url: bookmark.url().to_string(),
-    }
-}
+use crate::model::BookmarkDocumentData;
 
 pub(crate) struct FirestoreBookmarkRepository {
     firestore: bouzuya_firestore_client::Firestore,
@@ -66,7 +31,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
             .data::<BookmarkDocumentData>()
             .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
             .map_err(|e| anyhow::anyhow!(e))?;
-        Ok(Some(try_bookmark_from_data(data, user_id)?))
+        Ok(Some(data.into_bookmark(user_id)?))
     }
 
     async fn store(
@@ -81,7 +46,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
             .firestore
             .doc(format!("users/{user_id}/bookmarks/{bookmark_id}"))
             .map_err(|e| anyhow::anyhow!(e))?;
-        let data = bookmark_to_data(&bookmark);
+        let data = BookmarkDocumentData::from_bookmark(&bookmark);
         self.firestore
             .run_transaction(
                 move |tx| {
@@ -107,7 +72,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                                         bouzuya_firestore_client::Error::custom(e.to_string())
                                     })?;
                                 let existing_updated_at =
-                                    kernel::DateTime::from_rfc3339(&stored.updated_at)
+                                    kernel::DateTime::from_rfc3339(stored.updated_at())
                                         .map_err(&to_fs_err)?;
                                 if existing_updated_at != t {
                                     return Err(bouzuya_firestore_client::Error::custom(

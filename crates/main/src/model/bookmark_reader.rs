@@ -1,16 +1,8 @@
 pub(crate) use kernel::BookmarkReader;
 
-const PAGE_SIZE: usize = 10;
+use crate::model::BookmarkDocumentData;
 
-#[derive(serde::Deserialize, serde::Serialize)]
-struct BookmarkDocumentData {
-    bookmark_id: String,
-    comment: String,
-    created_at: String,
-    title: String,
-    updated_at: String,
-    url: String,
-}
+const PAGE_SIZE: usize = 10;
 
 pub(crate) struct FirestoreBookmarkReader {
     firestore: bouzuya_firestore_client::Firestore,
@@ -54,7 +46,6 @@ impl BookmarkReader for FirestoreBookmarkReader {
             .get_all(doc_refs)
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
-        let user_id_str = user_id.to_string();
         let mut views: Vec<kernel::BookmarkView> = Vec::new();
         for snapshot in snapshots {
             if !snapshot.exists() {
@@ -64,15 +55,7 @@ impl BookmarkReader for FirestoreBookmarkReader {
                 .data::<BookmarkDocumentData>()
                 .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
                 .map_err(|e| anyhow::anyhow!(e))?;
-            views.push(kernel::BookmarkView {
-                comment: data.comment,
-                created_at: data.created_at,
-                id: data.bookmark_id,
-                title: data.title,
-                updated_at: data.updated_at,
-                url: data.url,
-                user_id: user_id_str.clone(),
-            });
+            views.push(data.into_bookmark_view(user_id));
         }
         views.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         let filtered: Vec<_> = match page_token {
