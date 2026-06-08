@@ -1,6 +1,7 @@
 mod bookmark;
 mod bookmark_document_data;
 mod bookmark_reader;
+mod firestore_path;
 mod user;
 
 pub(crate) use self::bookmark::BookmarkRepository;

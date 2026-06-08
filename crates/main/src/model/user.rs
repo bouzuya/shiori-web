@@ -1,9 +1,5 @@
 pub(crate) use kernel::UserRepository;
 
-fn google_user_id_to_document_id(id: &str) -> String {
-    id.bytes().map(|b| format!("{b:02x}")).collect()
-}
-
 #[derive(serde::Deserialize, serde::Serialize)]
 struct GoogleUserIdDocumentData {
     user_id: String,
@@ -37,10 +33,9 @@ impl FirestoreUserRepository {
 #[async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
     async fn find(&self, id: &crate::model::UserId) -> anyhow::Result<Option<crate::model::User>> {
-        let user_document_id = id.to_string();
         let user_doc_ref = self
             .firestore
-            .doc(format!("users/{user_document_id}"))
+            .doc(crate::model::firestore_path::user_document(*id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = user_doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
         if !snapshot.exists() {
@@ -57,10 +52,9 @@ impl UserRepository for FirestoreUserRepository {
         &self,
         id: &crate::model::GoogleUserId,
     ) -> anyhow::Result<Option<crate::model::User>> {
-        let google_user_id_document_id = google_user_id_to_document_id(&id.to_string());
         let google_user_id_doc_ref = self
             .firestore
-            .doc(format!("google_user_ids/{google_user_id_document_id}"))
+            .doc(crate::model::firestore_path::google_user_id_document(id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = google_user_id_doc_ref
             .get()
@@ -74,10 +68,12 @@ impl UserRepository for FirestoreUserRepository {
             .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
             .map_err(|e| anyhow::anyhow!(e))?;
 
-        let user_document_id = google_user_id_data.user_id;
+        let user_id = google_user_id_data
+            .user_id
+            .parse::<crate::model::UserId>()?;
         let user_doc_ref = self
             .firestore
-            .doc(format!("users/{user_document_id}"))
+            .doc(crate::model::firestore_path::user_document(user_id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = user_doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
         if !snapshot.exists() {
@@ -91,16 +87,15 @@ impl UserRepository for FirestoreUserRepository {
     }
 
     async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
-        let user_document_id = user.id().to_string();
-        let google_user_id_document_id =
-            google_user_id_to_document_id(&user.google_user_id().to_string());
         let user_doc_ref = self
             .firestore
-            .doc(format!("users/{user_document_id}"))
+            .doc(crate::model::firestore_path::user_document(user.id()))
             .map_err(|e| anyhow::anyhow!(e))?;
         let google_user_id_doc_ref = self
             .firestore
-            .doc(format!("google_user_ids/{google_user_id_document_id}"))
+            .doc(crate::model::firestore_path::google_user_id_document(
+                user.google_user_id(),
+            ))
             .map_err(|e| anyhow::anyhow!(e))?;
         let user_data = UserDocumentData {
             created_at: user.created_at().to_rfc3339(),
@@ -132,13 +127,6 @@ impl UserRepository for FirestoreUserRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_google_user_id_to_document_id() -> anyhow::Result<()> {
-        // a=0x61, b=0x62, c=0x63, 1=0x31, 2=0x32, 3=0x33
-        assert_eq!(google_user_id_to_document_id("abc123"), "616263313233");
-        Ok(())
-    }
 
     fn firestore_repo() -> anyhow::Result<FirestoreUserRepository> {
         let firestore = bouzuya_firestore_client::Firestore::new(

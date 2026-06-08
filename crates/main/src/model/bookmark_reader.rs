@@ -29,7 +29,7 @@ impl BookmarkReader for FirestoreBookmarkReader {
     ) -> anyhow::Result<kernel::BookmarkList> {
         let collection_ref = self
             .firestore
-            .collection(format!("users/{user_id}/bookmarks"))
+            .collection(crate::model::firestore_path::bookmark_collection(user_id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let doc_refs = collection_ref
             .list_documents()

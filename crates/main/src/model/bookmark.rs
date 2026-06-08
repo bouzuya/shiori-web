@@ -21,7 +21,10 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
     ) -> anyhow::Result<Option<kernel::Bookmark>> {
         let doc_ref = self
             .firestore
-            .doc(format!("users/{user_id}/bookmarks/{bookmark_id}"))
+            .doc(crate::model::firestore_path::bookmark_document(
+                user_id,
+                bookmark_id,
+            ))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
         if !snapshot.exists() {
@@ -44,7 +47,10 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         let deleted_at = bookmark.deleted_at();
         let doc_ref = self
             .firestore
-            .doc(format!("users/{user_id}/bookmarks/{bookmark_id}"))
+            .doc(crate::model::firestore_path::bookmark_document(
+                user_id,
+                bookmark_id,
+            ))
             .map_err(|e| anyhow::anyhow!(e))?;
         let data = BookmarkDocumentData::from_bookmark(&bookmark);
         self.firestore
