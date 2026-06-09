@@ -16,12 +16,6 @@ impl FirestoreBookmarkReader {
 
 #[async_trait::async_trait]
 impl BookmarkReader for FirestoreBookmarkReader {
-    // TODO: 現状の bouzuya-firestore-client は orderBy / limit / startAfter を伴う
-    // structured query API を公開していないため、コレクション全件を取得してから
-    // メモリ上で降順ソート・ページング・フィルタを行っている。件数が増えるにつれて
-    // 読み取りコストとレイテンシが線形に悪化するため、クライアント側にクエリ API が
-    // 追加され次第、サーバーサイドでの orderBy(created_at desc) + limit(PAGE_SIZE+1)
-    // + startAfter(page_token) に置き換えること。
     async fn list(
         &self,
         user_id: kernel::UserId,
@@ -31,39 +25,24 @@ impl BookmarkReader for FirestoreBookmarkReader {
             .firestore
             .collection(crate::model::firestore_path::bookmark_collection(user_id))
             .map_err(|e| anyhow::anyhow!(e))?;
-        let doc_refs = collection_ref
-            .list_documents()
-            .await
+        let mut query = collection_ref
+            .order_by("created_at", "desc")
+            .map_err(|e| anyhow::anyhow!(e))?
+            .limit(i32::try_from(PAGE_SIZE + 1)?)
             .map_err(|e| anyhow::anyhow!(e))?;
-        if doc_refs.is_empty() {
-            return Ok(kernel::BookmarkList {
-                items: vec![],
-                next_page_token: None,
-            });
+        if let Some(t) = page_token {
+            query = query.start_after([t]).map_err(|e| anyhow::anyhow!(e))?;
         }
-        let snapshots = self
-            .firestore
-            .get_all(doc_refs)
-            .await
-            .map_err(|e| anyhow::anyhow!(e))?;
+        let snapshot = query.get().await.map_err(|e| anyhow::anyhow!(e))?;
         let mut views: Vec<kernel::BookmarkView> = Vec::new();
-        for snapshot in snapshots {
-            if !snapshot.exists() {
-                continue;
-            }
-            let data = snapshot
+        for doc in snapshot {
+            let data = doc
                 .data::<BookmarkDocumentData>()
-                .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
                 .map_err(|e| anyhow::anyhow!(e))?;
             views.push(data.into_bookmark_view(user_id));
         }
-        views.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-        let filtered: Vec<_> = match page_token {
-            None => views,
-            Some(t) => views.into_iter().filter(|v| v.created_at < t).collect(),
-        };
-        let has_more = filtered.len() > PAGE_SIZE;
-        let page: Vec<_> = filtered.into_iter().take(PAGE_SIZE).collect();
+        let has_more = views.len() > PAGE_SIZE;
+        let page: Vec<_> = views.into_iter().take(PAGE_SIZE).collect();
         let next_page_token = if has_more {
             page.last().map(|v| v.created_at.clone())
         } else {

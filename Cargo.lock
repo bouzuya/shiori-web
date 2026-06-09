@@ -298,8 +298,8 @@ dependencies = [
 
 [[package]]
 name = "bouzuya-firestore-client"
-version = "2.1.0"
-source = "git+https://github.com/bouzuya/bouzuya-firestore-client?tag=2.1.0#67b8b90da141d1398cc3edd63ed8000273bc29f0"
+version = "4.0.0"
+source = "git+https://github.com/bouzuya/bouzuya-firestore-client?tag=4.0.0#4562e8264d54fb30477f5eea285c3f51e9a85671"
 dependencies = [
  "firestore-path",
  "firestore-structured-query",
