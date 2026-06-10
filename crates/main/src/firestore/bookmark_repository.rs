@@ -1,4 +1,6 @@
 use crate::firestore::BookmarkDocumentData;
+use crate::firestore::Bookmarks;
+use crate::firestore::FirestoreCollection;
 use kernel::BookmarkRepository;
 
 pub(crate) struct FirestoreBookmarkRepository {
@@ -20,10 +22,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
     ) -> anyhow::Result<Option<kernel::Bookmark>> {
         let doc_ref = self
             .firestore
-            .doc(crate::firestore::path::bookmark_document(
-                user_id,
-                bookmark_id,
-            ))
+            .doc(Bookmarks::document_path(&user_id, &bookmark_id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
         if !snapshot.exists() {
@@ -46,10 +45,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         let deleted_at = bookmark.deleted_at();
         let doc_ref = self
             .firestore
-            .doc(crate::firestore::path::bookmark_document(
-                user_id,
-                bookmark_id,
-            ))
+            .doc(Bookmarks::document_path(&user_id, &bookmark_id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let data = BookmarkDocumentData::from_bookmark(&bookmark);
         self.firestore

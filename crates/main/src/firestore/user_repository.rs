@@ -1,5 +1,8 @@
+use crate::firestore::FirestoreCollection;
 use crate::firestore::GoogleUserIdDocumentData;
+use crate::firestore::GoogleUserIds;
 use crate::firestore::UserDocumentData;
+use crate::firestore::Users;
 use kernel::UserRepository;
 
 pub(crate) struct FirestoreUserRepository {
@@ -17,7 +20,7 @@ impl UserRepository for FirestoreUserRepository {
     async fn find(&self, id: &crate::model::UserId) -> anyhow::Result<Option<crate::model::User>> {
         let user_doc_ref = self
             .firestore
-            .doc(crate::firestore::path::user_document(*id))
+            .doc(Users::document_path(&(), id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = user_doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
         if !snapshot.exists() {
@@ -36,7 +39,7 @@ impl UserRepository for FirestoreUserRepository {
     ) -> anyhow::Result<Option<crate::model::User>> {
         let google_user_id_doc_ref = self
             .firestore
-            .doc(crate::firestore::path::google_user_id_document(id))
+            .doc(GoogleUserIds::document_path(&(), id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = google_user_id_doc_ref
             .get()
@@ -53,7 +56,7 @@ impl UserRepository for FirestoreUserRepository {
         let user_id = google_user_id_data.into_user_id()?;
         let user_doc_ref = self
             .firestore
-            .doc(crate::firestore::path::user_document(user_id))
+            .doc(Users::document_path(&(), &user_id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let snapshot = user_doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
         if !snapshot.exists() {
@@ -69,13 +72,11 @@ impl UserRepository for FirestoreUserRepository {
     async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
         let user_doc_ref = self
             .firestore
-            .doc(crate::firestore::path::user_document(user.id()))
+            .doc(Users::document_path(&(), &user.id()))
             .map_err(|e| anyhow::anyhow!(e))?;
         let google_user_id_doc_ref = self
             .firestore
-            .doc(crate::firestore::path::google_user_id_document(
-                user.google_user_id(),
-            ))
+            .doc(GoogleUserIds::document_path(&(), user.google_user_id()))
             .map_err(|e| anyhow::anyhow!(e))?;
         let user_data = UserDocumentData::from_user(&user);
         let google_user_id_data = GoogleUserIdDocumentData::from_user(&user);
