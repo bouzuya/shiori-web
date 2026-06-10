@@ -6,6 +6,7 @@ pub(crate) struct Users;
 impl FirestoreCollection for Users {
     type DocumentId = kernel::UserId;
     type ParentDocumentId = ();
+    type Schema = crate::firestore::UserDocumentData;
 
     fn collection_path(_parent: &Self::ParentDocumentId) -> String {
         "users".to_string()

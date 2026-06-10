@@ -7,6 +7,7 @@ pub(crate) struct Bookmarks;
 impl FirestoreCollection for Bookmarks {
     type DocumentId = kernel::BookmarkId;
     type ParentDocumentId = kernel::UserId;
+    type Schema = crate::firestore::BookmarkDocumentData;
 
     fn collection_path(parent: &Self::ParentDocumentId) -> String {
         // 親ドキュメント (`users/{user_id}`) のパスは `Users` に委譲し、

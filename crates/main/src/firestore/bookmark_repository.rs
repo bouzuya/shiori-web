@@ -20,19 +20,12 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         user_id: kernel::UserId,
         bookmark_id: kernel::BookmarkId,
     ) -> anyhow::Result<Option<kernel::Bookmark>> {
-        let doc_ref = self
-            .firestore
-            .doc(Bookmarks::document_path(&user_id, &bookmark_id))
-            .map_err(|e| anyhow::anyhow!(e))?;
-        let snapshot = doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
-        if !snapshot.exists() {
-            return Ok(None);
+        match crate::firestore::document::get::<Bookmarks>(&self.firestore, &user_id, &bookmark_id)
+            .await?
+        {
+            None => Ok(None),
+            Some(data) => Ok(Some(data.into_bookmark(user_id)?)),
         }
-        let data = snapshot
-            .data::<BookmarkDocumentData>()
-            .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
-            .map_err(|e| anyhow::anyhow!(e))?;
-        Ok(Some(data.into_bookmark(user_id)?))
     }
 
     async fn store(

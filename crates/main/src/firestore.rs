@@ -2,6 +2,7 @@ mod bookmark_document_data;
 mod bookmark_reader;
 mod bookmark_repository;
 mod collection;
+mod document;
 mod google_user_id_document_data;
 mod user_document_data;
 mod user_repository;

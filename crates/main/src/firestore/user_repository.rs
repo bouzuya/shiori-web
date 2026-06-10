@@ -18,55 +18,26 @@ impl FirestoreUserRepository {
 #[async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
     async fn find(&self, id: &crate::model::UserId) -> anyhow::Result<Option<crate::model::User>> {
-        let user_doc_ref = self
-            .firestore
-            .doc(Users::document_path(&(), id))
-            .map_err(|e| anyhow::anyhow!(e))?;
-        let snapshot = user_doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
-        if !snapshot.exists() {
-            return Ok(None);
+        match crate::firestore::document::get::<Users>(&self.firestore, &(), id).await? {
+            None => Ok(None),
+            Some(data) => Ok(Some(data.into_user()?)),
         }
-        let data = snapshot
-            .data::<UserDocumentData>()
-            .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
-            .map_err(|e| anyhow::anyhow!(e))?;
-        Ok(Some(data.into_user()?))
     }
 
     async fn find_by_google_user_id(
         &self,
         id: &crate::model::GoogleUserId,
     ) -> anyhow::Result<Option<crate::model::User>> {
-        let google_user_id_doc_ref = self
-            .firestore
-            .doc(GoogleUserIds::document_path(&(), id))
-            .map_err(|e| anyhow::anyhow!(e))?;
-        let snapshot = google_user_id_doc_ref
-            .get()
-            .await
-            .map_err(|e| anyhow::anyhow!(e))?;
-        if !snapshot.exists() {
-            return Ok(None);
+        let user_id =
+            match crate::firestore::document::get::<GoogleUserIds>(&self.firestore, &(), id).await?
+            {
+                None => return Ok(None),
+                Some(data) => data.into_user_id()?,
+            };
+        match crate::firestore::document::get::<Users>(&self.firestore, &(), &user_id).await? {
+            None => Ok(None),
+            Some(user_data) => Ok(Some(user_data.into_user()?)),
         }
-        let google_user_id_data = snapshot
-            .data::<GoogleUserIdDocumentData>()
-            .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
-            .map_err(|e| anyhow::anyhow!(e))?;
-
-        let user_id = google_user_id_data.into_user_id()?;
-        let user_doc_ref = self
-            .firestore
-            .doc(Users::document_path(&(), &user_id))
-            .map_err(|e| anyhow::anyhow!(e))?;
-        let snapshot = user_doc_ref.get().await.map_err(|e| anyhow::anyhow!(e))?;
-        if !snapshot.exists() {
-            return Ok(None);
-        }
-        let user_data = snapshot
-            .data::<UserDocumentData>()
-            .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
-            .map_err(|e| anyhow::anyhow!(e))?;
-        Ok(Some(user_data.into_user()?))
     }
 
     async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {

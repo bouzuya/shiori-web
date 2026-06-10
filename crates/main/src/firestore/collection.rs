@@ -29,6 +29,8 @@ pub(crate) trait FirestoreCollection {
     type DocumentId: std::fmt::Display;
     /// このコレクションがぶら下がる親ドキュメントを指す ID。トップレベルは `()`。
     type ParentDocumentId;
+    /// このコレクションのドキュメントの永続化形式 (スキーマ)。
+    type Schema: serde::de::DeserializeOwned + serde::Serialize;
 
     fn collection_path(parent: &Self::ParentDocumentId) -> String;
 

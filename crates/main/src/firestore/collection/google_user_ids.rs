@@ -8,6 +8,7 @@ pub(crate) struct GoogleUserIds;
 impl FirestoreCollection for GoogleUserIds {
     type DocumentId = kernel::GoogleUserId;
     type ParentDocumentId = ();
+    type Schema = crate::firestore::GoogleUserIdDocumentData;
 
     fn collection_path(_parent: &Self::ParentDocumentId) -> String {
         "google_user_ids".to_string()
