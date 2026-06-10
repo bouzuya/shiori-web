@@ -52,6 +52,12 @@
             </div>
             {% endfor %}
             {% endif %}
+
+            {% if let Some(next_page_token) = next_page_token %}
+            <div class="pagination">
+                <a href="{{ base }}/?page_token={{ next_page_token }}">Next</a>
+            </div>
+            {% endif %}
         </main>
         <footer class="page-footer">
             <div>

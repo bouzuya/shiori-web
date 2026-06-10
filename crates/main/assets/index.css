@@ -163,7 +163,8 @@ main {
     }
 
     /* nav links (shared style) */
-    .new-bookmark-link a {
+    .new-bookmark-link a,
+    .pagination a {
         display: block;
         overflow: hidden;
         padding: 8px;

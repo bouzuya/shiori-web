@@ -41,6 +41,7 @@ struct DateGroup {
 struct BookmarksTemplate<'a> {
     base: &'a str,
     groups: Vec<DateGroup>,
+    next_page_token: Option<String>,
 }
 
 fn render_template(html: Result<String, askama::Error>) -> axum::response::Response {
@@ -88,6 +89,7 @@ async fn handler(
                     let template = BookmarksTemplate {
                         base: &state.base_path,
                         groups,
+                        next_page_token: list.next_page_token,
                     };
                     render_template(template.render())
                 }
@@ -447,6 +449,97 @@ mod tests {
         assert!(
             body.contains("No bookmarks"),
             "Expected 'No bookmarks' when page_token filters out all items, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_with_next_page_contains_next_page_link() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        // PAGE_SIZE (10) 件を超える 11 件を作成し、次ページが存在する状態にする
+        for i in 0..11 {
+            let created = send_request(
+                app.clone(),
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/")
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .header(header::COOKIE, &session)
+                    .body(Body::from(format!(
+                        "url=https%3A%2F%2Fexample.com%2F{i}&title=Example+{i}&comment="
+                    )))?,
+            )
+            .await?;
+            assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        }
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains("?page_token="),
+            "Expected next page link with ?page_token= in body, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_without_next_page_has_no_next_page_link() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        let created = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(Body::from(
+                    "url=https%3A%2F%2Fexample.com&title=Example&comment=",
+                ))?,
+        )
+        .await?;
+        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            !body.contains("?page_token="),
+            "Expected no next page link when there is no next page, got: {body}"
         );
         Ok(())
     }
