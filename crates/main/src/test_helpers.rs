@@ -87,22 +87,22 @@ pub(crate) fn firestore() -> anyhow::Result<bouzuya_firestore_client::Firestore>
 }
 
 pub(crate) fn firestore_user_repo() -> anyhow::Result<Arc<dyn crate::model::UserRepository>> {
-    Ok(Arc::new(crate::model::FirestoreUserRepository::new(
+    Ok(Arc::new(crate::firestore::FirestoreUserRepository::new(
         firestore()?,
     )))
 }
 
 pub(crate) fn firestore_bookmark_reader() -> anyhow::Result<Arc<dyn crate::model::BookmarkReader>> {
-    Ok(Arc::new(crate::model::FirestoreBookmarkReader::new(
+    Ok(Arc::new(crate::firestore::FirestoreBookmarkReader::new(
         firestore()?,
     )))
 }
 
 pub(crate) fn firestore_bookmark_repo() -> anyhow::Result<Arc<dyn crate::model::BookmarkRepository>>
 {
-    Ok(Arc::new(crate::model::FirestoreBookmarkRepository::new(
-        firestore()?,
-    )))
+    Ok(Arc::new(
+        crate::firestore::FirestoreBookmarkRepository::new(firestore()?),
+    ))
 }
 
 pub(crate) fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
@@ -118,8 +118,9 @@ pub(crate) fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
 }
 
 pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
-    let bookmark_repository = Arc::new(crate::model::FirestoreBookmarkRepository::new(firestore()?))
-        as Arc<dyn crate::model::BookmarkRepository>;
+    let bookmark_repository = Arc::new(crate::firestore::FirestoreBookmarkRepository::new(
+        firestore()?,
+    )) as Arc<dyn crate::model::BookmarkRepository>;
     let state = crate::AppState::new(
         "".to_string(),
         firestore_bookmark_reader()?,

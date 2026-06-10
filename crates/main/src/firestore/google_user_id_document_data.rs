@@ -15,7 +15,7 @@ impl GoogleUserIdDocumentData {
     }
 
     pub(crate) fn into_user_id(self) -> anyhow::Result<crate::model::UserId> {
-        Ok(self.user_id.parse::<crate::model::UserId>()?)
+        self.user_id.parse::<crate::model::UserId>()
     }
 }
 

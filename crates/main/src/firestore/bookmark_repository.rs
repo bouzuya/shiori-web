@@ -1,6 +1,5 @@
-pub(crate) use kernel::BookmarkRepository;
-
-use crate::model::BookmarkDocumentData;
+use crate::firestore::BookmarkDocumentData;
+use kernel::BookmarkRepository;
 
 pub(crate) struct FirestoreBookmarkRepository {
     firestore: bouzuya_firestore_client::Firestore,
@@ -21,7 +20,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
     ) -> anyhow::Result<Option<kernel::Bookmark>> {
         let doc_ref = self
             .firestore
-            .doc(crate::model::firestore_path::bookmark_document(
+            .doc(crate::firestore::path::bookmark_document(
                 user_id,
                 bookmark_id,
             ))
@@ -47,7 +46,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         let deleted_at = bookmark.deleted_at();
         let doc_ref = self
             .firestore
-            .doc(crate::model::firestore_path::bookmark_document(
+            .doc(crate::firestore::path::bookmark_document(
                 user_id,
                 bookmark_id,
             ))

@@ -1,6 +1,7 @@
 mod cookie_jar;
 mod env;
 mod extractor;
+mod firestore;
 mod model;
 mod router;
 mod state;

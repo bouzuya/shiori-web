@@ -1,6 +1,5 @@
-pub(crate) use kernel::BookmarkReader;
-
-use crate::model::BookmarkDocumentData;
+use crate::firestore::BookmarkDocumentData;
+use kernel::BookmarkReader;
 
 const PAGE_SIZE: usize = 10;
 
@@ -23,7 +22,7 @@ impl BookmarkReader for FirestoreBookmarkReader {
     ) -> anyhow::Result<kernel::BookmarkList> {
         let collection_ref = self
             .firestore
-            .collection(crate::model::firestore_path::bookmark_collection(user_id))
+            .collection(crate::firestore::path::bookmark_collection(user_id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let mut query = collection_ref
             .order_by("created_at", "desc")
@@ -61,14 +60,14 @@ mod tests {
 
     fn firestore_reader_and_repo() -> anyhow::Result<(
         FirestoreBookmarkReader,
-        crate::model::FirestoreBookmarkRepository,
+        crate::firestore::FirestoreBookmarkRepository,
     )> {
         let firestore = bouzuya_firestore_client::Firestore::new(
             bouzuya_firestore_client::FirestoreOptions::default(),
         )?;
         Ok((
             FirestoreBookmarkReader::new(firestore.clone()),
-            crate::model::FirestoreBookmarkRepository::new(firestore),
+            crate::firestore::FirestoreBookmarkRepository::new(firestore),
         ))
     }
 

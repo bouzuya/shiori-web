@@ -56,13 +56,13 @@ impl AppState {
                 database_id: Some(env.database_id.clone()),
                 project_id: Some(env.project_id.clone()),
             })?;
-        let bookmark_reader = Arc::new(crate::model::FirestoreBookmarkReader::new(
+        let bookmark_reader = Arc::new(crate::firestore::FirestoreBookmarkReader::new(
             firestore.clone(),
         ));
-        let bookmark_repository = Arc::new(crate::model::FirestoreBookmarkRepository::new(
+        let bookmark_repository = Arc::new(crate::firestore::FirestoreBookmarkRepository::new(
             firestore.clone(),
         ));
-        let user_repository = Arc::new(crate::model::FirestoreUserRepository::new(firestore));
+        let user_repository = Arc::new(crate::firestore::FirestoreUserRepository::new(firestore));
         Ok(Self::new(
             env.base_path.clone(),
             bookmark_reader,
