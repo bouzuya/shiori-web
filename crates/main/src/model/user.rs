@@ -1,23 +1,10 @@
 pub(crate) use kernel::UserRepository;
 
+use crate::model::UserDocumentData;
+
 #[derive(serde::Deserialize, serde::Serialize)]
 struct GoogleUserIdDocumentData {
     user_id: String,
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-struct UserDocumentData {
-    created_at: String,
-    google_user_id: String,
-    user_id: String,
-}
-
-fn try_user_from_data(data: UserDocumentData) -> anyhow::Result<crate::model::User> {
-    Ok(crate::model::User::new(
-        crate::model::DateTime::from_rfc3339(&data.created_at)?,
-        data.google_user_id.parse::<crate::model::GoogleUserId>()?,
-        data.user_id.parse::<crate::model::UserId>()?,
-    ))
 }
 
 pub(crate) struct FirestoreUserRepository {
@@ -45,7 +32,7 @@ impl UserRepository for FirestoreUserRepository {
             .data::<UserDocumentData>()
             .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
             .map_err(|e| anyhow::anyhow!(e))?;
-        Ok(Some(try_user_from_data(data)?))
+        Ok(Some(data.into_user()?))
     }
 
     async fn find_by_google_user_id(
@@ -83,7 +70,7 @@ impl UserRepository for FirestoreUserRepository {
             .data::<UserDocumentData>()
             .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
             .map_err(|e| anyhow::anyhow!(e))?;
-        Ok(Some(try_user_from_data(user_data)?))
+        Ok(Some(user_data.into_user()?))
     }
 
     async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
@@ -97,11 +84,7 @@ impl UserRepository for FirestoreUserRepository {
                 user.google_user_id(),
             ))
             .map_err(|e| anyhow::anyhow!(e))?;
-        let user_data = UserDocumentData {
-            created_at: user.created_at().to_rfc3339(),
-            google_user_id: user.google_user_id().to_string(),
-            user_id: user.id().to_string(),
-        };
+        let user_data = UserDocumentData::from_user(&user);
         let google_user_id_data = GoogleUserIdDocumentData {
             user_id: user.id().to_string(),
         };
