@@ -1,11 +1,7 @@
 pub(crate) use kernel::UserRepository;
 
+use crate::model::GoogleUserIdDocumentData;
 use crate::model::UserDocumentData;
-
-#[derive(serde::Deserialize, serde::Serialize)]
-struct GoogleUserIdDocumentData {
-    user_id: String,
-}
 
 pub(crate) struct FirestoreUserRepository {
     firestore: bouzuya_firestore_client::Firestore,
@@ -55,9 +51,7 @@ impl UserRepository for FirestoreUserRepository {
             .ok_or_else(|| anyhow::anyhow!("document data is missing"))?
             .map_err(|e| anyhow::anyhow!(e))?;
 
-        let user_id = google_user_id_data
-            .user_id
-            .parse::<crate::model::UserId>()?;
+        let user_id = google_user_id_data.into_user_id()?;
         let user_doc_ref = self
             .firestore
             .doc(crate::model::firestore_path::user_document(user_id))
@@ -85,9 +79,7 @@ impl UserRepository for FirestoreUserRepository {
             ))
             .map_err(|e| anyhow::anyhow!(e))?;
         let user_data = UserDocumentData::from_user(&user);
-        let google_user_id_data = GoogleUserIdDocumentData {
-            user_id: user.id().to_string(),
-        };
+        let google_user_id_data = GoogleUserIdDocumentData::from_user(&user);
         self.firestore
             .run_transaction(
                 move |tx| {

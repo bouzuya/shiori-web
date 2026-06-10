@@ -2,6 +2,7 @@ mod bookmark;
 mod bookmark_document_data;
 mod bookmark_reader;
 mod firestore_path;
+mod google_user_id_document_data;
 mod user;
 mod user_document_data;
 
@@ -10,6 +11,7 @@ pub(crate) use self::bookmark::FirestoreBookmarkRepository;
 pub(crate) use self::bookmark_document_data::BookmarkDocumentData;
 pub(crate) use self::bookmark_reader::BookmarkReader;
 pub(crate) use self::bookmark_reader::FirestoreBookmarkReader;
+pub(crate) use self::google_user_id_document_data::GoogleUserIdDocumentData;
 pub(crate) use self::user::FirestoreUserRepository;
 pub(crate) use self::user::UserRepository;
 pub(crate) use self::user_document_data::UserDocumentData;
