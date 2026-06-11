@@ -3,6 +3,7 @@ use crate::firestore::FirestoreCollection;
 /// Firestore の `google_user_ids` コレクション。
 ///
 /// `google_user_id` から `user_id` を引くためのインデックス用コレクション。
+#[derive(Clone)]
 pub(crate) struct GoogleUserIds;
 
 impl FirestoreCollection for GoogleUserIds {

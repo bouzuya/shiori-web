@@ -1,6 +1,6 @@
 use crate::firestore::BookmarkDocumentData;
 use crate::firestore::Bookmarks;
-use crate::firestore::FirestoreCollection;
+use crate::firestore::DocumentRef;
 use kernel::BookmarkRepository;
 
 pub(crate) struct FirestoreBookmarkRepository {
@@ -36,10 +36,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         let user_id = bookmark.user_id();
         let bookmark_id = bookmark.id();
         let deleted_at = bookmark.deleted_at();
-        let doc_ref = self
-            .firestore
-            .doc(Bookmarks::document_path(&user_id, &bookmark_id))
-            .map_err(|e| anyhow::anyhow!(e))?;
+        let doc_ref = DocumentRef::<Bookmarks>::new(&self.firestore, &user_id, &bookmark_id)?;
         let data = BookmarkDocumentData::from_bookmark(&bookmark);
         self.firestore
             .run_transaction(
@@ -51,19 +48,14 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                         };
                         match updated_at {
                             None => {
-                                tx.create(&doc_ref, &data)?;
+                                doc_ref.create(tx, &data)?;
                             }
                             Some(t) => {
-                                let snapshot = tx.get(&doc_ref).await?;
-                                let stored = snapshot
-                                    .data::<BookmarkDocumentData>()
-                                    .ok_or_else(|| {
+                                let stored =
+                                    doc_ref.get_in_transaction(tx).await?.ok_or_else(|| {
                                         bouzuya_firestore_client::Error::custom(
                                             "document not found",
                                         )
-                                    })?
-                                    .map_err(|e| {
-                                        bouzuya_firestore_client::Error::custom(e.to_string())
                                     })?;
                                 let existing_updated_at =
                                     kernel::DateTime::from_rfc3339(stored.updated_at())
@@ -74,12 +66,12 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                                     ));
                                 }
                                 if deleted_at.is_some() {
-                                    tx.delete(
-                                        &doc_ref,
+                                    doc_ref.delete(
+                                        tx,
                                         bouzuya_firestore_client::Precondition::default(),
                                     )?;
                                 } else {
-                                    tx.set(&doc_ref, &data)?;
+                                    doc_ref.set(tx, &data)?;
                                 }
                             }
                         }

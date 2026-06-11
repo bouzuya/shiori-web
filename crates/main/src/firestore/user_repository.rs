@@ -1,4 +1,4 @@
-use crate::firestore::FirestoreCollection;
+use crate::firestore::DocumentRef;
 use crate::firestore::GoogleUserIdDocumentData;
 use crate::firestore::GoogleUserIds;
 use crate::firestore::UserDocumentData;
@@ -41,24 +41,19 @@ impl UserRepository for FirestoreUserRepository {
     }
 
     async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
-        let user_doc_ref = self
-            .firestore
-            .doc(Users::document_path(&(), &user.id()))
-            .map_err(|e| anyhow::anyhow!(e))?;
-        let google_user_id_doc_ref = self
-            .firestore
-            .doc(GoogleUserIds::document_path(&(), user.google_user_id()))
-            .map_err(|e| anyhow::anyhow!(e))?;
+        let user_ref = DocumentRef::<Users>::new(&self.firestore, &(), &user.id())?;
+        let google_user_id_ref =
+            DocumentRef::<GoogleUserIds>::new(&self.firestore, &(), user.google_user_id())?;
         let user_data = UserDocumentData::from_user(&user);
         let google_user_id_data = GoogleUserIdDocumentData::from_user(&user);
         self.firestore
             .run_transaction(
                 move |tx| {
-                    let user_doc_ref = user_doc_ref.clone();
-                    let google_user_id_doc_ref = google_user_id_doc_ref.clone();
+                    let user_ref = user_ref.clone();
+                    let google_user_id_ref = google_user_id_ref.clone();
                     Box::pin(async move {
-                        tx.set(&user_doc_ref, &user_data)?;
-                        tx.set(&google_user_id_doc_ref, &google_user_id_data)?;
+                        user_ref.set(tx, &user_data)?;
+                        google_user_id_ref.set(tx, &google_user_id_data)?;
                         Ok(())
                     })
                 },

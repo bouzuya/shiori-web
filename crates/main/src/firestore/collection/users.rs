@@ -1,6 +1,7 @@
 use crate::firestore::FirestoreCollection;
 
 /// Firestore の `users` コレクション。
+#[derive(Clone)]
 pub(crate) struct Users;
 
 impl FirestoreCollection for Users {

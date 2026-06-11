@@ -2,6 +2,7 @@ use crate::firestore::FirestoreCollection;
 use crate::firestore::Users;
 
 /// Firestore の `users/{user_id}/bookmarks` サブコレクション。
+#[derive(Clone)]
 pub(crate) struct Bookmarks;
 
 impl FirestoreCollection for Bookmarks {

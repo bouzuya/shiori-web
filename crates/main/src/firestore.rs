@@ -14,6 +14,7 @@ pub(crate) use self::collection::Bookmarks;
 pub(crate) use self::collection::FirestoreCollection;
 pub(crate) use self::collection::GoogleUserIds;
 pub(crate) use self::collection::Users;
+pub(crate) use self::document::DocumentRef;
 pub(crate) use self::google_user_id_document_data::GoogleUserIdDocumentData;
 pub(crate) use self::user_document_data::UserDocumentData;
 pub(crate) use self::user_repository::FirestoreUserRepository;
