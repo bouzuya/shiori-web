@@ -1,5 +1,5 @@
 use crate::firestore::BookmarkDocumentData;
-use crate::firestore::Bookmarks;
+use crate::firestore::BookmarksCollection;
 use crate::firestore::FirestoreCollection;
 use kernel::BookmarkReader;
 
@@ -24,7 +24,7 @@ impl BookmarkReader for FirestoreBookmarkReader {
     ) -> anyhow::Result<kernel::BookmarkList> {
         let collection_ref = self
             .firestore
-            .collection(Bookmarks::collection_path(&user_id))
+            .collection(BookmarksCollection::collection_path(&user_id))
             .map_err(|e| anyhow::anyhow!(e))?;
         let mut query = collection_ref
             .order_by("created_at", "desc")

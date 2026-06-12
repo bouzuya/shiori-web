@@ -1,5 +1,5 @@
 use crate::firestore::BookmarkDocumentData;
-use crate::firestore::Bookmarks;
+use crate::firestore::BookmarksCollection;
 use crate::firestore::DocumentRef;
 use kernel::BookmarkRepository;
 
@@ -20,8 +20,12 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         user_id: kernel::UserId,
         bookmark_id: kernel::BookmarkId,
     ) -> anyhow::Result<Option<kernel::Bookmark>> {
-        match crate::firestore::document::get::<Bookmarks>(&self.firestore, &user_id, &bookmark_id)
-            .await?
+        match crate::firestore::document::get::<BookmarksCollection>(
+            &self.firestore,
+            &user_id,
+            &bookmark_id,
+        )
+        .await?
         {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_bookmark(user_id)?)),
@@ -36,7 +40,8 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         let user_id = bookmark.user_id();
         let bookmark_id = bookmark.id();
         let deleted_at = bookmark.deleted_at();
-        let doc_ref = DocumentRef::<Bookmarks>::new(&self.firestore, &user_id, &bookmark_id)?;
+        let doc_ref =
+            DocumentRef::<BookmarksCollection>::new(&self.firestore, &user_id, &bookmark_id)?;
         let data = BookmarkDocumentData::from_bookmark(&bookmark);
         self.firestore
             .run_transaction(

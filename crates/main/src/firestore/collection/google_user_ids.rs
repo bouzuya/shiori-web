@@ -4,9 +4,9 @@ use crate::firestore::FirestoreCollection;
 ///
 /// `google_user_id` から `user_id` を引くためのインデックス用コレクション。
 #[derive(Clone)]
-pub(crate) struct GoogleUserIds;
+pub(crate) struct GoogleUserIdsCollection;
 
-impl FirestoreCollection for GoogleUserIds {
+impl FirestoreCollection for GoogleUserIdsCollection {
     type DocumentId = kernel::GoogleUserId;
     type ParentDocumentId = ();
     type Schema = crate::firestore::GoogleUserIdDocumentData;
@@ -28,7 +28,10 @@ mod tests {
 
     #[test]
     fn test_collection_path() -> anyhow::Result<()> {
-        assert_eq!(GoogleUserIds::collection_path(&()), "google_user_ids");
+        assert_eq!(
+            GoogleUserIdsCollection::collection_path(&()),
+            "google_user_ids"
+        );
         Ok(())
     }
 
@@ -37,7 +40,7 @@ mod tests {
         // a=0x61, b=0x62, c=0x63, 1=0x31, 2=0x32, 3=0x33
         let google_user_id = "abc123".parse::<kernel::GoogleUserId>()?;
         assert_eq!(
-            GoogleUserIds::document_path(&(), &google_user_id),
+            GoogleUserIdsCollection::document_path(&(), &google_user_id),
             "google_user_ids/616263313233"
         );
         Ok(())

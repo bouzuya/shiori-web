@@ -1,8 +1,8 @@
 use crate::firestore::DocumentRef;
 use crate::firestore::GoogleUserIdDocumentData;
-use crate::firestore::GoogleUserIds;
+use crate::firestore::GoogleUserIdsCollection;
 use crate::firestore::UserDocumentData;
-use crate::firestore::Users;
+use crate::firestore::UsersCollection;
 use kernel::UserRepository;
 
 pub(crate) struct FirestoreUserRepository {
@@ -18,7 +18,7 @@ impl FirestoreUserRepository {
 #[async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
     async fn find(&self, id: &crate::model::UserId) -> anyhow::Result<Option<crate::model::User>> {
-        match crate::firestore::document::get::<Users>(&self.firestore, &(), id).await? {
+        match crate::firestore::document::get::<UsersCollection>(&self.firestore, &(), id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_user()?)),
         }
@@ -28,22 +28,31 @@ impl UserRepository for FirestoreUserRepository {
         &self,
         id: &crate::model::GoogleUserId,
     ) -> anyhow::Result<Option<crate::model::User>> {
-        let user_id =
-            match crate::firestore::document::get::<GoogleUserIds>(&self.firestore, &(), id).await?
-            {
-                None => return Ok(None),
-                Some(data) => data.into_user_id()?,
-            };
-        match crate::firestore::document::get::<Users>(&self.firestore, &(), &user_id).await? {
+        let user_id = match crate::firestore::document::get::<GoogleUserIdsCollection>(
+            &self.firestore,
+            &(),
+            id,
+        )
+        .await?
+        {
+            None => return Ok(None),
+            Some(data) => data.into_user_id()?,
+        };
+        match crate::firestore::document::get::<UsersCollection>(&self.firestore, &(), &user_id)
+            .await?
+        {
             None => Ok(None),
             Some(user_data) => Ok(Some(user_data.into_user()?)),
         }
     }
 
     async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
-        let user_ref = DocumentRef::<Users>::new(&self.firestore, &(), &user.id())?;
-        let google_user_id_ref =
-            DocumentRef::<GoogleUserIds>::new(&self.firestore, &(), user.google_user_id())?;
+        let user_ref = DocumentRef::<UsersCollection>::new(&self.firestore, &(), &user.id())?;
+        let google_user_id_ref = DocumentRef::<GoogleUserIdsCollection>::new(
+            &self.firestore,
+            &(),
+            user.google_user_id(),
+        )?;
         let user_data = UserDocumentData::from_user(&user);
         let google_user_id_data = GoogleUserIdDocumentData::from_user(&user);
         self.firestore
