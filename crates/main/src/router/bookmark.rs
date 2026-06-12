@@ -27,6 +27,7 @@ pub(crate) fn router() -> axum::Router<AppState> {
 #[template(path = "new_bookmark.html")]
 struct NewBookmarkTemplate<'a> {
     base: &'a str,
+    color_scheme: &'a str,
     comment: String,
     title: String,
     url: String,
@@ -40,12 +41,14 @@ struct NewBookmarkQuery {
 }
 
 async fn get_new(
-    CurrentUserId(_user_id): CurrentUserId,
+    CurrentUserId(user_id): CurrentUserId,
     State(state): State<AppState>,
     axum::extract::Query(query): axum::extract::Query<NewBookmarkQuery>,
 ) -> impl IntoResponse {
+    let color_scheme = super::resolve_color_scheme(&state, user_id).await;
     let template = NewBookmarkTemplate {
         base: &state.base_path,
+        color_scheme: &color_scheme,
         comment: query.comment.unwrap_or_default(),
         title: query.title.unwrap_or_default(),
         url: query.url.unwrap_or_default(),
@@ -64,6 +67,7 @@ async fn get_new(
 struct ShowBookmarkTemplate<'a> {
     base: &'a str,
     bookmark_id: String,
+    color_scheme: &'a str,
     comment: String,
     title: String,
     updated_at: String,
@@ -87,9 +91,11 @@ async fn get_show(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
+    let color_scheme = super::resolve_color_scheme(&state, user_id).await;
     let template = ShowBookmarkTemplate {
         base: &state.base_path,
         bookmark_id: bookmark_id_str,
+        color_scheme: &color_scheme,
         comment: bookmark.comment().to_string(),
         title: bookmark.title().to_string(),
         updated_at: bookmark.updated_at().to_rfc3339(),
@@ -363,7 +369,7 @@ mod tests {
         .await?;
         let body = response.into_body_string().await?;
         assert!(
-            body.contains(r#"<html lang="ja">"#),
+            body.contains(r#"lang="ja""#),
             "Expected lang=ja on html element, got: {body}"
         );
         assert!(

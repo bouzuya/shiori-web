@@ -1,7 +1,7 @@
 /* ============================================================
  * Reset / Base  (common: applies to every page)
  * ========================================================== */
-[data-theme="dark"] {
+[data-color-scheme="dark"] {
     --background-color: #000;
     --base-background-color: #333;
     --border-color: #ccc;
@@ -11,7 +11,7 @@
     --text-color: #ccc;
 }
 
-[data-theme="light"] {
+[data-color-scheme="light"] {
     --background-color: #fff;
     --base-background-color: #ccc;
     --border-color: #333;
@@ -19,6 +19,29 @@
     --link-text-color: #03f;
     --shadow-color: #333;
     --text-color: #333;
+}
+
+/* system: OS 設定 (prefers-color-scheme) に追従。既定は light と同じ。 */
+[data-color-scheme="system"] {
+    --background-color: #fff;
+    --base-background-color: #ccc;
+    --border-color: #333;
+    --hover-background-color: #ccc;
+    --link-text-color: #03f;
+    --shadow-color: #333;
+    --text-color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-color-scheme="system"] {
+        --background-color: #000;
+        --base-background-color: #333;
+        --border-color: #ccc;
+        --hover-background-color: #333;
+        --link-text-color: #09f;
+        --shadow-color: #ccc;
+        --text-color: #ccc;
+    }
 }
 
 html {

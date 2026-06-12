@@ -20,6 +20,19 @@ pub(crate) fn router(base_path: &str) -> Router<AppState> {
     }
 }
 
+/// 現在ユーザーの配色設定 (`data-color-scheme` 属性値) を解決する。
+/// 未保存・取得失敗時は既定値 (`system`) にフォールバックする。
+pub(crate) async fn resolve_color_scheme(state: &AppState, user_id: kernel::UserId) -> String {
+    match state.user_settings_reader.get(user_id).await {
+        Ok(Some(view)) => view.color_scheme,
+        Ok(None) => kernel::ColorScheme::default().to_string(),
+        Err(e) => {
+            tracing::error!("failed to get user settings: {e}");
+            kernel::ColorScheme::default().to_string()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

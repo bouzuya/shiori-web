@@ -23,6 +23,7 @@ struct RootQuery {
 #[template(path = "landing.html")]
 struct LandingTemplate<'a> {
     base: &'a str,
+    color_scheme: &'a str,
 }
 
 struct BookmarkItem {
@@ -40,6 +41,7 @@ struct DateGroup {
 #[template(path = "bookmarks.html")]
 struct BookmarksTemplate<'a> {
     base: &'a str,
+    color_scheme: &'a str,
     groups: Vec<DateGroup>,
     next_page_token: Option<String>,
 }
@@ -61,6 +63,7 @@ async fn handler(
 ) -> impl IntoResponse {
     match auth {
         Some(CurrentUserId(user_id)) => {
+            let color_scheme = super::resolve_color_scheme(&state, user_id).await;
             match state.bookmark_reader.list(user_id, query.page_token).await {
                 Ok(list) => {
                     let mut groups: Vec<DateGroup> = Vec::new();
@@ -88,6 +91,7 @@ async fn handler(
                     }
                     let template = BookmarksTemplate {
                         base: &state.base_path,
+                        color_scheme: &color_scheme,
                         groups,
                         next_page_token: list.next_page_token,
                     };
@@ -100,8 +104,10 @@ async fn handler(
             }
         }
         None => {
+            let color_scheme = kernel::ColorScheme::default().to_string();
             let template = LandingTemplate {
                 base: &state.base_path,
+                color_scheme: &color_scheme,
             };
             render_template(template.render())
         }
@@ -565,12 +571,30 @@ mod tests {
         .await?;
         let body = response.into_body_string().await?;
         assert!(
-            body.contains(r#"<html lang="ja">"#),
+            body.contains(r#"lang="ja""#),
             "Expected lang=ja on html element, got: {body}"
         );
         assert!(
             body.contains(r#"<meta charset="UTF-8">"#),
             "Expected charset=UTF-8 meta tag, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_landing_has_default_color_scheme() -> anyhow::Result<()> {
+        let response = send_request(
+            test_app("root_color_scheme_user")?,
+            axum::http::Request::builder()
+                .uri("/")
+                .body(axum::body::Body::empty())?,
+        )
+        .await?;
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains(r#"data-color-scheme="system""#),
+            "Expected default data-color-scheme=system on landing, got: {body}"
         );
         Ok(())
     }
