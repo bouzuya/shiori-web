@@ -32,6 +32,7 @@ impl Bookmark {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         comment: Comment,
         created_at: DateTime,
