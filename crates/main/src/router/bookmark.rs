@@ -302,6 +302,7 @@ mod tests {
     use crate::test_helpers::firestore_bookmark_reader;
     use crate::test_helpers::firestore_bookmark_repo;
     use crate::test_helpers::firestore_user_repo;
+    use crate::test_helpers::firestore_user_settings_reader;
     use crate::test_helpers::form_body;
     use crate::test_helpers::send_request;
     use crate::test_helpers::test_app;
@@ -1248,6 +1249,7 @@ mod tests {
             TEST_COOKIE_SIGNING_SECRET,
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
+            firestore_user_settings_reader()?,
         );
         let app = crate::router::router(base_path).with_state(state);
         let session = session_cookie_with_base(app.clone(), base_path).await?;

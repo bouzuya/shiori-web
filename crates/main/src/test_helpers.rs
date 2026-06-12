@@ -92,6 +92,13 @@ pub(crate) fn firestore_user_repo() -> anyhow::Result<Arc<dyn crate::model::User
     )))
 }
 
+pub(crate) fn firestore_user_settings_reader()
+-> anyhow::Result<Arc<dyn crate::model::UserSettingsReader>> {
+    Ok(Arc::new(
+        crate::firestore::FirestoreUserSettingsReader::new(firestore()?),
+    ))
+}
+
 pub(crate) fn firestore_bookmark_reader() -> anyhow::Result<Arc<dyn crate::model::BookmarkReader>> {
     Ok(Arc::new(crate::firestore::FirestoreBookmarkReader::new(
         firestore()?,
@@ -113,6 +120,7 @@ pub(crate) fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
         TEST_COOKIE_SIGNING_SECRET,
         Arc::new(MockOidcClient::new(sub)),
         firestore_user_repo()?,
+        firestore_user_settings_reader()?,
     );
     Ok(crate::router::router("").with_state(state))
 }
@@ -128,6 +136,7 @@ pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> anyhow::Result<
         TEST_COOKIE_SIGNING_SECRET,
         Arc::new(MockOidcClient::new(sub)),
         Arc::new(MockUserRepository::new()),
+        firestore_user_settings_reader()?,
     );
     Ok(crate::router::router("").with_state(state))
 }

@@ -7,6 +7,7 @@ use crate::extractor::real_oidc_client;
 use crate::model::BookmarkReader;
 use crate::model::BookmarkRepository;
 use crate::model::UserRepository;
+use crate::model::UserSettingsReader;
 
 /// `AppState` から取り出したベースパス。`CookieJar` の抽出時に使用する。
 #[derive(Clone)]
@@ -21,6 +22,7 @@ pub(crate) struct AppState {
     pub cookie_key: Key,
     pub oidc_client: Arc<dyn OidcClient>,
     pub user_repository: Arc<dyn UserRepository>,
+    pub user_settings_reader: Arc<dyn UserSettingsReader>,
 }
 
 impl AppState {
@@ -32,6 +34,7 @@ impl AppState {
         cookie_signing_secret: &str,
         oidc_client: Arc<dyn OidcClient>,
         user_repository: Arc<dyn UserRepository>,
+        user_settings_reader: Arc<dyn UserSettingsReader>,
     ) -> Self {
         Self {
             base_path,
@@ -40,6 +43,7 @@ impl AppState {
             cookie_key: Key::from(cookie_signing_secret.as_bytes()),
             oidc_client,
             user_repository,
+            user_settings_reader,
         }
     }
 
@@ -62,6 +66,9 @@ impl AppState {
         let bookmark_repository = Arc::new(crate::firestore::FirestoreBookmarkRepository::new(
             firestore.clone(),
         ));
+        let user_settings_reader = Arc::new(crate::firestore::FirestoreUserSettingsReader::new(
+            firestore.clone(),
+        ));
         let user_repository = Arc::new(crate::firestore::FirestoreUserRepository::new(firestore));
         Ok(Self::new(
             env.base_path.clone(),
@@ -70,6 +77,7 @@ impl AppState {
             &env.cookie_signing_secret,
             Arc::new(oidc_client),
             user_repository,
+            user_settings_reader,
         ))
     }
 }

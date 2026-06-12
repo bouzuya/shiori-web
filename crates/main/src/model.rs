@@ -5,3 +5,4 @@ pub(crate) use kernel::GoogleUserId;
 pub(crate) use kernel::User;
 pub(crate) use kernel::UserId;
 pub(crate) use kernel::UserRepository;
+pub(crate) use kernel::UserSettingsReader;
