@@ -23,6 +23,11 @@
   - `use` は使用箇所に最も近いスコープへ置き、本体ビルドでの未使用 import 警告を避けること
     - 本体コードで使う型: ファイル先頭の `use`
     - テストでのみ使う型: `#[cfg(test)] mod tests` 内 (`use super::*;` の後) に `use`。`mod tests` の外にある `#[cfg(test)] fn for_test` でのみ使う型は、その関数本体に `use` を書く
+- `use` / 再エクスポートでグロブ (`::*`) を使わず、項目を1つずつ列挙すること
+  - 例: `pub use self::entities::Bookmark;` のように個別に書く。`pub use self::entities::*;` は禁止
+  - 唯一の例外: `#[cfg(test)] mod tests` 冒頭の `use super::*;` のみ許可する (テストから親モジュールを取り込む慣用)
+  - 通常の `use foo::*;` は clippy lint `wildcard_imports` (`[workspace.lints.clippy]` で `deny`) が検出する (`use super::*;` は既定で除外)
+    - ただしグロブ**再エクスポート** (`pub use foo::*;`) はこの lint の対象外。再エクスポートはこのルールに従い人手・レビューで防ぐこと
 
 ## CSS の構成方針
 

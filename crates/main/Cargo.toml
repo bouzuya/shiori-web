@@ -29,3 +29,6 @@ edition.workspace = true
 name = "main"
 publish.workspace = true
 version.workspace = true
+
+[lints]
+workspace = true

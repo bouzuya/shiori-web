@@ -6,3 +6,6 @@ resolver = "3"
 edition = "2024"
 publish = false
 version = "1.0.0"
+
+[workspace.lints.clippy]
+wildcard_imports = "deny"
