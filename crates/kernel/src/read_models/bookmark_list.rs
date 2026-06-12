@@ -1,6 +1,8 @@
+use crate::BookmarkView;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BookmarkList {
-    pub items: Vec<crate::read_models::BookmarkView>,
+    pub items: Vec<BookmarkView>,
     pub next_page_token: Option<String>,
 }
 
@@ -21,7 +23,7 @@ mod tests {
 
     #[test]
     fn test_bookmark_list_with_items_and_token() -> anyhow::Result<()> {
-        let view = crate::read_models::BookmarkView::for_test();
+        let view = BookmarkView::for_test();
         let list = BookmarkList {
             items: vec![view.clone()],
             next_page_token: Some("token".to_string()),

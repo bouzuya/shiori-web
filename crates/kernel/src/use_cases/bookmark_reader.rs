@@ -1,3 +1,4 @@
+use crate::BookmarkList;
 use crate::UserId;
 
 #[async_trait::async_trait]
@@ -9,7 +10,7 @@ pub trait BookmarkReader: Send + Sync {
         &self,
         user_id: UserId,
         page_token: Option<String>,
-    ) -> anyhow::Result<crate::read_models::BookmarkList>;
+    ) -> anyhow::Result<BookmarkList>;
 }
 
 #[cfg(test)]
@@ -17,11 +18,12 @@ mod tests {
     use std::sync::Mutex;
 
     use super::*;
+    use crate::BookmarkView;
 
     const PAGE_SIZE: usize = 10;
 
     struct InMemoryBookmarkReader {
-        store: Mutex<Vec<(UserId, crate::read_models::BookmarkView)>>,
+        store: Mutex<Vec<(UserId, BookmarkView)>>,
     }
 
     impl InMemoryBookmarkReader {
@@ -31,11 +33,7 @@ mod tests {
             }
         }
 
-        fn insert(
-            &self,
-            user_id: UserId,
-            view: crate::read_models::BookmarkView,
-        ) -> anyhow::Result<()> {
+        fn insert(&self, user_id: UserId, view: BookmarkView) -> anyhow::Result<()> {
             self.store
                 .lock()
                 .map_err(|e| anyhow::anyhow!("{e}"))?
@@ -50,9 +48,9 @@ mod tests {
             &self,
             user_id: UserId,
             page_token: Option<String>,
-        ) -> anyhow::Result<crate::read_models::BookmarkList> {
+        ) -> anyhow::Result<BookmarkList> {
             let store = self.store.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
-            let mut items: Vec<crate::read_models::BookmarkView> = store
+            let mut items: Vec<BookmarkView> = store
                 .iter()
                 .filter(|(uid, _)| *uid == user_id)
                 .map(|(_, v)| v.clone())
@@ -69,7 +67,7 @@ mod tests {
             } else {
                 None
             };
-            Ok(crate::read_models::BookmarkList {
+            Ok(BookmarkList {
                 items: page,
                 next_page_token,
             })
@@ -93,10 +91,10 @@ mod tests {
         for i in 0..5 {
             reader.insert(
                 user_id,
-                crate::read_models::BookmarkView {
+                BookmarkView {
                     id: format!("id{i}"),
                     created_at: format!("2024-01-0{}T00:00:00.000Z", i + 1),
-                    ..crate::read_models::BookmarkView::for_test()
+                    ..BookmarkView::for_test()
                 },
             )?;
         }
@@ -116,10 +114,10 @@ mod tests {
         for i in 0..15 {
             reader.insert(
                 user_id,
-                crate::read_models::BookmarkView {
+                BookmarkView {
                     id: format!("id{i:02}"),
                     created_at: format!("2024-01-{:02}T00:00:00.000Z", i + 1),
-                    ..crate::read_models::BookmarkView::for_test()
+                    ..BookmarkView::for_test()
                 },
             )?;
         }
@@ -139,10 +137,10 @@ mod tests {
         for i in 0..15 {
             reader.insert(
                 user_id,
-                crate::read_models::BookmarkView {
+                BookmarkView {
                     id: format!("id{i:02}"),
                     created_at: format!("2024-01-{:02}T00:00:00.000Z", i + 1),
-                    ..crate::read_models::BookmarkView::for_test()
+                    ..BookmarkView::for_test()
                 },
             )?;
         }
@@ -165,18 +163,18 @@ mod tests {
         let user_b = UserId::new();
         reader.insert(
             user_a,
-            crate::read_models::BookmarkView {
+            BookmarkView {
                 id: "a1".to_string(),
                 created_at: "2024-01-01T00:00:00.000Z".to_string(),
-                ..crate::read_models::BookmarkView::for_test()
+                ..BookmarkView::for_test()
             },
         )?;
         reader.insert(
             user_b,
-            crate::read_models::BookmarkView {
+            BookmarkView {
                 id: "b1".to_string(),
                 created_at: "2024-01-02T00:00:00.000Z".to_string(),
-                ..crate::read_models::BookmarkView::for_test()
+                ..BookmarkView::for_test()
             },
         )?;
         let result = reader.list(user_a, None).await?;
