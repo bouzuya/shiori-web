@@ -18,6 +18,12 @@ impl UserSettingsDocumentData {
             user_id: user_id.to_string(),
         })
     }
+
+    pub(crate) fn from_user_settings(settings: &kernel::UserSettings) -> Self {
+        Self {
+            color_scheme: settings.color_scheme().to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -43,5 +49,12 @@ mod tests {
             color_scheme: "auto".to_string(),
         };
         assert!(data.into_user_settings_view(user_id).is_err());
+    }
+
+    #[test]
+    fn test_from_user_settings() {
+        let settings = kernel::UserSettings::new(kernel::ColorScheme::Dark, kernel::UserId::new());
+        let data = UserSettingsDocumentData::from_user_settings(&settings);
+        assert_eq!(data.color_scheme, "dark");
     }
 }

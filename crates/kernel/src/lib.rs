@@ -20,3 +20,4 @@ pub use self::use_cases::BookmarkReader;
 pub use self::use_cases::BookmarkRepository;
 pub use self::use_cases::UserRepository;
 pub use self::use_cases::UserSettingsReader;
+pub use self::use_cases::UserSettingsRepository;
