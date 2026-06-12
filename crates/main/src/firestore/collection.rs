@@ -1,9 +1,11 @@
 mod bookmarks;
 mod google_user_ids;
+mod user_settings;
 mod users;
 
 pub(crate) use self::bookmarks::Bookmarks;
 pub(crate) use self::google_user_ids::GoogleUserIds;
+pub(crate) use self::user_settings::UserSettingsCollection;
 pub(crate) use self::users::Users;
 
 /// Firestore のコレクション (とその中のドキュメント) のパス構成を型ごとに表す。
