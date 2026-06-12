@@ -12,14 +12,21 @@ pub struct BookmarkView {
 #[cfg(test)]
 impl BookmarkView {
     pub fn for_test() -> Self {
+        use crate::BookmarkId;
+        use crate::Comment;
+        use crate::DateTime;
+        use crate::Title;
+        use crate::Url;
+        use crate::UserId;
+
         Self {
-            comment: crate::entities::Comment::for_test().to_string(),
-            created_at: crate::entities::DateTime::now().to_rfc3339(),
-            id: crate::entities::BookmarkId::new().to_string(),
-            title: crate::entities::Title::for_test().to_string(),
-            updated_at: crate::entities::DateTime::now().to_rfc3339(),
-            url: crate::entities::Url::for_test().to_string(),
-            user_id: crate::entities::UserId::new().to_string(),
+            comment: Comment::for_test().to_string(),
+            created_at: DateTime::now().to_rfc3339(),
+            id: BookmarkId::new().to_string(),
+            title: Title::for_test().to_string(),
+            updated_at: DateTime::now().to_rfc3339(),
+            url: Url::for_test().to_string(),
+            user_id: UserId::new().to_string(),
         }
     }
 }

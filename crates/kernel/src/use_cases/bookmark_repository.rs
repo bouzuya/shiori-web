@@ -1,19 +1,20 @@
+use crate::Bookmark;
+use crate::BookmarkId;
+use crate::DateTime;
+use crate::UserId;
+
 #[async_trait::async_trait]
 pub trait BookmarkRepository: Send + Sync {
     async fn find(
         &self,
-        user_id: crate::entities::UserId,
-        bookmark_id: crate::entities::BookmarkId,
-    ) -> anyhow::Result<Option<crate::entities::Bookmark>>;
+        user_id: UserId,
+        bookmark_id: BookmarkId,
+    ) -> anyhow::Result<Option<Bookmark>>;
     /// `updated_at` が `None` のとき新規作成を試みる（既存があればエラー）。
     /// `updated_at` が `Some(t)` のとき既存の `updated_at` と `t` が一致する場合:
     ///   - `bookmark.deleted_at` が `Some` のとき削除する（楽観的排他制御）
     ///   - `bookmark.deleted_at` が `None` のとき更新する（楽観的排他制御）
-    async fn store(
-        &self,
-        updated_at: Option<crate::entities::DateTime>,
-        bookmark: crate::entities::Bookmark,
-    ) -> anyhow::Result<()>;
+    async fn store(&self, updated_at: Option<DateTime>, bookmark: Bookmark) -> anyhow::Result<()>;
 }
 
 #[cfg(test)]
@@ -22,9 +23,12 @@ mod tests {
     use std::sync::Mutex;
 
     use super::*;
+    use crate::Comment;
+    use crate::Title;
+    use crate::Url;
 
     struct InMemoryBookmarkRepository {
-        store: Mutex<HashMap<crate::entities::BookmarkId, crate::entities::Bookmark>>,
+        store: Mutex<HashMap<BookmarkId, Bookmark>>,
     }
 
     impl InMemoryBookmarkRepository {
@@ -39,9 +43,9 @@ mod tests {
     impl BookmarkRepository for InMemoryBookmarkRepository {
         async fn find(
             &self,
-            _user_id: crate::entities::UserId,
-            bookmark_id: crate::entities::BookmarkId,
-        ) -> anyhow::Result<Option<crate::entities::Bookmark>> {
+            _user_id: UserId,
+            bookmark_id: BookmarkId,
+        ) -> anyhow::Result<Option<Bookmark>> {
             Ok(self
                 .store
                 .lock()
@@ -52,8 +56,8 @@ mod tests {
 
         async fn store(
             &self,
-            updated_at: Option<crate::entities::DateTime>,
-            bookmark: crate::entities::Bookmark,
+            updated_at: Option<DateTime>,
+            bookmark: Bookmark,
         ) -> anyhow::Result<()> {
             let mut store = self.store.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
             match updated_at {
@@ -83,12 +87,12 @@ mod tests {
     #[tokio::test]
     async fn test_store_new_and_find() -> anyhow::Result<()> {
         let repo = InMemoryBookmarkRepository::new();
-        let user_id = crate::entities::UserId::new();
-        let bookmark = crate::entities::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            crate::entities::Url::for_test(),
-            crate::entities::Title::for_test(),
-            crate::entities::Comment::for_test(),
+            Url::for_test(),
+            Title::for_test(),
+            Comment::for_test(),
         );
         let id = bookmark.id();
         repo.store(None, bookmark).await?;
@@ -101,12 +105,12 @@ mod tests {
     #[tokio::test]
     async fn test_store_new_fails_if_already_exists() -> anyhow::Result<()> {
         let repo = InMemoryBookmarkRepository::new();
-        let user_id = crate::entities::UserId::new();
-        let bookmark = crate::entities::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            crate::entities::Url::for_test(),
-            crate::entities::Title::for_test(),
-            crate::entities::Comment::for_test(),
+            Url::for_test(),
+            Title::for_test(),
+            Comment::for_test(),
         );
         repo.store(None, bookmark.clone()).await?;
         assert!(repo.store(None, bookmark).await.is_err());
@@ -116,25 +120,25 @@ mod tests {
     #[tokio::test]
     async fn test_store_update_succeeds_when_updated_at_matches() -> anyhow::Result<()> {
         let repo = InMemoryBookmarkRepository::new();
-        let user_id = crate::entities::UserId::new();
-        let bookmark = crate::entities::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            crate::entities::Url::for_test(),
-            crate::entities::Title::for_test(),
-            crate::entities::Comment::for_test(),
+            Url::for_test(),
+            Title::for_test(),
+            Comment::for_test(),
         );
         let original_updated_at = bookmark.updated_at();
         let id = bookmark.id();
         repo.store(None, bookmark).await?;
 
-        let updated = crate::entities::Bookmark::new(
-            crate::entities::Comment::for_test(),
-            crate::entities::DateTime::now(),
+        let updated = Bookmark::new(
+            Comment::for_test(),
+            DateTime::now(),
             None,
             id,
-            crate::entities::Title::for_test(),
-            crate::entities::DateTime::now(),
-            crate::entities::Url::for_test(),
+            Title::for_test(),
+            DateTime::now(),
+            Url::for_test(),
             user_id,
         );
         repo.store(Some(original_updated_at), updated).await?;
@@ -144,25 +148,25 @@ mod tests {
     #[tokio::test]
     async fn test_store_update_fails_when_updated_at_mismatches() -> anyhow::Result<()> {
         let repo = InMemoryBookmarkRepository::new();
-        let user_id = crate::entities::UserId::new();
-        let bookmark = crate::entities::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            crate::entities::Url::for_test(),
-            crate::entities::Title::for_test(),
-            crate::entities::Comment::for_test(),
+            Url::for_test(),
+            Title::for_test(),
+            Comment::for_test(),
         );
         let id = bookmark.id();
         repo.store(None, bookmark).await?;
 
-        let stale_updated_at = crate::entities::DateTime::from_rfc3339("2000-01-01T00:00:00.000Z")?;
-        let updated = crate::entities::Bookmark::new(
-            crate::entities::Comment::for_test(),
-            crate::entities::DateTime::now(),
+        let stale_updated_at = DateTime::from_rfc3339("2000-01-01T00:00:00.000Z")?;
+        let updated = Bookmark::new(
+            Comment::for_test(),
+            DateTime::now(),
             None,
             id,
-            crate::entities::Title::for_test(),
-            crate::entities::DateTime::now(),
-            crate::entities::Url::for_test(),
+            Title::for_test(),
+            DateTime::now(),
+            Url::for_test(),
             user_id,
         );
         assert!(repo.store(Some(stale_updated_at), updated).await.is_err());
@@ -172,8 +176,8 @@ mod tests {
     #[tokio::test]
     async fn test_find_returns_none_for_missing() -> anyhow::Result<()> {
         let repo = InMemoryBookmarkRepository::new();
-        let user_id = crate::entities::UserId::new();
-        let bookmark_id = crate::entities::BookmarkId::new();
+        let user_id = UserId::new();
+        let bookmark_id = BookmarkId::new();
         let found = repo.find(user_id, bookmark_id).await?;
         assert!(found.is_none());
         Ok(())
@@ -182,24 +186,24 @@ mod tests {
     #[tokio::test]
     async fn test_store_delete_removes_bookmark() -> anyhow::Result<()> {
         let repo = InMemoryBookmarkRepository::new();
-        let user_id = crate::entities::UserId::new();
-        let bookmark = crate::entities::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            crate::entities::Url::for_test(),
-            crate::entities::Title::for_test(),
-            crate::entities::Comment::for_test(),
+            Url::for_test(),
+            Title::for_test(),
+            Comment::for_test(),
         );
         let original_updated_at = bookmark.updated_at();
         let id = bookmark.id();
         repo.store(None, bookmark).await?;
-        let deleted = crate::entities::Bookmark::new(
-            crate::entities::Comment::for_test(),
-            crate::entities::DateTime::now(),
-            Some(crate::entities::DateTime::now()),
+        let deleted = Bookmark::new(
+            Comment::for_test(),
+            DateTime::now(),
+            Some(DateTime::now()),
             id,
-            crate::entities::Title::for_test(),
-            crate::entities::DateTime::now(),
-            crate::entities::Url::for_test(),
+            Title::for_test(),
+            DateTime::now(),
+            Url::for_test(),
             user_id,
         );
         repo.store(Some(original_updated_at), deleted).await?;

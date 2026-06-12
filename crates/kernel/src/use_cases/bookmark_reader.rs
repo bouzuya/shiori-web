@@ -1,3 +1,5 @@
+use crate::UserId;
+
 #[async_trait::async_trait]
 pub trait BookmarkReader: Send + Sync {
     /// ユーザーのブックマークを `created_at` 降順で最大 10 件返す。
@@ -5,7 +7,7 @@ pub trait BookmarkReader: Send + Sync {
     /// 続きがある場合 `next_page_token` に次の `page_token` を入れる。
     async fn list(
         &self,
-        user_id: crate::entities::UserId,
+        user_id: UserId,
         page_token: Option<String>,
     ) -> anyhow::Result<crate::read_models::BookmarkList>;
 }
@@ -19,7 +21,7 @@ mod tests {
     const PAGE_SIZE: usize = 10;
 
     struct InMemoryBookmarkReader {
-        store: Mutex<Vec<(crate::entities::UserId, crate::read_models::BookmarkView)>>,
+        store: Mutex<Vec<(UserId, crate::read_models::BookmarkView)>>,
     }
 
     impl InMemoryBookmarkReader {
@@ -31,7 +33,7 @@ mod tests {
 
         fn insert(
             &self,
-            user_id: crate::entities::UserId,
+            user_id: UserId,
             view: crate::read_models::BookmarkView,
         ) -> anyhow::Result<()> {
             self.store
@@ -46,7 +48,7 @@ mod tests {
     impl BookmarkReader for InMemoryBookmarkReader {
         async fn list(
             &self,
-            user_id: crate::entities::UserId,
+            user_id: UserId,
             page_token: Option<String>,
         ) -> anyhow::Result<crate::read_models::BookmarkList> {
             let store = self.store.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -77,7 +79,7 @@ mod tests {
     #[tokio::test]
     async fn test_list_empty_returns_empty() -> anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
-        let user_id = crate::entities::UserId::new();
+        let user_id = UserId::new();
         let result = reader.list(user_id, None).await?;
         assert!(result.items.is_empty());
         assert!(result.next_page_token.is_none());
@@ -87,7 +89,7 @@ mod tests {
     #[tokio::test]
     async fn test_list_less_than_page_size_returns_all_without_token() -> anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
-        let user_id = crate::entities::UserId::new();
+        let user_id = UserId::new();
         for i in 0..5 {
             reader.insert(
                 user_id,
@@ -110,7 +112,7 @@ mod tests {
     #[tokio::test]
     async fn test_list_more_than_page_size_returns_page_and_token() -> anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
-        let user_id = crate::entities::UserId::new();
+        let user_id = UserId::new();
         for i in 0..15 {
             reader.insert(
                 user_id,
@@ -133,7 +135,7 @@ mod tests {
     #[tokio::test]
     async fn test_list_with_page_token_returns_next_page() -> anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
-        let user_id = crate::entities::UserId::new();
+        let user_id = UserId::new();
         for i in 0..15 {
             reader.insert(
                 user_id,
@@ -159,8 +161,8 @@ mod tests {
     #[tokio::test]
     async fn test_list_filters_by_user_id() -> anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
-        let user_a = crate::entities::UserId::new();
-        let user_b = crate::entities::UserId::new();
+        let user_a = UserId::new();
+        let user_b = UserId::new();
         reader.insert(
             user_a,
             crate::read_models::BookmarkView {

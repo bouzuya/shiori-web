@@ -1,12 +1,10 @@
+use crate::GoogleUserId;
+use crate::User;
+use crate::UserId;
+
 #[async_trait::async_trait]
 pub trait UserRepository: Send + Sync {
-    async fn find(
-        &self,
-        id: &crate::entities::UserId,
-    ) -> anyhow::Result<Option<crate::entities::User>>;
-    async fn find_by_google_user_id(
-        &self,
-        id: &crate::entities::GoogleUserId,
-    ) -> anyhow::Result<Option<crate::entities::User>>;
-    async fn store(&self, user: crate::entities::User) -> anyhow::Result<()>;
+    async fn find(&self, id: &UserId) -> anyhow::Result<Option<User>>;
+    async fn find_by_google_user_id(&self, id: &GoogleUserId) -> anyhow::Result<Option<User>>;
+    async fn store(&self, user: User) -> anyhow::Result<()>;
 }
