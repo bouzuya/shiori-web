@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html data-color-scheme="{{ color_scheme }}" lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Settings</title>
+    <link href="{{ base }}/index.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="page-container">
+        <header class="page-header">
+            <div class="site-title"><a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">shiori</a></div>
+        </header>
+        <main class="settings-page">
+            <h1>Settings</h1>
+            <div class="back-link">
+                <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">Back</a>
+            </div>
+            <form action="{% if base == "" %}/settings{% else %}{{ base }}/settings{% endif %}" class="settings-form" method="post">
+                <fieldset class="form-fields">
+                    <legend>Color Scheme</legend>
+                    <div class="form-field">
+                        <label>
+                            <input name="color_scheme" type="radio" value="system" {% if color_scheme == "system" %}checked{% endif %}>
+                            System
+                        </label>
+                    </div>
+                    <div class="form-field">
+                        <label>
+                            <input name="color_scheme" type="radio" value="light" {% if color_scheme == "light" %}checked{% endif %}>
+                            Light
+                        </label>
+                    </div>
+                    <div class="form-field">
+                        <label>
+                            <input name="color_scheme" type="radio" value="dark" {% if color_scheme == "dark" %}checked{% endif %}>
+                            Dark
+                        </label>
+                    </div>
+                </fieldset>
+                <div class="form-submit">
+                    <button type="submit">Save</button>
+                </div>
+            </form>
+        </main>
+        <footer class="page-footer">
+            <div>
+                <a href="https://github.com/bouzuya/shiori-web" rel="noopener noreferrer" target="_blank">GitHub</a>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>

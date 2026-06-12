@@ -2,6 +2,7 @@ mod auth;
 mod bookmark;
 mod index_css;
 mod root;
+mod settings;
 
 use axum::Router;
 
@@ -12,7 +13,8 @@ pub(crate) fn router(base_path: &str) -> Router<AppState> {
         .merge(auth::router())
         .merge(bookmark::router())
         .merge(index_css::router())
-        .merge(root::router());
+        .merge(root::router())
+        .merge(settings::router());
     if base_path.is_empty() {
         inner
     } else {

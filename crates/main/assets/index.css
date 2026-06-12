@@ -506,3 +506,109 @@ main {
         }
     }
 }
+
+/* ============================================================
+ * Page: settings-page
+ * ========================================================== */
+.settings-page {
+
+    h1 {
+        display: none;
+    }
+
+    h2 {
+        font-size: 16px;
+        font-weight: normal;
+        margin: 0;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    a {
+        color: var(--link-text-color);
+    }
+
+    /* nav links */
+    .back-link a {
+        display: block;
+        overflow: hidden;
+        padding: 8px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--hover-background-color);
+        }
+    }
+
+    /* form container */
+    .settings-form {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 24px;
+        padding: 8px;
+    }
+
+    /* form fields / submit */
+    .form-fields {
+        border: none;
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .form-fields legend {
+        font-size: 16px;
+        font-weight: bold;
+        padding: 0 0 8px 0;
+    }
+
+    .form-field {
+        display: flex;
+        flex-flow: row nowrap;
+        gap: 8px;
+    }
+
+    .form-field label {
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .form-field input[type="radio"] {
+        cursor: pointer;
+    }
+
+    .form-submit button {
+        background-color: var(--background-color);
+        border: 1px solid var(--border-color);
+        box-shadow: 2px 2px var(--shadow-color);
+        color: var(--text-color);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 4px 16px;
+
+        &:focus:active,
+        &:hover:active,
+        &:active {
+            box-shadow: none;
+            transform: none;
+        }
+
+        &:focus,
+        &:hover {
+            box-shadow: 3px 3px var(--shadow-color);
+            outline: none;
+            transform: translate(-1px, -1px);
+        }
+    }
+}
