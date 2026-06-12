@@ -17,24 +17,28 @@
             <div class="back-link">
                 <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">Back</a>
             </div>
-            <form action="{% if base == "" %}/settings{% else %}{{ base }}/settings{% endif %}" class="settings-form" method="post">
+            <form action="{% if base == "" %}/settings?_method=PUT{% else %}{{ base }}/settings?_method=PUT{% endif %}" class="settings-form"
+                method="post">
                 <fieldset class="form-fields">
                     <legend>Color Scheme</legend>
                     <div class="form-field">
                         <label>
-                            <input name="color_scheme" type="radio" value="system" {% if color_scheme == "system" %}checked{% endif %}>
+                            <input name="color_scheme" type="radio" value="system" {% if color_scheme=="system"
+                                %}checked{% endif %}>
                             System
                         </label>
                     </div>
                     <div class="form-field">
                         <label>
-                            <input name="color_scheme" type="radio" value="light" {% if color_scheme == "light" %}checked{% endif %}>
+                            <input name="color_scheme" type="radio" value="light" {% if color_scheme=="light"
+                                %}checked{% endif %}>
                             Light
                         </label>
                     </div>
                     <div class="form-field">
                         <label>
-                            <input name="color_scheme" type="radio" value="dark" {% if color_scheme == "dark" %}checked{% endif %}>
+                            <input name="color_scheme" type="radio" value="dark" {% if color_scheme=="dark" %}checked{%
+                                endif %}>
                             Dark
                         </label>
                     </div>

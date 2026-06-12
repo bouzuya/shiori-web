@@ -24,7 +24,6 @@ pub(crate) struct AppState {
     pub oidc_client: Arc<dyn OidcClient>,
     pub user_repository: Arc<dyn UserRepository>,
     pub user_settings_reader: Arc<dyn UserSettingsReader>,
-    #[allow(dead_code)]
     pub user_settings_repository: Arc<dyn UserSettingsRepository>,
 }
 
