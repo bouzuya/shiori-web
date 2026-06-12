@@ -34,6 +34,7 @@ mod tests {
     use crate::test_helpers::firestore_bookmark_reader;
     use crate::test_helpers::firestore_bookmark_repo;
     use crate::test_helpers::firestore_user_settings_reader;
+    use crate::test_helpers::firestore_user_settings_repository;
     use crate::test_helpers::send_request;
     use crate::test_helpers::test_app_with_mock_repo;
     use crate::test_helpers::unique_user_id;
@@ -72,6 +73,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             Arc::new(MockUserRepository::new()),
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
 
         // Step 1: Signup
@@ -134,6 +136,7 @@ mod tests {
             Arc::new(MockOidcClient::new("signout_base_path_user")),
             Arc::new(MockUserRepository::new()),
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let response = send_request(
             crate::router::router(base_path).with_state(state),

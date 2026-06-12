@@ -8,6 +8,7 @@ use crate::model::BookmarkReader;
 use crate::model::BookmarkRepository;
 use crate::model::UserRepository;
 use crate::model::UserSettingsReader;
+use crate::model::UserSettingsRepository;
 
 /// `AppState` から取り出したベースパス。`CookieJar` の抽出時に使用する。
 #[derive(Clone)]
@@ -23,10 +24,13 @@ pub(crate) struct AppState {
     pub oidc_client: Arc<dyn OidcClient>,
     pub user_repository: Arc<dyn UserRepository>,
     pub user_settings_reader: Arc<dyn UserSettingsReader>,
+    #[allow(dead_code)]
+    pub user_settings_repository: Arc<dyn UserSettingsRepository>,
 }
 
 impl AppState {
     /// `cookie_signing_secret` は `Key::from()` の要件により 64 バイト以上必要。
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_path: String,
         bookmark_reader: Arc<dyn BookmarkReader>,
@@ -35,6 +39,7 @@ impl AppState {
         oidc_client: Arc<dyn OidcClient>,
         user_repository: Arc<dyn UserRepository>,
         user_settings_reader: Arc<dyn UserSettingsReader>,
+        user_settings_repository: Arc<dyn UserSettingsRepository>,
     ) -> Self {
         Self {
             base_path,
@@ -44,6 +49,7 @@ impl AppState {
             oidc_client,
             user_repository,
             user_settings_reader,
+            user_settings_repository,
         }
     }
 
@@ -69,6 +75,9 @@ impl AppState {
         let user_settings_reader = Arc::new(crate::firestore::FirestoreUserSettingsReader::new(
             firestore.clone(),
         ));
+        let user_settings_repository = Arc::new(
+            crate::firestore::FirestoreUserSettingsRepository::new(firestore.clone()),
+        );
         let user_repository = Arc::new(crate::firestore::FirestoreUserRepository::new(firestore));
         Ok(Self::new(
             env.base_path.clone(),
@@ -78,6 +87,7 @@ impl AppState {
             Arc::new(oidc_client),
             user_repository,
             user_settings_reader,
+            user_settings_repository,
         ))
     }
 }

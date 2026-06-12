@@ -130,6 +130,7 @@ mod tests {
     use crate::test_helpers::firestore_bookmark_repo;
     use crate::test_helpers::firestore_user_repo;
     use crate::test_helpers::firestore_user_settings_reader;
+    use crate::test_helpers::firestore_user_settings_repository;
     use crate::test_helpers::send_request;
     use crate::test_helpers::test_app;
     use crate::test_helpers::unique_user_id;
@@ -201,6 +202,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let app = crate::router::router("").with_state(state);
         let session = session_cookie(app.clone()).await?;
@@ -234,6 +236,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
 
         // Step 1: Signup
@@ -291,6 +294,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let app = crate::router::router("").with_state(state);
         let session = session_cookie(app.clone()).await?;
@@ -344,6 +348,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let app = crate::router::router("").with_state(state);
         let session = session_cookie(app.clone()).await?;
@@ -380,6 +385,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let app = crate::router::router("").with_state(state);
         let session = session_cookie(app.clone()).await?;
@@ -431,6 +437,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let app = crate::router::router("").with_state(state);
         let session = session_cookie(app.clone()).await?;
@@ -478,6 +485,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let app = crate::router::router("").with_state(state);
         let session = session_cookie(app.clone()).await?;
@@ -526,6 +534,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let app = crate::router::router("").with_state(state);
         let session = session_cookie(app.clone()).await?;
@@ -633,6 +642,7 @@ mod tests {
             Arc::new(MockOidcClient::new("base_path_links_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let response = send_request(
             crate::router::router(base_path).with_state(state),
@@ -666,6 +676,7 @@ mod tests {
             Arc::new(MockOidcClient::new("base_path_trailing_slash_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
         let response = send_request(
             crate::router::router(base_path).with_state(state),

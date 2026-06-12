@@ -128,6 +128,7 @@ mod tests {
     use crate::test_helpers::firestore_bookmark_repo;
     use crate::test_helpers::firestore_user_repo;
     use crate::test_helpers::firestore_user_settings_reader;
+    use crate::test_helpers::firestore_user_settings_repository;
     use crate::test_helpers::send_request;
     use crate::test_helpers::unique_user_id;
 
@@ -143,6 +144,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
 
         // Step 1: Signup to get CSRF and nonce cookies
@@ -203,6 +205,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             user_repo,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
 
         // Step 1: Signin
@@ -243,6 +246,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
 
         // Step 1: Signin (no user in DB)
@@ -281,6 +285,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
 
         // Step 1: Signup
@@ -328,6 +333,7 @@ mod tests {
             Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
 
         // Step 1: Signup

@@ -24,6 +24,14 @@ impl UserSettingsDocumentData {
             color_scheme: settings.color_scheme().to_string(),
         }
     }
+
+    pub(crate) fn into_user_settings(
+        self,
+        user_id: kernel::UserId,
+    ) -> anyhow::Result<kernel::UserSettings> {
+        let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
+        Ok(kernel::UserSettings::new(color_scheme, user_id))
+    }
 }
 
 #[cfg(test)]
@@ -56,5 +64,17 @@ mod tests {
         let settings = kernel::UserSettings::new(kernel::ColorScheme::Dark, kernel::UserId::new());
         let data = UserSettingsDocumentData::from_user_settings(&settings);
         assert_eq!(data.color_scheme, "dark");
+    }
+
+    #[test]
+    fn test_into_user_settings() -> anyhow::Result<()> {
+        let user_id = kernel::UserId::new();
+        let data = UserSettingsDocumentData {
+            color_scheme: "light".to_string(),
+        };
+        let settings = data.into_user_settings(user_id)?;
+        assert_eq!(settings.color_scheme(), kernel::ColorScheme::Light);
+        assert_eq!(settings.user_id(), user_id);
+        Ok(())
     }
 }

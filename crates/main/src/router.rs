@@ -44,6 +44,7 @@ mod tests {
     use crate::test_helpers::firestore_bookmark_repo;
     use crate::test_helpers::firestore_user_repo;
     use crate::test_helpers::firestore_user_settings_reader;
+    use crate::test_helpers::firestore_user_settings_repository;
     use crate::test_helpers::send_request;
 
     #[tokio::test]
@@ -58,6 +59,7 @@ mod tests {
             Arc::new(MockOidcClient::new("base_path_route_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
         );
 
         // Route exists under base path
