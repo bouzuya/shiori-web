@@ -20,6 +20,8 @@
 
 ## CSS の構成方針
 
+> **適用範囲は CSS のみ**。ここで述べる「locality 優先・重複許容」はスタイルシート固有の割り切りであり、Rust コードの設計判断 (凝集・モジュール分割・依存関係) には一切持ち込まないこと。Rust 側の設計はこの方針と無関係に判断する。
+
 `crates/main/assets/index.css` は「ページ単位で完結させる」方針で構成すること。
 
 - 各ページのテンプレートは `<main>` にページを表す class を付与する (`landing-page` / `list-page` / `show-page` / `new-page`)
