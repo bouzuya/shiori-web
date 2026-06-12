@@ -6,6 +6,7 @@ mod document;
 mod google_user_id_document_data;
 mod user_document_data;
 mod user_repository;
+mod user_settings_document_data;
 
 pub(crate) use self::bookmark_document_data::BookmarkDocumentData;
 pub(crate) use self::bookmark_reader::FirestoreBookmarkReader;
@@ -18,3 +19,4 @@ pub(crate) use self::document::DocumentRef;
 pub(crate) use self::google_user_id_document_data::GoogleUserIdDocumentData;
 pub(crate) use self::user_document_data::UserDocumentData;
 pub(crate) use self::user_repository::FirestoreUserRepository;
+pub(crate) use self::user_settings_document_data::UserSettingsDocumentData;
