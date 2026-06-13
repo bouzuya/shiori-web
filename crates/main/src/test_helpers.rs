@@ -1,5 +1,14 @@
 use std::sync::Arc;
 
+use kernel::BookmarkReader;
+use kernel::BookmarkRepository;
+use kernel::GoogleUserId;
+use kernel::User;
+use kernel::UserId;
+use kernel::UserRepository;
+use kernel::UserSettingsReader;
+use kernel::UserSettingsRepository;
+
 pub(crate) struct MockOidcClient {
     sub: String,
 }
@@ -32,7 +41,7 @@ impl crate::extractor::OidcClient for MockOidcClient {
 }
 
 pub(crate) struct MockUserRepository {
-    users: std::sync::Mutex<Vec<crate::model::User>>,
+    users: std::sync::Mutex<Vec<User>>,
 }
 
 impl MockUserRepository {
@@ -44,21 +53,18 @@ impl MockUserRepository {
 }
 
 #[async_trait::async_trait]
-impl crate::model::UserRepository for MockUserRepository {
-    async fn find(&self, id: &crate::model::UserId) -> anyhow::Result<Option<crate::model::User>> {
+impl UserRepository for MockUserRepository {
+    async fn find(&self, id: &UserId) -> anyhow::Result<Option<User>> {
         let users = self.users.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
         Ok(users.iter().find(|u| u.id() == *id).cloned())
     }
 
-    async fn find_by_google_user_id(
-        &self,
-        id: &crate::model::GoogleUserId,
-    ) -> anyhow::Result<Option<crate::model::User>> {
+    async fn find_by_google_user_id(&self, id: &GoogleUserId) -> anyhow::Result<Option<User>> {
         let users = self.users.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
         Ok(users.iter().find(|u| u.google_user_id() == id).cloned())
     }
 
-    async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
+    async fn store(&self, user: User) -> anyhow::Result<()> {
         let mut users = self.users.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
         if let Some(pos) = users.iter().position(|u| u.id() == user.id()) {
             users[pos] = user;
@@ -86,34 +92,32 @@ pub(crate) fn firestore() -> anyhow::Result<bouzuya_firestore_client::Firestore>
     )?)
 }
 
-pub(crate) fn firestore_user_repo() -> anyhow::Result<Arc<dyn crate::model::UserRepository>> {
+pub(crate) fn firestore_user_repo() -> anyhow::Result<Arc<dyn UserRepository>> {
     Ok(Arc::new(crate::firestore::FirestoreUserRepository::new(
         firestore()?,
     )))
 }
 
-pub(crate) fn firestore_user_settings_reader()
--> anyhow::Result<Arc<dyn crate::model::UserSettingsReader>> {
+pub(crate) fn firestore_user_settings_reader() -> anyhow::Result<Arc<dyn UserSettingsReader>> {
     Ok(Arc::new(
         crate::firestore::FirestoreUserSettingsReader::new(firestore()?),
     ))
 }
 
-pub(crate) fn firestore_user_settings_repository()
--> anyhow::Result<Arc<dyn crate::model::UserSettingsRepository>> {
+pub(crate) fn firestore_user_settings_repository() -> anyhow::Result<Arc<dyn UserSettingsRepository>>
+{
     Ok(Arc::new(
         crate::firestore::FirestoreUserSettingsRepository::new(firestore()?),
     ))
 }
 
-pub(crate) fn firestore_bookmark_reader() -> anyhow::Result<Arc<dyn crate::model::BookmarkReader>> {
+pub(crate) fn firestore_bookmark_reader() -> anyhow::Result<Arc<dyn BookmarkReader>> {
     Ok(Arc::new(crate::firestore::FirestoreBookmarkReader::new(
         firestore()?,
     )))
 }
 
-pub(crate) fn firestore_bookmark_repo() -> anyhow::Result<Arc<dyn crate::model::BookmarkRepository>>
-{
+pub(crate) fn firestore_bookmark_repo() -> anyhow::Result<Arc<dyn BookmarkRepository>> {
     Ok(Arc::new(
         crate::firestore::FirestoreBookmarkRepository::new(firestore()?),
     ))
@@ -136,7 +140,7 @@ pub(crate) fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
 pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
     let bookmark_repository = Arc::new(crate::firestore::FirestoreBookmarkRepository::new(
         firestore()?,
-    )) as Arc<dyn crate::model::BookmarkRepository>;
+    )) as Arc<dyn BookmarkRepository>;
     let state = crate::AppState::new(
         "".to_string(),
         firestore_bookmark_reader()?,

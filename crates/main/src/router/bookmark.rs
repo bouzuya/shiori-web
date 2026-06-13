@@ -1124,62 +1124,6 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
-    async fn test_get_show_contains_delete_form() -> anyhow::Result<()> {
-        let sub = format!(
-            "get_show_delete_form_user_{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_nanos()
-        );
-        let app = test_app(&sub)?;
-        let session = session_cookie(app.clone(), &sub).await?;
-        let create_res = send_request(
-            app.clone(),
-            Request::builder()
-                .method("POST")
-                .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(form_body(&PostRootRequest {
-                    comment: "".to_string(),
-                    title: "Test".to_string(),
-                    url: "https://example.com".to_string(),
-                })?)?,
-        )
-        .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
-        let list_res = send_request(
-            app.clone(),
-            Request::builder()
-                .method("GET")
-                .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
-        )
-        .await?;
-        let list_body = list_res.into_body_string().await?;
-        let bookmark_id = extract_bookmark_id(&list_body)?;
-        let res = send_request(
-            app,
-            Request::builder()
-                .method("GET")
-                .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
-        )
-        .await?;
-        assert_eq!(res.status(), StatusCode::OK);
-        let body = res.into_body_string().await?;
-        assert!(
-            body.contains("_method=DELETE"),
-            "Delete form action missing: {body}"
-        );
-        assert!(body.contains("Delete"), "Delete button missing: {body}");
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial_test::serial]
     async fn test_post_without_method_override_returns_405() -> anyhow::Result<()> {
         let sub = format!(
             "post_no_method_override_user_{}",

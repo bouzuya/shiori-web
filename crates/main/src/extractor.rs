@@ -10,11 +10,12 @@ use axum::extract::FromRequestParts;
 use axum::extract::OptionalFromRequestParts;
 use axum::http::StatusCode;
 use axum_extra::extract::cookie::Key;
+use kernel::UserId;
 
 use crate::CookieJar;
 use crate::state::BasePath;
 
-pub(crate) struct CurrentUserId(pub crate::model::UserId);
+pub(crate) struct CurrentUserId(pub UserId);
 
 impl<S> FromRequestParts<S> for CurrentUserId
 where
@@ -39,7 +40,7 @@ where
             tracing::warn!("CurrentUserId: failed to read session cookie");
             StatusCode::UNAUTHORIZED
         })?;
-        let user_id = user_id_str.parse::<crate::model::UserId>().map_err(|e| {
+        let user_id = user_id_str.parse::<UserId>().map_err(|e| {
             tracing::warn!("CurrentUserId: invalid user_id in session cookie: {e}");
             StatusCode::UNAUTHORIZED
         })?;
@@ -66,9 +67,7 @@ where
                 tracing::warn!("OptionalAuth: failed to read cookie jar: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
-        let user_id = jar
-            .get_session()
-            .and_then(|s| s.parse::<crate::model::UserId>().ok());
+        let user_id = jar.get_session().and_then(|s| s.parse::<UserId>().ok());
         Ok(user_id.map(CurrentUserId))
     }
 }

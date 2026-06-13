@@ -162,6 +162,7 @@ impl IntoResponse for CookieJar {
 mod tests {
     use axum_extra::extract::SignedCookieJar;
     use axum_extra::extract::cookie::Key;
+    use kernel::UserId;
 
     use crate::extractor::AuthenticationRequest;
 
@@ -244,7 +245,7 @@ mod tests {
     }
 
     fn make_session() -> String {
-        crate::model::UserId::new().to_string()
+        UserId::new().to_string()
     }
 
     #[test]

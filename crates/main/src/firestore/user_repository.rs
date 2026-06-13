@@ -3,6 +3,9 @@ use crate::firestore::GoogleUserIdDocumentData;
 use crate::firestore::GoogleUserIdsCollection;
 use crate::firestore::UserDocumentData;
 use crate::firestore::UsersCollection;
+use kernel::GoogleUserId;
+use kernel::User;
+use kernel::UserId;
 use kernel::UserRepository;
 
 pub(crate) struct FirestoreUserRepository {
@@ -17,17 +20,14 @@ impl FirestoreUserRepository {
 
 #[async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
-    async fn find(&self, id: &crate::model::UserId) -> anyhow::Result<Option<crate::model::User>> {
+    async fn find(&self, id: &UserId) -> anyhow::Result<Option<User>> {
         match crate::firestore::document::get::<UsersCollection>(&self.firestore, &(), id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_user()?)),
         }
     }
 
-    async fn find_by_google_user_id(
-        &self,
-        id: &crate::model::GoogleUserId,
-    ) -> anyhow::Result<Option<crate::model::User>> {
+    async fn find_by_google_user_id(&self, id: &GoogleUserId) -> anyhow::Result<Option<User>> {
         let user_id = match crate::firestore::document::get::<GoogleUserIdsCollection>(
             &self.firestore,
             &(),
@@ -46,7 +46,7 @@ impl UserRepository for FirestoreUserRepository {
         }
     }
 
-    async fn store(&self, user: crate::model::User) -> anyhow::Result<()> {
+    async fn store(&self, user: User) -> anyhow::Result<()> {
         let user_ref = DocumentRef::<UsersCollection>::new(&self.firestore, &(), &user.id())?;
         let google_user_id_ref = DocumentRef::<GoogleUserIdsCollection>::new(
             &self.firestore,
@@ -89,7 +89,7 @@ mod tests {
     #[serial_test::serial]
     async fn test_firestore_find_returns_none_for_unknown() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let id = crate::model::UserId::new();
+        let id = UserId::new();
         let result = repo.find(&id).await?;
         assert!(result.is_none());
         Ok(())
@@ -99,8 +99,8 @@ mod tests {
     #[serial_test::serial]
     async fn test_firestore_store_then_find_returns_user() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let google_user_id = "firestore_test_find_user1".parse::<crate::model::GoogleUserId>()?;
-        let user = crate::model::User::create(google_user_id);
+        let google_user_id = "firestore_test_find_user1".parse::<GoogleUserId>()?;
+        let user = User::create(google_user_id);
         let user_id = user.id().clone();
         repo.store(user).await?;
         let result = repo.find(&user_id).await?;
@@ -115,7 +115,7 @@ mod tests {
     {
         let repo = firestore_repo()?;
         let result = repo
-            .find_by_google_user_id(&"unknown_user_for_test".parse::<crate::model::GoogleUserId>()?)
+            .find_by_google_user_id(&"unknown_user_for_test".parse::<GoogleUserId>()?)
             .await?;
         assert!(result.is_none());
         Ok(())
@@ -125,8 +125,8 @@ mod tests {
     #[serial_test::serial]
     async fn test_firestore_store_then_find_by_google_user_id_returns_user() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let id = "firestore_test_user1".parse::<crate::model::GoogleUserId>()?;
-        repo.store(crate::model::User::create(id.clone())).await?;
+        let id = "firestore_test_user1".parse::<GoogleUserId>()?;
+        repo.store(User::create(id.clone())).await?;
         let result = repo.find_by_google_user_id(&id).await?;
         assert!(result.is_some());
         assert_eq!(
@@ -140,9 +140,9 @@ mod tests {
     #[serial_test::serial]
     async fn test_firestore_store_is_idempotent() -> anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let id = "firestore_test_user2".parse::<crate::model::GoogleUserId>()?;
-        repo.store(crate::model::User::create(id.clone())).await?;
-        repo.store(crate::model::User::create(id.clone())).await?;
+        let id = "firestore_test_user2".parse::<GoogleUserId>()?;
+        repo.store(User::create(id.clone())).await?;
+        repo.store(User::create(id.clone())).await?;
         let result = repo.find_by_google_user_id(&id).await?;
         assert!(result.is_some());
         Ok(())

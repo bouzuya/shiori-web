@@ -5,6 +5,8 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Redirect;
 use axum::routing::get;
+use kernel::GoogleUserId;
+use kernel::User;
 
 use crate::AppState;
 use crate::CookieJar;
@@ -54,13 +56,10 @@ async fn handler(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    let google_user_id = oidc_claims
-        .sub
-        .parse::<crate::model::GoogleUserId>()
-        .map_err(|e| {
-            tracing::error!("auth callback: invalid google user id: {e:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let google_user_id = oidc_claims.sub.parse::<GoogleUserId>().map_err(|e| {
+        tracing::error!("auth callback: invalid google user id: {e:?}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
     let user = app_state
         .user_repository
         .find_by_google_user_id(&google_user_id)
@@ -79,7 +78,7 @@ async fn handler(
         }
         ("signin", Some(user)) => user.id(),
         ("signup", None) => {
-            let new_user = crate::model::User::create(google_user_id);
+            let new_user = User::create(google_user_id);
             let user_id = new_user.id();
             app_state
                 .user_repository
@@ -119,8 +118,10 @@ async fn handler(
 mod tests {
     use std::sync::Arc;
 
+    use kernel::GoogleUserId;
+    use kernel::User;
+
     use crate::AppState;
-    use crate::model::User;
     use crate::test_helpers::MockOidcClient;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
     use crate::test_helpers::extract_cookies;
@@ -195,7 +196,7 @@ mod tests {
         let sub = unique_user_id();
         let user_repo = firestore_user_repo()?;
         user_repo
-            .store(User::create(sub.parse::<crate::model::GoogleUserId>()?))
+            .store(User::create(sub.parse::<GoogleUserId>()?))
             .await?;
         let state = AppState::new(
             "".to_string(),

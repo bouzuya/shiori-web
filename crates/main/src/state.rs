@@ -4,11 +4,11 @@ use axum_extra::extract::cookie::Key;
 
 use crate::extractor::OidcClient;
 use crate::extractor::real_oidc_client;
-use crate::model::BookmarkReader;
-use crate::model::BookmarkRepository;
-use crate::model::UserRepository;
-use crate::model::UserSettingsReader;
-use crate::model::UserSettingsRepository;
+use kernel::BookmarkReader;
+use kernel::BookmarkRepository;
+use kernel::UserRepository;
+use kernel::UserSettingsReader;
+use kernel::UserSettingsRepository;
 
 /// `AppState` から取り出したベースパス。`CookieJar` の抽出時に使用する。
 #[derive(Clone)]
