@@ -4,6 +4,7 @@
 #[derive(serde::Deserialize, serde::Serialize)]
 pub(crate) struct UserSettingsDocumentData {
     color_scheme: String,
+    utc_offset: String,
 }
 
 impl UserSettingsDocumentData {
@@ -13,16 +14,18 @@ impl UserSettingsDocumentData {
     ) -> anyhow::Result<kernel::UserSettingsView> {
         // 不正な値を弾き、正規化した文字列を保持する。
         let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
+        let utc_offset = self.utc_offset.parse::<kernel::UtcOffset>()?;
         Ok(kernel::UserSettingsView {
             color_scheme: color_scheme.to_string(),
             user_id: user_id.to_string(),
-            utc_offset: kernel::UtcOffset::default().to_string(),
+            utc_offset: utc_offset.to_string(),
         })
     }
 
     pub(crate) fn from_user_settings(settings: &kernel::UserSettings) -> Self {
         Self {
             color_scheme: settings.color_scheme().to_string(),
+            utc_offset: settings.utc_offset().to_string(),
         }
     }
 
@@ -31,11 +34,8 @@ impl UserSettingsDocumentData {
         user_id: kernel::UserId,
     ) -> anyhow::Result<kernel::UserSettings> {
         let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
-        Ok(kernel::UserSettings::new(
-            color_scheme,
-            user_id,
-            kernel::UtcOffset::default(),
-        ))
+        let utc_offset = self.utc_offset.parse::<kernel::UtcOffset>()?;
+        Ok(kernel::UserSettings::new(color_scheme, user_id, utc_offset))
     }
 }
 
@@ -48,10 +48,12 @@ mod tests {
         let user_id = kernel::UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "dark".to_string(),
+            utc_offset: "+09:00".to_string(),
         };
         let view = data.into_user_settings_view(user_id)?;
         assert_eq!(view.color_scheme, "dark");
         assert_eq!(view.user_id, user_id.to_string());
+        assert_eq!(view.utc_offset, "+09:00");
         Ok(())
     }
 
@@ -60,19 +62,32 @@ mod tests {
         let user_id = kernel::UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "auto".to_string(),
+            utc_offset: "+00:00".to_string(),
         };
         assert!(data.into_user_settings_view(user_id).is_err());
     }
 
     #[test]
-    fn test_from_user_settings() {
+    fn test_into_user_settings_view_rejects_invalid_utc_offset() {
+        let user_id = kernel::UserId::new();
+        let data = UserSettingsDocumentData {
+            color_scheme: "dark".to_string(),
+            utc_offset: "invalid".to_string(),
+        };
+        assert!(data.into_user_settings_view(user_id).is_err());
+    }
+
+    #[test]
+    fn test_from_user_settings() -> anyhow::Result<()> {
         let settings = kernel::UserSettings::new(
             kernel::ColorScheme::Dark,
             kernel::UserId::new(),
-            kernel::UtcOffset::default(),
+            kernel::UtcOffset::new(540)?,
         );
         let data = UserSettingsDocumentData::from_user_settings(&settings);
         assert_eq!(data.color_scheme, "dark");
+        assert_eq!(data.utc_offset, "+09:00");
+        Ok(())
     }
 
     #[test]
@@ -80,10 +95,22 @@ mod tests {
         let user_id = kernel::UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "light".to_string(),
+            utc_offset: "-05:00".to_string(),
         };
         let settings = data.into_user_settings(user_id)?;
         assert_eq!(settings.color_scheme(), kernel::ColorScheme::Light);
         assert_eq!(settings.user_id(), user_id);
+        assert_eq!(settings.utc_offset(), kernel::UtcOffset::new(-300)?);
         Ok(())
+    }
+
+    #[test]
+    fn test_into_user_settings_rejects_invalid_utc_offset() {
+        let user_id = kernel::UserId::new();
+        let data = UserSettingsDocumentData {
+            color_scheme: "light".to_string(),
+            utc_offset: "invalid".to_string(),
+        };
+        assert!(data.into_user_settings(user_id).is_err());
     }
 }
