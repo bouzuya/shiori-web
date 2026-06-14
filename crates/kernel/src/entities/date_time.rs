@@ -1,3 +1,5 @@
+use crate::UtcOffset;
+
 // 0001-01-01T00:00:00.000Z
 const MIN_MILLIS: i64 = -62_135_596_800_000;
 // 9999-12-31T23:59:59.999Z
@@ -65,6 +67,16 @@ impl DateTime {
         Self::from_millis(millis).unwrap_or_else(|_| unreachable!("system clock is out of range"))
     }
 
+    pub fn to_date_string_in(&self, offset: UtcOffset) -> String {
+        // offset は UtcOffset で範囲検証済みのため east_opt が None になることはない。
+        let fixed = chrono::FixedOffset::east_opt(offset.minutes() * 60)
+            .unwrap_or_else(|| unreachable!("UtcOffset is always within FixedOffset range"));
+        self.inner
+            .with_timezone(&fixed)
+            .format("%Y-%m-%d")
+            .to_string()
+    }
+
     pub fn to_rfc3339(&self) -> String {
         self.inner
             .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
@@ -114,6 +126,30 @@ mod tests {
     #[test]
     fn test_from_rfc3339_with_nanosecond_precision_returns_error() {
         assert!(DateTime::from_rfc3339("2024-01-15T10:30:45.123456789Z").is_err());
+    }
+
+    #[test]
+    fn test_to_date_string_in_utc_matches_rfc3339_prefix() -> anyhow::Result<()> {
+        let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
+        assert_eq!(
+            dt.to_date_string_in(UtcOffset::default()),
+            &dt.to_rfc3339()[..10]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_to_date_string_in_positive_offset_rolls_to_next_day() -> anyhow::Result<()> {
+        let dt = DateTime::from_rfc3339("2024-01-15T20:00:00.000Z")?;
+        assert_eq!(dt.to_date_string_in(UtcOffset::new(540)?), "2024-01-16");
+        Ok(())
+    }
+
+    #[test]
+    fn test_to_date_string_in_negative_offset_rolls_to_previous_day() -> anyhow::Result<()> {
+        let dt = DateTime::from_rfc3339("2024-01-15T02:00:00.000Z")?;
+        assert_eq!(dt.to_date_string_in(UtcOffset::new(-300)?), "2024-01-14");
+        Ok(())
     }
 
     #[test]
