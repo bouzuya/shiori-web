@@ -16,6 +16,7 @@ impl UserSettingsDocumentData {
         Ok(kernel::UserSettingsView {
             color_scheme: color_scheme.to_string(),
             user_id: user_id.to_string(),
+            utc_offset: kernel::UtcOffset::default().to_string(),
         })
     }
 
