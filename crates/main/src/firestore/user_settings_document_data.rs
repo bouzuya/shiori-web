@@ -35,7 +35,13 @@ impl UserSettingsDocumentData {
     ) -> anyhow::Result<kernel::UserSettings> {
         let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
         let utc_offset = self.utc_offset.parse::<kernel::UtcOffset>()?;
-        Ok(kernel::UserSettings::new(color_scheme, user_id, utc_offset))
+        Ok(kernel::UserSettings::new(
+            color_scheme,
+            // FIXME: share_url の永続化は後続コミットで実装する (今は None 固定)
+            None,
+            user_id,
+            utc_offset,
+        ))
     }
 }
 
@@ -81,6 +87,7 @@ mod tests {
     fn test_from_user_settings() -> anyhow::Result<()> {
         let settings = kernel::UserSettings::new(
             kernel::ColorScheme::Dark,
+            None,
             kernel::UserId::new(),
             kernel::UtcOffset::new(540)?,
         );

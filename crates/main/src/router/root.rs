@@ -460,6 +460,7 @@ mod tests {
             .user_settings_repository
             .store(kernel::UserSettings::new(
                 kernel::ColorScheme::default(),
+                None,
                 user_id,
                 kernel::UtcOffset::new(540)?,
             ))

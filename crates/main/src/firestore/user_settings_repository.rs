@@ -76,6 +76,7 @@ mod tests {
         let user_id = kernel::UserId::new();
         let settings = kernel::UserSettings::new(
             kernel::ColorScheme::Dark,
+            None,
             user_id,
             kernel::UtcOffset::default(),
         );
@@ -97,12 +98,14 @@ mod tests {
         let user_id = kernel::UserId::new();
         repo.store(kernel::UserSettings::new(
             kernel::ColorScheme::Dark,
+            None,
             user_id,
             kernel::UtcOffset::default(),
         ))
         .await?;
         repo.store(kernel::UserSettings::new(
             kernel::ColorScheme::Light,
+            None,
             user_id,
             kernel::UtcOffset::default(),
         ))

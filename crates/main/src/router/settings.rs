@@ -86,7 +86,8 @@ async fn put_settings_impl(
         Ok(o) => o,
         Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
     };
-    let settings = kernel::UserSettings::new(color_scheme, user_id, utc_offset);
+    // FIXME: share_url のフォーム処理は後続コミットで実装する (今は None 固定)
+    let settings = kernel::UserSettings::new(color_scheme, None, user_id, utc_offset);
     if let Err(e) = state.user_settings_repository.store(settings).await {
         tracing::error!("failed to store user settings: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
