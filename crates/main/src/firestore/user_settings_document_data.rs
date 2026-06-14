@@ -17,6 +17,8 @@ impl UserSettingsDocumentData {
         let utc_offset = self.utc_offset.parse::<kernel::UtcOffset>()?;
         Ok(kernel::UserSettingsView {
             color_scheme: color_scheme.to_string(),
+            // FIXME: share_url の永続化は後続コミットで実装する (今は None 固定)
+            share_url: None,
             user_id: user_id.to_string(),
             utc_offset: utc_offset.to_string(),
         })
