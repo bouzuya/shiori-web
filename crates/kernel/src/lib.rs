@@ -8,6 +8,7 @@ pub use self::entities::ColorScheme;
 pub use self::entities::Comment;
 pub use self::entities::DateTime;
 pub use self::entities::GoogleUserId;
+pub use self::entities::ShareUrl;
 pub use self::entities::Title;
 pub use self::entities::Url;
 pub use self::entities::User;
