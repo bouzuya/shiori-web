@@ -9,6 +9,7 @@ mod url;
 mod user;
 mod user_id;
 mod user_settings;
+mod utc_offset;
 
 pub use self::bookmark::Bookmark;
 pub use self::bookmark_id::BookmarkId;
@@ -21,3 +22,4 @@ pub use self::url::Url;
 pub use self::user::User;
 pub use self::user_id::UserId;
 pub use self::user_settings::UserSettings;
+pub use self::utc_offset::UtcOffset;

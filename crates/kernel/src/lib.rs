@@ -13,6 +13,7 @@ pub use self::entities::Url;
 pub use self::entities::User;
 pub use self::entities::UserId;
 pub use self::entities::UserSettings;
+pub use self::entities::UtcOffset;
 pub use self::read_models::BookmarkList;
 pub use self::read_models::BookmarkView;
 pub use self::read_models::UserSettingsView;
