@@ -2,7 +2,6 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"GitHub.copilot-chat",
 				"anthropic.claude-code"
 			]
 		}
@@ -17,7 +16,6 @@
 			"uid": 1000,
 			"gid": 1000
 		},
-		"ghcr.io/devcontainers/features/copilot-cli:1": {},
 		"ghcr.io/devcontainers/features/node:1": {
 			"installYarnUsingApt": false
 		},
