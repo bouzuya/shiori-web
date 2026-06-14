@@ -17,35 +17,31 @@
             <div class="back-link">
                 <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">Back</a>
             </div>
-            <form action="{% if base == "" %}/settings?_method=PUT{% else %}{{ base }}/settings?_method=PUT{% endif %}" class="settings-form"
-                method="post">
-                <fieldset class="form-fields">
-                    <legend>Color Scheme</legend>
-                    <div class="form-field">
-                        <label>
-                            <input name="color_scheme" type="radio" value="system" {% if color_scheme=="system"
-                                %}checked{% endif %}>
-                            System
-                        </label>
-                    </div>
-                    <div class="form-field">
-                        <label>
-                            <input name="color_scheme" type="radio" value="light" {% if color_scheme=="light"
-                                %}checked{% endif %}>
-                            Light
-                        </label>
-                    </div>
-                    <div class="form-field">
-                        <label>
-                            <input name="color_scheme" type="radio" value="dark" {% if color_scheme=="dark" %}checked{%
-                                endif %}>
-                            Dark
-                        </label>
-                    </div>
-                </fieldset>
-                <fieldset class="form-fields">
-                    <legend>UTC Offset</legend>
-                    <div class="form-field">
+            <form action="{% if base == "" %}/settings?_method=PUT{% else %}{{ base }}/settings?_method=PUT{% endif %}"
+                class="settings-form" method="post">
+                <div class="form-fields">
+                    <fieldset class="form-field">
+                        <legend>Color Scheme</legend>
+                        <div class="radio-group">
+                            <label>
+                                <input name="color_scheme" type="radio" value="system" {% if color_scheme=="system"
+                                    %}checked{% endif %}>
+                                System
+                            </label>
+                            <label>
+                                <input name="color_scheme" type="radio" value="light" {% if color_scheme=="light"
+                                    %}checked{% endif %}>
+                                Light
+                            </label>
+                            <label>
+                                <input name="color_scheme" type="radio" value="dark" {% if color_scheme=="dark"
+                                    %}checked{% endif %}>
+                                Dark
+                            </label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="form-field">
+                        <legend>UTC Offset</legend>
                         <select name="utc_offset">
                             <option value="-12:00" {% if utc_offset=="-12:00" %}selected{% endif %}>-12:00</option>
                             <option value="-10:00" {% if utc_offset=="-10:00" %}selected{% endif %}>-10:00</option>
@@ -62,8 +58,8 @@
                             <option value="+12:00" {% if utc_offset=="+12:00" %}selected{% endif %}>+12:00</option>
                             <option value="+14:00" {% if utc_offset=="+14:00" %}selected{% endif %}>+14:00</option>
                         </select>
-                    </div>
-                </fieldset>
+                    </fieldset>
+                </div>
                 <div class="form-submit">
                     <button type="submit">Save</button>
                 </div>
