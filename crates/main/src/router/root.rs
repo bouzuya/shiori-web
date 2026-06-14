@@ -28,6 +28,7 @@ struct LandingTemplate<'a> {
 
 struct BookmarkItem {
     id: String,
+    share_url: Option<String>,
     title: String,
     url: String,
 }
@@ -65,6 +66,7 @@ async fn handler(
         Some(CurrentUserId(user_id)) => {
             let color_scheme = super::resolve_color_scheme(&state, user_id).await;
             let offset = super::resolve_utc_offset(&state, user_id).await;
+            let share_url = super::resolve_share_url(&state, user_id).await;
             match state.bookmark_reader.list(user_id, query.page_token).await {
                 Ok(list) => {
                     let mut groups: Vec<DateGroup> = Vec::new();
@@ -74,22 +76,22 @@ async fn handler(
                             // 不正値は従来どおり先頭10文字でフォールバック
                             Err(_) => b.created_at.chars().take(10).collect::<String>(),
                         };
+                        let item = BookmarkItem {
+                            id: b.id.clone(),
+                            share_url: share_url
+                                .as_ref()
+                                .map(|s| s.build(&b.comment, &b.title, &b.url)),
+                            title: b.title.clone(),
+                            url: b.url.clone(),
+                        };
                         match groups.last_mut() {
                             Some(g) if g.date == date => {
-                                g.items.push(BookmarkItem {
-                                    id: b.id.clone(),
-                                    title: b.title.clone(),
-                                    url: b.url.clone(),
-                                });
+                                g.items.push(item);
                             }
                             _ => {
                                 groups.push(DateGroup {
                                     date,
-                                    items: vec![BookmarkItem {
-                                        id: b.id.clone(),
-                                        title: b.title.clone(),
-                                        url: b.url.clone(),
-                                    }],
+                                    items: vec![item],
                                 });
                             }
                         }
@@ -501,6 +503,118 @@ mod tests {
         assert!(
             !body.contains("<h2 class=\"bookmark-group-name\">2024-01-15</h2>"),
             "Expected UTC date heading (2024-01-15) to be absent, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_shows_share_link_when_share_url_is_set() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+        let app = crate::router::router("").with_state(state.clone());
+        let session = session_cookie(app.clone()).await?;
+        let user_id = state
+            .user_repository
+            .find_by_google_user_id(&sub.parse::<kernel::GoogleUserId>()?)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("user not found"))?
+            .id();
+
+        state
+            .user_settings_repository
+            .store(kernel::UserSettings::new(
+                kernel::ColorScheme::default(),
+                Some("https://example.com/share?u={{url}}".parse::<kernel::ShareUrl>()?),
+                user_id,
+                kernel::UtcOffset::default(),
+            ))
+            .await?;
+
+        let created = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(Body::from(
+                    "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
+                ))?,
+        )
+        .await?;
+        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains("https://example.com/share?u=https%3A%2F%2Fexample.com"),
+            "Expected Share link with encoded url, got: {body}"
+        );
+        assert!(
+            body.contains(">Share</a>"),
+            "Expected Share menu item, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_has_no_share_link_without_share_url() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        let created = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(Body::from(
+                    "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
+                ))?,
+        )
+        .await?;
+        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let body = response.into_body_string().await?;
+        assert!(
+            !body.contains(">Share</a>"),
+            "Expected no Share menu item when share_url is unset, got: {body}"
         );
         Ok(())
     }
