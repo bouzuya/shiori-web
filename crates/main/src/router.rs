@@ -35,6 +35,25 @@ pub(crate) async fn resolve_color_scheme(state: &AppState, user_id: kernel::User
     }
 }
 
+/// 現在ユーザーの UTC オフセットを解決する。
+/// 未保存・取得失敗・パース失敗時は既定値 (UTC) にフォールバックする。
+pub(crate) async fn resolve_utc_offset(
+    state: &AppState,
+    user_id: kernel::UserId,
+) -> kernel::UtcOffset {
+    match state.user_settings_reader.get(user_id).await {
+        Ok(Some(view)) => view
+            .utc_offset
+            .parse::<kernel::UtcOffset>()
+            .unwrap_or_default(),
+        Ok(None) => kernel::UtcOffset::default(),
+        Err(e) => {
+            tracing::error!("failed to get user settings: {e}");
+            kernel::UtcOffset::default()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

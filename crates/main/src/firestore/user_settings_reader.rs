@@ -44,14 +44,16 @@ mod tests {
 
     /// `store` メソッドが無いため、テストのセットアップ用にローカルの serde 形で
     /// `user_settings/{user_id}` ドキュメントを直接書き込む。
-    async fn seed_color_scheme(
+    async fn seed_settings(
         firestore: &bouzuya_firestore_client::Firestore,
         user_id: kernel::UserId,
         color_scheme: &'static str,
+        utc_offset: &'static str,
     ) -> anyhow::Result<()> {
         #[derive(serde::Serialize)]
         struct Seed {
             color_scheme: &'static str,
+            utc_offset: &'static str,
         }
 
         let doc_ref = firestore
@@ -62,7 +64,13 @@ mod tests {
                 move |tx| {
                     let doc_ref = doc_ref.clone();
                     Box::pin(async move {
-                        tx.set(&doc_ref, &Seed { color_scheme })?;
+                        tx.set(
+                            &doc_ref,
+                            &Seed {
+                                color_scheme,
+                                utc_offset,
+                            },
+                        )?;
                         Ok(())
                     })
                 },
@@ -87,7 +95,7 @@ mod tests {
     async fn test_get_returns_stored_settings() -> anyhow::Result<()> {
         let firestore = firestore()?;
         let user_id = kernel::UserId::new();
-        seed_color_scheme(&firestore, user_id, "dark").await?;
+        seed_settings(&firestore, user_id, "dark", "+09:00").await?;
         let reader = FirestoreUserSettingsReader::new(firestore);
         let view = reader.get(user_id).await?;
         assert_eq!(view.as_ref().map(|v| v.color_scheme.as_str()), Some("dark"));
@@ -95,6 +103,7 @@ mod tests {
             view.as_ref().map(|v| v.user_id.as_str()),
             Some(user_id.to_string().as_str())
         );
+        assert_eq!(view.as_ref().map(|v| v.utc_offset.as_str()), Some("+09:00"));
         Ok(())
     }
 }
