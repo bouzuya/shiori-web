@@ -64,11 +64,16 @@ async fn handler(
     match auth {
         Some(CurrentUserId(user_id)) => {
             let color_scheme = super::resolve_color_scheme(&state, user_id).await;
+            let offset = super::resolve_utc_offset(&state, user_id).await;
             match state.bookmark_reader.list(user_id, query.page_token).await {
                 Ok(list) => {
                     let mut groups: Vec<DateGroup> = Vec::new();
                     for b in &list.items {
-                        let date = b.created_at.chars().take(10).collect::<String>();
+                        let date = match kernel::DateTime::from_rfc3339(&b.created_at) {
+                            Ok(dt) => dt.to_date_string_in(offset),
+                            // 不正値は従来どおり先頭10文字でフォールバック
+                            Err(_) => b.created_at.chars().take(10).collect::<String>(),
+                        };
                         match groups.last_mut() {
                             Some(g) if g.date == date => {
                                 g.items.push(BookmarkItem {
@@ -421,6 +426,80 @@ mod tests {
         assert!(
             body.contains(&format!("<h2 class=\"bookmark-group-name\">{today}</h2>")),
             "Expected date heading <h2 class=\"bookmark-group-name\">{today}</h2> in body, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_groups_bookmarks_by_date_in_user_utc_offset() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+        let app = crate::router::router("").with_state(state.clone());
+        let session = session_cookie(app.clone()).await?;
+
+        // 認証済みユーザーの user_id を取得する。
+        let user_id = state
+            .user_repository
+            .find_by_google_user_id(&sub.parse::<kernel::GoogleUserId>()?)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("user not found"))?
+            .id();
+
+        // +09:00 を保存する。
+        state
+            .user_settings_repository
+            .store(kernel::UserSettings::new(
+                kernel::ColorScheme::default(),
+                user_id,
+                kernel::UtcOffset::new(540)?,
+            ))
+            .await?;
+
+        // UTC では 2024-01-15 だが +09:00 では 2024-01-16 になる固定時刻で保存する。
+        state
+            .bookmark_repository
+            .store(
+                None,
+                kernel::Bookmark::new(
+                    "".parse::<kernel::Comment>()?,
+                    kernel::DateTime::from_rfc3339("2024-01-15T20:00:00.000Z")?,
+                    None,
+                    kernel::BookmarkId::new(),
+                    "Example Title".parse::<kernel::Title>()?,
+                    kernel::DateTime::from_rfc3339("2024-01-15T20:00:00.000Z")?,
+                    "https://example.com".parse::<kernel::Url>()?,
+                    user_id,
+                ),
+            )
+            .await?;
+
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains("<h2 class=\"bookmark-group-name\">2024-01-16</h2>"),
+            "Expected date heading converted to +09:00 (2024-01-16), got: {body}"
+        );
+        assert!(
+            !body.contains("<h2 class=\"bookmark-group-name\">2024-01-15</h2>"),
+            "Expected UTC date heading (2024-01-15) to be absent, got: {body}"
         );
         Ok(())
     }
