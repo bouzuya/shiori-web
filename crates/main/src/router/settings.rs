@@ -20,6 +20,7 @@ pub(crate) fn router() -> axum::Router<AppState> {
 struct SettingsTemplate<'a> {
     base: &'a str,
     color_scheme: &'a str,
+    share_url: &'a str,
     utc_offset: &'a str,
 }
 
@@ -28,10 +29,15 @@ async fn get_settings(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let color_scheme = super::resolve_color_scheme(&state, user_id).await;
+    let share_url = super::resolve_share_url(&state, user_id)
+        .await
+        .map(|s| s.to_string())
+        .unwrap_or_default();
     let utc_offset = super::resolve_utc_offset(&state, user_id).await.to_string();
     let template = SettingsTemplate {
         base: &state.base_path,
         color_scheme: &color_scheme,
+        share_url: &share_url,
         utc_offset: &utc_offset,
     };
     match template.render() {
@@ -52,6 +58,9 @@ struct MethodOverrideQuery {
 #[derive(serde::Deserialize)]
 struct PutSettingsRequest {
     color_scheme: String,
+    // 未送信・空文字は未設定 (None) として扱う。
+    #[serde(default)]
+    share_url: String,
     utc_offset: String,
 }
 
@@ -82,12 +91,20 @@ async fn put_settings_impl(
         Ok(cs) => cs,
         Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
     };
+    // 空文字は未設定 (None) として扱う。
+    let share_url = if body.share_url.is_empty() {
+        None
+    } else {
+        match body.share_url.parse::<kernel::ShareUrl>() {
+            Ok(s) => Some(s),
+            Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        }
+    };
     let utc_offset = match body.utc_offset.parse::<kernel::UtcOffset>() {
         Ok(o) => o,
         Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
     };
-    // FIXME: share_url のフォーム処理は後続コミットで実装する (今は None 固定)
-    let settings = kernel::UserSettings::new(color_scheme, None, user_id, utc_offset);
+    let settings = kernel::UserSettings::new(color_scheme, share_url, user_id, utc_offset);
     if let Err(e) = state.user_settings_repository.store(settings).await {
         tracing::error!("failed to store user settings: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -260,6 +277,117 @@ mod tests {
         assert_eq!(
             response.status(),
             axum::http::StatusCode::UNPROCESSABLE_ENTITY
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_put_settings_saves_share_url() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let body = serde_urlencoded::to_string([
+            ("color_scheme", "dark"),
+            ("share_url", "https://example.com/?u={{url}}"),
+            ("utc_offset", "+09:00"),
+        ])?;
+        let response = send_request(
+            app.clone(),
+            Request::builder()
+                .method("POST")
+                .uri("/settings?_method=PUT")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(Body::from(body))?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
+        let get_response = send_request(
+            app,
+            Request::builder()
+                .uri("/settings")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let body = get_response.into_body_string().await?;
+        assert!(
+            body.contains(r#"value="https://example.com/?u={{url}}""#),
+            "Expected share_url input value, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_put_settings_rejects_invalid_share_url() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let body = serde_urlencoded::to_string([
+            ("color_scheme", "dark"),
+            ("share_url", "not a url"),
+            ("utc_offset", "+09:00"),
+        ])?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("POST")
+                .uri("/settings?_method=PUT")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(Body::from(body))?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::UNPROCESSABLE_ENTITY
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_put_settings_empty_share_url_is_unset() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        // まず設定してから空で上書きし、未設定に戻ることを確認する。
+        for share_url in ["https://example.com/?u={{url}}", ""] {
+            let body = serde_urlencoded::to_string([
+                ("color_scheme", "dark"),
+                ("share_url", share_url),
+                ("utc_offset", "+09:00"),
+            ])?;
+            let response = send_request(
+                app.clone(),
+                Request::builder()
+                    .method("POST")
+                    .uri("/settings?_method=PUT")
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .header(header::COOKIE, &session)
+                    .body(Body::from(body))?,
+            )
+            .await?;
+            assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
+        }
+        let get_response = send_request(
+            app,
+            Request::builder()
+                .uri("/settings")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let body = get_response.into_body_string().await?;
+        assert!(
+            body.contains(r#"name="share_url" type="text" value=""#),
+            "Expected empty share_url input, got: {body}"
+        );
+        assert!(
+            !body.contains("{{url}}"),
+            "Expected share_url to be unset, got: {body}"
         );
         Ok(())
     }

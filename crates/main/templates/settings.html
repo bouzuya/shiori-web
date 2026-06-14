@@ -59,6 +59,10 @@
                             <option value="+14:00" {% if utc_offset=="+14:00" %}selected{% endif %}>+14:00</option>
                         </select>
                     </fieldset>
+                    <fieldset class="form-field">
+                        <legend>Share URL</legend>
+                        <input maxlength="2048" name="share_url" type="text" value="{{ share_url }}">
+                    </fieldset>
                 </div>
                 <div class="form-submit">
                     <button type="submit">Save</button>
