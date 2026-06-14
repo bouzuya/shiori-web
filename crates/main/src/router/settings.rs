@@ -20,6 +20,7 @@ pub(crate) fn router() -> axum::Router<AppState> {
 struct SettingsTemplate<'a> {
     base: &'a str,
     color_scheme: &'a str,
+    utc_offset: &'a str,
 }
 
 async fn get_settings(
@@ -27,9 +28,11 @@ async fn get_settings(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let color_scheme = super::resolve_color_scheme(&state, user_id).await;
+    let utc_offset = super::resolve_utc_offset(&state, user_id).await.to_string();
     let template = SettingsTemplate {
         base: &state.base_path,
         color_scheme: &color_scheme,
+        utc_offset: &utc_offset,
     };
     match template.render() {
         Ok(html) => Html(html).into_response(),
@@ -49,6 +52,7 @@ struct MethodOverrideQuery {
 #[derive(serde::Deserialize)]
 struct PutSettingsRequest {
     color_scheme: String,
+    utc_offset: String,
 }
 
 async fn post_settings_dispatch(
@@ -78,7 +82,11 @@ async fn put_settings_impl(
         Ok(cs) => cs,
         Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
     };
-    let settings = kernel::UserSettings::new(color_scheme, user_id, kernel::UtcOffset::default());
+    let utc_offset = match body.utc_offset.parse::<kernel::UtcOffset>() {
+        Ok(o) => o,
+        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+    };
+    let settings = kernel::UserSettings::new(color_scheme, user_id, utc_offset);
     if let Err(e) = state.user_settings_repository.store(settings).await {
         tracing::error!("failed to store user settings: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -185,7 +193,7 @@ mod tests {
                 .uri("/settings?_method=PUT")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, &session)
-                .body(Body::from("color_scheme=dark"))?,
+                .body(Body::from("color_scheme=dark&utc_offset=%2B09%3A00"))?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
@@ -201,6 +209,10 @@ mod tests {
         assert!(
             body.contains(r#"data-color-scheme="dark""#),
             "Expected dark color scheme, got: {body}"
+        );
+        assert!(
+            body.contains(r#"<option value="+09:00" selected>"#),
+            "Expected +09:00 option to be selected, got: {body}"
         );
         Ok(())
     }
@@ -218,7 +230,30 @@ mod tests {
                 .uri("/settings?_method=PUT")
                 .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
                 .header(header::COOKIE, &session)
-                .body(Body::from("color_scheme=invalid"))?,
+                .body(Body::from("color_scheme=invalid&utc_offset=%2B09%3A00"))?,
+        )
+        .await?;
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::UNPROCESSABLE_ENTITY
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_put_settings_rejects_invalid_utc_offset() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("POST")
+                .uri("/settings?_method=PUT")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(Body::from("color_scheme=dark&utc_offset=invalid"))?,
         )
         .await?;
         assert_eq!(

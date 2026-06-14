@@ -43,6 +43,27 @@
                         </label>
                     </div>
                 </fieldset>
+                <fieldset class="form-fields">
+                    <legend>UTC Offset</legend>
+                    <div class="form-field">
+                        <select name="utc_offset">
+                            <option value="-12:00" {% if utc_offset=="-12:00" %}selected{% endif %}>-12:00</option>
+                            <option value="-10:00" {% if utc_offset=="-10:00" %}selected{% endif %}>-10:00</option>
+                            <option value="-08:00" {% if utc_offset=="-08:00" %}selected{% endif %}>-08:00</option>
+                            <option value="-05:00" {% if utc_offset=="-05:00" %}selected{% endif %}>-05:00</option>
+                            <option value="-03:00" {% if utc_offset=="-03:00" %}selected{% endif %}>-03:00</option>
+                            <option value="+00:00" {% if utc_offset=="+00:00" %}selected{% endif %}>+00:00</option>
+                            <option value="+01:00" {% if utc_offset=="+01:00" %}selected{% endif %}>+01:00</option>
+                            <option value="+03:00" {% if utc_offset=="+03:00" %}selected{% endif %}>+03:00</option>
+                            <option value="+05:30" {% if utc_offset=="+05:30" %}selected{% endif %}>+05:30</option>
+                            <option value="+08:00" {% if utc_offset=="+08:00" %}selected{% endif %}>+08:00</option>
+                            <option value="+09:00" {% if utc_offset=="+09:00" %}selected{% endif %}>+09:00</option>
+                            <option value="+10:00" {% if utc_offset=="+10:00" %}selected{% endif %}>+10:00</option>
+                            <option value="+12:00" {% if utc_offset=="+12:00" %}selected{% endif %}>+12:00</option>
+                            <option value="+14:00" {% if utc_offset=="+14:00" %}selected{% endif %}>+14:00</option>
+                        </select>
+                    </div>
+                </fieldset>
                 <div class="form-submit">
                     <button type="submit">Save</button>
                 </div>
