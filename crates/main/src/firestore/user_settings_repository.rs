@@ -74,7 +74,11 @@ mod tests {
     async fn test_store_then_find() -> anyhow::Result<()> {
         let repo = repo()?;
         let user_id = kernel::UserId::new();
-        let settings = kernel::UserSettings::new(kernel::ColorScheme::Dark, user_id);
+        let settings = kernel::UserSettings::new(
+            kernel::ColorScheme::Dark,
+            user_id,
+            kernel::UtcOffset::default(),
+        );
         repo.store(settings).await?;
         let found = repo.find(&user_id).await?;
         assert_eq!(
@@ -94,11 +98,13 @@ mod tests {
         repo.store(kernel::UserSettings::new(
             kernel::ColorScheme::Dark,
             user_id,
+            kernel::UtcOffset::default(),
         ))
         .await?;
         repo.store(kernel::UserSettings::new(
             kernel::ColorScheme::Light,
             user_id,
+            kernel::UtcOffset::default(),
         ))
         .await?;
         let found = repo.find(&user_id).await?;

@@ -78,7 +78,7 @@ async fn put_settings_impl(
         Ok(cs) => cs,
         Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
     };
-    let settings = kernel::UserSettings::new(color_scheme, user_id);
+    let settings = kernel::UserSettings::new(color_scheme, user_id, kernel::UtcOffset::default());
     if let Err(e) = state.user_settings_repository.store(settings).await {
         tracing::error!("failed to store user settings: {e}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();

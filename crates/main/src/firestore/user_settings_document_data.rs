@@ -30,7 +30,11 @@ impl UserSettingsDocumentData {
         user_id: kernel::UserId,
     ) -> anyhow::Result<kernel::UserSettings> {
         let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
-        Ok(kernel::UserSettings::new(color_scheme, user_id))
+        Ok(kernel::UserSettings::new(
+            color_scheme,
+            user_id,
+            kernel::UtcOffset::default(),
+        ))
     }
 }
 
@@ -61,7 +65,11 @@ mod tests {
 
     #[test]
     fn test_from_user_settings() {
-        let settings = kernel::UserSettings::new(kernel::ColorScheme::Dark, kernel::UserId::new());
+        let settings = kernel::UserSettings::new(
+            kernel::ColorScheme::Dark,
+            kernel::UserId::new(),
+            kernel::UtcOffset::default(),
+        );
         let data = UserSettingsDocumentData::from_user_settings(&settings);
         assert_eq!(data.color_scheme, "dark");
     }
