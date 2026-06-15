@@ -36,10 +36,11 @@
                                 <button class="detail" popovertarget="menu-{{ item.id }}">...</button>
                                 <div class="popover" id="menu-{{ item.id }}" popover="auto">
                                     <ul>
-                                        <li><a href="{{ base }}/{{ item.id }}">Edit</a></li>
                                         {% if let Some(share_url) = item.share_url %}
-                                        <li><a href="{{ share_url }}" rel="noopener noreferrer" target="_blank">Share</a></li>
+                                        <li><a href="{{ share_url }}" rel="noopener noreferrer"
+                                                target="_blank">Share</a></li>
                                         {% endif %}
+                                        <li><a href="{{ base }}/{{ item.id }}">Edit</a></li>
                                         <li><a href="{{ base }}/{{ item.id }}/delete">Delete</a></li>
                                     </ul>
                                 </div>
