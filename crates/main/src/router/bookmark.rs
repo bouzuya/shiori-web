@@ -24,7 +24,7 @@ pub(crate) fn router() -> axum::Router<AppState> {
 }
 
 #[derive(Template)]
-#[template(path = "new_bookmark.html")]
+#[template(path = "new.html")]
 struct NewBookmarkTemplate<'a> {
     base: &'a str,
     color_scheme: &'a str,
@@ -63,7 +63,7 @@ async fn get_new(
 }
 
 #[derive(Template)]
-#[template(path = "bookmark.html")]
+#[template(path = "show.html")]
 struct ShowBookmarkTemplate<'a> {
     base: &'a str,
     bookmark_id: String,

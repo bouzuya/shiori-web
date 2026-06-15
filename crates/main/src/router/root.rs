@@ -39,7 +39,7 @@ struct DateGroup {
 }
 
 #[derive(Template)]
-#[template(path = "bookmarks.html")]
+#[template(path = "list.html")]
 struct BookmarksTemplate<'a> {
     base: &'a str,
     color_scheme: &'a str,
