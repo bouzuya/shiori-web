@@ -576,6 +576,51 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
+    async fn get_root_delete_menu_links_to_delete_confirm() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        let created = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(Body::from(
+                    "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
+                ))?,
+        )
+        .await?;
+        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains("/delete\">Delete</a>"),
+            "Expected Delete menu to link to delete confirm page, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
     async fn get_root_has_no_share_link_without_share_url() -> anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html data-color-scheme="{{ color_scheme }}" lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>shiori</title>
+    <link rel="stylesheet" href="{{ base }}/index.css">
+</head>
+
+<body>
+    <div class="page-container">
+        <header class="page-header">
+            <div class="site-title"><a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">shiori</a></div>
+        </header>
+        <main class="delete-page">
+            <h1>Delete Bookmark</h1>
+            <div class="back-link">
+                <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">Back</a>
+            </div>
+
+            <form action="{{ base }}/{{ bookmark_id }}?_method=DELETE" class="delete-bookmark-form" method="post">
+                <div class="form-fields">
+                    <div class="form-field">
+                        <span class="form-label">URL</span>
+                        <div class="form-value">{{ url }}</div>
+                    </div>
+                    <div class="form-field">
+                        <span class="form-label">Title</span>
+                        <div class="form-value">{{ title }}</div>
+                    </div>
+                    <div class="form-field">
+                        <span class="form-label">Comment</span>
+                        <div class="form-value">{{ comment }}</div>
+                    </div>
+                </div>
+                <div class="form-submit">
+                    <button type="submit">Delete</button>
+                </div>
+            </form>
+        </main>
+        <footer class="page-footer">
+            <div>
+                <a href="https://github.com/bouzuya/shiori-web" rel="noopener noreferrer" target="_blank">GitHub</a>
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>

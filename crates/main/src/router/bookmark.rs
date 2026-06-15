@@ -21,6 +21,7 @@ pub(crate) fn router() -> axum::Router<AppState> {
                 .delete(delete_bookmark)
                 .post(post_bookmark_dispatch),
         )
+        .route("/{bookmark_id}/delete", axum::routing::get(get_delete))
 }
 
 #[derive(Template)]
@@ -99,6 +100,52 @@ async fn get_show(
         comment: bookmark.comment().to_string(),
         title: bookmark.title().to_string(),
         updated_at: bookmark.updated_at().to_rfc3339(),
+        url: bookmark.url().to_string(),
+    };
+    match template.render() {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => {
+            tracing::error!("template render failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[derive(Template)]
+#[template(path = "delete.html")]
+struct DeleteBookmarkTemplate<'a> {
+    base: &'a str,
+    bookmark_id: String,
+    color_scheme: &'a str,
+    comment: String,
+    title: String,
+    url: String,
+}
+
+async fn get_delete(
+    CurrentUserId(user_id): CurrentUserId,
+    State(state): State<AppState>,
+    Path(bookmark_id_str): Path<String>,
+) -> impl IntoResponse {
+    let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
+        Ok(id) => id,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+    let bookmark = match state.bookmark_repository.find(user_id, bookmark_id).await {
+        Ok(Some(b)) => b,
+        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Err(e) => {
+            tracing::error!("failed to find bookmark: {e}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+    let color_scheme = super::resolve_color_scheme(&state, user_id).await;
+    let template = DeleteBookmarkTemplate {
+        base: &state.base_path,
+        bookmark_id: bookmark_id_str,
+        color_scheme: &color_scheme,
+        comment: bookmark.comment().to_string(),
+        title: bookmark.title().to_string(),
         url: bookmark.url().to_string(),
     };
     match template.render() {
@@ -1119,6 +1166,109 @@ mod tests {
         )
         .await?;
         assert_eq!(get_res.status(), StatusCode::NOT_FOUND);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_delete_confirm_requires_auth() -> anyhow::Result<()> {
+        let app = test_app("get_delete_confirm_auth_test_user")?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/01939c78-e42a-7000-0000-000000000000/delete")
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_delete_confirm_returns_404_for_unknown() -> anyhow::Result<()> {
+        let sub = format!(
+            "get_delete_confirm_404_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let response = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri("/01939c78-e42a-7000-0000-000000000000/delete")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_get_delete_confirm_shows_bookmark_and_delete_form() -> anyhow::Result<()> {
+        let sub = format!(
+            "get_delete_confirm_user_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let app = test_app(&sub)?;
+        let session = session_cookie(app.clone(), &sub).await?;
+        let create_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(header::COOKIE, &session)
+                .body(form_body(&PostRootRequest {
+                    comment: "confirm delete".to_string(),
+                    title: "Delete Confirm".to_string(),
+                    url: "https://example.com".to_string(),
+                })?)?,
+        )
+        .await?;
+        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        let list_res = send_request(
+            app.clone(),
+            Request::builder()
+                .method("GET")
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let list_body = list_res.into_body_string().await?;
+        let bookmark_id = extract_bookmark_id(&list_body)?;
+        let res = send_request(
+            app,
+            Request::builder()
+                .method("GET")
+                .uri(format!("/{bookmark_id}/delete"))
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = res.into_body_string().await?;
+        assert!(
+            body.contains("Delete Confirm"),
+            "bookmark title missing: {body}"
+        );
+        assert!(
+            body.contains(&format!(r#"action="/{bookmark_id}?_method=DELETE""#)),
+            "delete form action missing: {body}"
+        );
+        assert!(
+            body.contains(r#"method="post""#),
+            "delete form method missing: {body}"
+        );
         Ok(())
     }
 

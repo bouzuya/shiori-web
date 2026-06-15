@@ -39,12 +39,7 @@
                                         {% if let Some(share_url) = item.share_url %}
                                         <li><a href="{{ share_url }}" rel="noopener noreferrer" target="_blank">Share</a></li>
                                         {% endif %}
-                                        <li>
-                                            <form class="delete-bookmark-form"
-                                                action="{{ base }}/{{ item.id }}?_method=DELETE" method="post">
-                                                <button type="submit">Delete</button>
-                                            </form>
-                                        </li>
+                                        <li><a href="{{ base }}/{{ item.id }}/delete">Delete</a></li>
                                     </ul>
                                 </div>
                             </div>
