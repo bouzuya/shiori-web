@@ -69,6 +69,7 @@ body {
     height: 100%;
     max-width: 480px;
     min-width: 240px;
+    overflow: auto;
     padding: 8px;
 }
 
