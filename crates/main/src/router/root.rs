@@ -174,6 +174,42 @@ mod tests {
         Ok(session)
     }
 
+    async fn session_cookie_with_base(
+        app: axum::Router,
+        base_path: &str,
+    ) -> anyhow::Result<String> {
+        let signup = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .uri(format!("{base_path}/auth/signup"))
+                .body(Body::empty())?,
+        )
+        .await?;
+        let cookie_header = extract_cookies(&signup);
+        let callback = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .uri(format!(
+                    "{base_path}/auth/callback?code=test_code&state=test_state"
+                ))
+                .header(header::COOKIE, &cookie_header)
+                .body(Body::empty())?,
+        )
+        .await?;
+        callback
+            .headers()
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .find_map(|v| {
+                let s = v.to_str().ok()?;
+                if !s.contains("session") {
+                    return None;
+                }
+                s.split(';').next().map(|p| p.to_string())
+            })
+            .ok_or_else(|| anyhow::anyhow!("session cookie not found"))
+    }
+
     #[tokio::test]
     #[serial_test::serial]
     async fn get_root_without_session_returns_landing_page() -> anyhow::Result<()> {
@@ -757,6 +793,59 @@ mod tests {
         assert!(
             body.contains("?page_token="),
             "Expected next page link with ?page_token= in body, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn with_base_path_next_page_link_has_no_trailing_slash() -> anyhow::Result<()> {
+        let base_path = "/app";
+        let state = AppState::new(
+            base_path.to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&unique_user_id())),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+        let app = crate::router::router(base_path).with_state(state);
+        let session = session_cookie_with_base(app.clone(), base_path).await?;
+        // PAGE_SIZE (10) 件を超える 11 件を作成し、次ページが存在する状態にする
+        for i in 0..11 {
+            let created = send_request(
+                app.clone(),
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/app")
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .header(header::COOKIE, &session)
+                    .body(Body::from(format!(
+                        "url=https%3A%2F%2Fexample.com%2F{i}&title=Example+{i}&comment="
+                    )))?,
+            )
+            .await?;
+            assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        }
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/app")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains(r#"href="/app?page_token="#),
+            "Expected next page link to be /app?page_token= (no trailing slash), got: {body}"
+        );
+        assert!(
+            !body.contains(r#"href="/app/?page_token="#),
+            "Expected no next page link with trailing slash /app/?page_token=, got: {body}"
         );
         Ok(())
     }
