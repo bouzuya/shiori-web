@@ -230,7 +230,7 @@ main {
     }
 
     .bookmark-item .detail {
-        background-color: var(--background-color);
+        background-color: transparent;
         border: none;
         color: var(--text-color);
         cursor: pointer;
