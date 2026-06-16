@@ -44,6 +44,11 @@
     }
 }
 
+:focus-visible {
+    outline: 2px solid var(--text-color);
+    outline-offset: -4px;
+}
+
 html {
     height: 100%;
     width: 100%;
@@ -343,7 +348,7 @@ main {
         box-sizing: border-box;
         color: var(--text-color);
         font-size: 1rem;
-        outline: none;
+        outline-offset: 0;
         padding: 4px;
         width: 100%;
     }
@@ -355,6 +360,7 @@ main {
         color: var(--text-color);
         cursor: pointer;
         font-size: 1rem;
+        outline-offset: 0;
         padding: 4px 16px;
 
         &:focus:active,
@@ -367,7 +373,6 @@ main {
         &:focus,
         &:hover {
             box-shadow: 3px 3px var(--shadow-color);
-            outline: none;
             transform: translate(-1px, -1px);
         }
     }
@@ -453,6 +458,7 @@ main {
         color: var(--text-color);
         cursor: pointer;
         font-size: 1rem;
+        outline-offset: 0;
         padding: 4px 16px;
 
         &:focus:active,
@@ -465,7 +471,6 @@ main {
         &:focus,
         &:hover {
             box-shadow: 3px 3px var(--shadow-color);
-            outline: none;
             transform: translate(-1px, -1px);
         }
     }
@@ -540,7 +545,7 @@ main {
         box-sizing: border-box;
         color: var(--text-color);
         font-size: 1rem;
-        outline: none;
+        outline-offset: 0;
         padding: 4px;
         width: 100%;
     }
@@ -552,6 +557,7 @@ main {
         color: var(--text-color);
         cursor: pointer;
         font-size: 1rem;
+        outline-offset: 0;
         padding: 4px 16px;
 
         &:focus:active,
@@ -564,7 +570,6 @@ main {
         &:focus,
         &:hover {
             box-shadow: 3px 3px var(--shadow-color);
-            outline: none;
             transform: translate(-1px, -1px);
         }
     }
@@ -654,6 +659,7 @@ main {
     }
 
     .radio-group input[type="radio"] {
+        outline-offset: 2px;
         cursor: pointer;
     }
 
@@ -665,7 +671,7 @@ main {
         color: var(--text-color);
         cursor: pointer;
         font-size: 1rem;
-        outline: none;
+        outline-offset: 0;
         padding: 4px;
         width: 100%;
     }
@@ -677,6 +683,7 @@ main {
         color: var(--text-color);
         cursor: pointer;
         font-size: 1rem;
+        outline-offset: 0;
         padding: 4px 16px;
 
         &:focus:active,
@@ -689,7 +696,6 @@ main {
         &:focus,
         &:hover {
             box-shadow: 3px 3px var(--shadow-color);
-            outline: none;
             transform: translate(-1px, -1px);
         }
     }
