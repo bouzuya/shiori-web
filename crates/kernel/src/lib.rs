@@ -17,6 +17,7 @@ pub use self::entities::UserSettings;
 pub use self::entities::UtcOffset;
 pub use self::read_models::BookmarkList;
 pub use self::read_models::BookmarkView;
+pub use self::read_models::PageToken;
 pub use self::read_models::UserSettingsView;
 pub use self::use_cases::BookmarkReader;
 pub use self::use_cases::BookmarkRepository;
