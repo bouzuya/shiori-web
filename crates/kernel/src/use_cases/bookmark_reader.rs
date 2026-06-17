@@ -70,6 +70,8 @@ mod tests {
             Ok(BookmarkList {
                 items: page,
                 next_page_token,
+                // TODO(step 3): Prev 方向を実装する
+                prev_page_token: None,
             })
         }
     }

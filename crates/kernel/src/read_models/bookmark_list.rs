@@ -4,6 +4,7 @@ use crate::BookmarkView;
 pub struct BookmarkList {
     pub items: Vec<BookmarkView>,
     pub next_page_token: Option<String>,
+    pub prev_page_token: Option<String>,
 }
 
 #[cfg(test)]
@@ -15,6 +16,7 @@ mod tests {
         let list = BookmarkList {
             items: vec![],
             next_page_token: None,
+            prev_page_token: None,
         };
         assert!(list.items.is_empty());
         assert!(list.next_page_token.is_none());
@@ -27,6 +29,7 @@ mod tests {
         let list = BookmarkList {
             items: vec![view.clone()],
             next_page_token: Some("token".to_string()),
+            prev_page_token: None,
         };
         assert_eq!(list.items.len(), 1);
         assert_eq!(list.items[0], view);
@@ -35,10 +38,22 @@ mod tests {
     }
 
     #[test]
+    fn test_bookmark_list_with_prev_page_token() -> anyhow::Result<()> {
+        let list = BookmarkList {
+            items: vec![],
+            next_page_token: None,
+            prev_page_token: Some("prev".to_string()),
+        };
+        assert_eq!(list.prev_page_token.as_deref(), Some("prev"));
+        Ok(())
+    }
+
+    #[test]
     fn test_bookmark_list_clone_eq() -> anyhow::Result<()> {
         let list = BookmarkList {
             items: vec![],
             next_page_token: Some("t".to_string()),
+            prev_page_token: None,
         };
         assert_eq!(list.clone(), list);
         Ok(())

@@ -52,6 +52,8 @@ impl BookmarkReader for FirestoreBookmarkReader {
         Ok(kernel::BookmarkList {
             items: page,
             next_page_token,
+            // TODO(step 4): Prev 方向を実装する
+            prev_page_token: None,
         })
     }
 }
