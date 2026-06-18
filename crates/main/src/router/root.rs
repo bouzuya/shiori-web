@@ -45,6 +45,7 @@ struct BookmarksTemplate<'a> {
     color_scheme: &'a str,
     groups: Vec<DateGroup>,
     next_page_token: Option<String>,
+    prev_page_token: Option<String>,
 }
 
 fn render_template(html: Result<String, askama::Error>) -> axum::response::Response {
@@ -108,6 +109,7 @@ async fn handler(
                         color_scheme: &color_scheme,
                         groups,
                         next_page_token: list.next_page_token,
+                        prev_page_token: list.prev_page_token,
                     };
                     render_template(template.render())
                 }
@@ -707,6 +709,20 @@ mod tests {
         Ok(())
     }
 
+    /// HTML 本文から最初の `?page_token=<不透明トークン>` の値を取り出す。
+    fn extract_page_token(body: &str) -> anyhow::Result<String> {
+        let marker = "?page_token=";
+        let start = body
+            .find(marker)
+            .ok_or_else(|| anyhow::anyhow!("page token link not found"))?
+            + marker.len();
+        let rest = &body[start..];
+        let end = rest
+            .find('"')
+            .ok_or_else(|| anyhow::anyhow!("malformed page token link"))?;
+        Ok(rest[..end].to_string())
+    }
+
     #[tokio::test]
     #[serial_test::serial]
     async fn get_root_with_page_token_returns_next_page() -> anyhow::Result<()> {
@@ -754,16 +770,7 @@ mod tests {
             !first_body.contains("Title-00"),
             "Expected oldest item NOT on first page, got: {first_body}"
         );
-        let marker = "?page_token=";
-        let start = first_body
-            .find(marker)
-            .ok_or_else(|| anyhow::anyhow!("next page link not found"))?
-            + marker.len();
-        let rest = &first_body[start..];
-        let end = rest
-            .find('"')
-            .ok_or_else(|| anyhow::anyhow!("malformed next page link"))?;
-        let token = &rest[..end];
+        let token = extract_page_token(&first_body)?;
         // 2 ページ目を取得すると最古の Title-00 が現れる
         let second = send_request(
             app,
@@ -778,6 +785,83 @@ mod tests {
         assert!(
             second_body.contains("Title-00"),
             "Expected oldest item Title-00 on second page, got: {second_body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_prev_page_link_returns_to_first_page() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        // PAGE_SIZE (10) を超える 11 件を作成し、2 ページに分かれるようにする
+        for i in 0..11 {
+            let created = send_request(
+                app.clone(),
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/")
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .header(header::COOKIE, &session)
+                    .body(Body::from(format!(
+                        "url=https%3A%2F%2Fexample.com%2F{i}&title=Title-{i:02}&comment="
+                    )))?,
+            )
+            .await?;
+            assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        }
+        // 先頭ページ -> Next リンクの不透明トークン
+        let first = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .uri("/")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let first_body = first.into_body_string().await?;
+        let next_token = extract_page_token(&first_body)?;
+        // 2 ページ目を取得。最古の Title-00 のみが表示され、Prev リンクだけが出る
+        let second = send_request(
+            app.clone(),
+            axum::http::Request::builder()
+                .uri(format!("/?page_token={next_token}"))
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        let second_body = second.into_body_string().await?;
+        assert!(
+            second_body.contains("Title-00"),
+            "Expected oldest item Title-00 on second page, got: {second_body}"
+        );
+        // 2 ページ目には Next リンクが無く、Prev リンクだけが存在する
+        let prev_token = extract_page_token(&second_body)?;
+        // Prev リンクで先頭ページへ戻れる
+        let back = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri(format!("/?page_token={prev_token}"))
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(back.status(), axum::http::StatusCode::OK);
+        let back_body = back.into_body_string().await?;
+        assert!(
+            back_body.contains("Title-10") && !back_body.contains("Title-00"),
+            "Expected to return to the first page, got: {back_body}"
         );
         Ok(())
     }
