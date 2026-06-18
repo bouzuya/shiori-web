@@ -191,6 +191,23 @@ main {
         color: var(--link-text-color);
     }
 
+    .pagination {
+        display: flex;
+        gap: 8px;
+    }
+
+    .pagination-item {
+        flex: 1;
+    }
+
+    .pagination-item:first-child a {
+        text-align: left;
+    }
+
+    .pagination-item:last-child a {
+        text-align: right;
+    }
+
     /* nav links (shared style) */
     .new-bookmark-link a,
     .pagination a {

@@ -55,12 +55,16 @@
 
             {% if prev_page_token.is_some() || next_page_token.is_some() %}
             <div class="pagination">
-                {% if let Some(prev_page_token) = prev_page_token %}
-                <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}?page_token={{ prev_page_token }}">Prev</a>
-                {% endif %}
-                {% if let Some(next_page_token) = next_page_token %}
-                <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}?page_token={{ next_page_token }}">Next</a>
-                {% endif %}
+                <div class="pagination-item">
+                    {% if let Some(prev_page_token) = prev_page_token %}
+                    <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}?page_token={{ prev_page_token }}">Prev</a>
+                    {% endif %}
+                </div>
+                <div class="pagination-item">
+                    {% if let Some(next_page_token) = next_page_token %}
+                    <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}?page_token={{ next_page_token }}">Next</a>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
         </main>
