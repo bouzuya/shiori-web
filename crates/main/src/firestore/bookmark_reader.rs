@@ -20,7 +20,7 @@ impl BookmarkReader for FirestoreBookmarkReader {
     async fn list(
         &self,
         user_id: kernel::UserId,
-        page_token: Option<String>,
+        page_token: Option<kernel::PageToken>,
     ) -> anyhow::Result<kernel::BookmarkList> {
         let collection_ref = self
             .firestore
@@ -31,7 +31,8 @@ impl BookmarkReader for FirestoreBookmarkReader {
             .map_err(|e| anyhow::anyhow!(e))?
             .limit(i32::try_from(PAGE_SIZE + 1)?)
             .map_err(|e| anyhow::anyhow!(e))?;
-        if let Some(t) = page_token {
+        // TODO(step 4): Prev は asc クエリ + reverse にする。今は Next のカーソルのみ扱う
+        if let Some(kernel::PageToken::Next(t) | kernel::PageToken::Prev(t)) = page_token {
             query = query.start_after([t]).map_err(|e| anyhow::anyhow!(e))?;
         }
         let snapshot = query.get().await.map_err(|e| anyhow::anyhow!(e))?;
@@ -45,7 +46,8 @@ impl BookmarkReader for FirestoreBookmarkReader {
         let has_more = views.len() > PAGE_SIZE;
         let page: Vec<_> = views.into_iter().take(PAGE_SIZE).collect();
         let next_page_token = if has_more {
-            page.last().map(|v| v.created_at.clone())
+            page.last()
+                .map(|v| kernel::PageToken::Next(v.created_at.clone()).to_string())
         } else {
             None
         };

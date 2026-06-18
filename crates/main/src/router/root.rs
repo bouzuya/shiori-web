@@ -67,7 +67,14 @@ async fn handler(
             let color_scheme = super::resolve_color_scheme(&state, user_id).await;
             let offset = super::resolve_utc_offset(&state, user_id).await;
             let share_url = super::resolve_share_url(&state, user_id).await;
-            match state.bookmark_reader.list(user_id, query.page_token).await {
+            let page_token = match query.page_token {
+                None => None,
+                Some(s) => match s.parse::<kernel::PageToken>() {
+                    Ok(token) => Some(token),
+                    Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+                },
+            };
+            match state.bookmark_reader.list(user_id, page_token).await {
                 Ok(list) => {
                     let mut groups: Vec<DateGroup> = Vec::new();
                     for b in &list.items {
@@ -702,7 +709,7 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
-    async fn get_root_with_page_token_filters_bookmarks() -> anyhow::Result<()> {
+    async fn get_root_with_page_token_returns_next_page() -> anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
@@ -716,35 +723,90 @@ mod tests {
         );
         let app = crate::router::router("").with_state(state);
         let session = session_cookie(app.clone()).await?;
-        // ブックマークを1件作成
-        let created = send_request(
+        // PAGE_SIZE (10) を超える 11 件を作成し、2 ページ目に最古の 1 件が来るようにする
+        for i in 0..11 {
+            let created = send_request(
+                app.clone(),
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/")
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .header(header::COOKIE, &session)
+                    .body(Body::from(format!(
+                        "url=https%3A%2F%2Fexample.com%2F{i}&title=Title-{i:02}&comment="
+                    )))?,
+            )
+            .await?;
+            assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        }
+        // 先頭ページを取得し、Next リンクの不透明トークンを取り出す
+        let first = send_request(
             app.clone(),
             axum::http::Request::builder()
-                .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(
-                    "url=https%3A%2F%2Fexample.com&title=Example&comment=",
-                ))?,
-        )
-        .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
-        // 過去のトークンを渡すと全件より古いものが存在しないため空になる
-        let response = send_request(
-            app,
-            axum::http::Request::builder()
-                .uri("/?page_token=2000-01-01T00:00:00.000Z")
                 .header(header::COOKIE, &session)
                 .body(Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
-        let body = response.into_body_string().await?;
+        let first_body = first.into_body_string().await?;
+        // 最古の Title-00 は 1 ページ目には出ない
         assert!(
-            body.contains("No bookmarks"),
-            "Expected 'No bookmarks' when page_token filters out all items, got: {body}"
+            !first_body.contains("Title-00"),
+            "Expected oldest item NOT on first page, got: {first_body}"
         );
+        let marker = "?page_token=";
+        let start = first_body
+            .find(marker)
+            .ok_or_else(|| anyhow::anyhow!("next page link not found"))?
+            + marker.len();
+        let rest = &first_body[start..];
+        let end = rest
+            .find('"')
+            .ok_or_else(|| anyhow::anyhow!("malformed next page link"))?;
+        let token = &rest[..end];
+        // 2 ページ目を取得すると最古の Title-00 が現れる
+        let second = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri(format!("/?page_token={token}"))
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(second.status(), axum::http::StatusCode::OK);
+        let second_body = second.into_body_string().await?;
+        assert!(
+            second_body.contains("Title-00"),
+            "Expected oldest item Title-00 on second page, got: {second_body}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn get_root_with_invalid_page_token_returns_bad_request() -> anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        let response = send_request(
+            app,
+            axum::http::Request::builder()
+                .uri("/?page_token=not-a-valid-token")
+                .header(header::COOKIE, &session)
+                .body(Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
         Ok(())
     }
 

@@ -1,15 +1,19 @@
 use crate::BookmarkList;
+use crate::PageToken;
 use crate::UserId;
 
 #[async_trait::async_trait]
 pub trait BookmarkReader: Send + Sync {
     /// ユーザーのブックマークを `created_at` 降順で最大 10 件返す。
-    /// `page_token` を渡すと、その `created_at` より古い要素を返す。
-    /// 続きがある場合 `next_page_token` に次の `page_token` を入れる。
+    ///
+    /// `page_token` が `None` なら最新ページ。`PageToken::Next` ならより古い側、
+    /// `PageToken::Prev` ならより新しい側のページを返す。
+    /// 続きがある場合、次ページ/前ページへの不透明トークン文字列を
+    /// `next_page_token` / `prev_page_token` に入れる。
     async fn list(
         &self,
         user_id: UserId,
-        page_token: Option<String>,
+        page_token: Option<PageToken>,
     ) -> anyhow::Result<BookmarkList>;
 }
 
@@ -19,6 +23,7 @@ mod tests {
 
     use super::*;
     use crate::BookmarkView;
+    use crate::PageToken;
 
     const PAGE_SIZE: usize = 10;
 
@@ -47,7 +52,7 @@ mod tests {
         async fn list(
             &self,
             user_id: UserId,
-            page_token: Option<String>,
+            page_token: Option<PageToken>,
         ) -> anyhow::Result<BookmarkList> {
             let store = self.store.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
             let mut items: Vec<BookmarkView> = store
@@ -56,22 +61,47 @@ mod tests {
                 .map(|(_, v)| v.clone())
                 .collect();
             items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-            let filtered: Vec<_> = match page_token {
-                None => items,
-                Some(t) => items.into_iter().filter(|v| v.created_at < t).collect(),
+
+            let next_of = |page: &[BookmarkView]| {
+                page.last()
+                    .map(|v| PageToken::Next(v.created_at.clone()).to_string())
             };
-            let has_more = filtered.len() > PAGE_SIZE;
-            let page: Vec<_> = filtered.into_iter().take(PAGE_SIZE).collect();
-            let next_page_token = if has_more {
-                page.last().map(|v| v.created_at.clone())
-            } else {
-                None
+            let prev_of = |page: &[BookmarkView]| {
+                page.first()
+                    .map(|v| PageToken::Prev(v.created_at.clone()).to_string())
+            };
+            let (page, next_page_token, prev_page_token) = match page_token {
+                None => {
+                    let has_older = items.len() > PAGE_SIZE;
+                    let page: Vec<_> = items.into_iter().take(PAGE_SIZE).collect();
+                    let next = has_older.then(|| next_of(&page)).flatten();
+                    (page, next, None)
+                }
+                Some(PageToken::Next(t)) => {
+                    let older: Vec<_> = items.into_iter().filter(|v| v.created_at < t).collect();
+                    let has_older = older.len() > PAGE_SIZE;
+                    let page: Vec<_> = older.into_iter().take(PAGE_SIZE).collect();
+                    let next = has_older.then(|| next_of(&page)).flatten();
+                    let prev = prev_of(&page);
+                    (page, next, prev)
+                }
+                Some(PageToken::Prev(t)) => {
+                    let mut newer: Vec<_> =
+                        items.into_iter().filter(|v| v.created_at > t).collect();
+                    // t に近い (古い) 側から N 件取り、表示用に降順へ戻す
+                    newer.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+                    let has_newer = newer.len() > PAGE_SIZE;
+                    let mut page: Vec<_> = newer.into_iter().take(PAGE_SIZE).collect();
+                    page.reverse();
+                    let prev = has_newer.then(|| prev_of(&page)).flatten();
+                    let next = next_of(&page);
+                    (page, next, prev)
+                }
             };
             Ok(BookmarkList {
                 items: page,
                 next_page_token,
-                // TODO(step 3): Prev 方向を実装する
-                prev_page_token: None,
+                prev_page_token,
             })
         }
     }
@@ -150,7 +180,9 @@ mod tests {
         let token = first
             .next_page_token
             .ok_or_else(|| anyhow::anyhow!("expected next_page_token"))?;
-        let second = reader.list(user_id, Some(token)).await?;
+        let second = reader
+            .list(user_id, Some(token.parse::<PageToken>()?))
+            .await?;
         assert_eq!(second.items.len(), 5);
         assert!(second.next_page_token.is_none());
         assert_eq!(second.items[0].id, "id04");
@@ -182,6 +214,72 @@ mod tests {
         let result = reader.list(user_a, None).await?;
         assert_eq!(result.items.len(), 1);
         assert_eq!(result.items[0].id, "a1");
+        Ok(())
+    }
+
+    fn insert_15(reader: &InMemoryBookmarkReader, user_id: UserId) -> anyhow::Result<()> {
+        for i in 0..15 {
+            reader.insert(
+                user_id,
+                BookmarkView {
+                    id: format!("id{i:02}"),
+                    created_at: format!("2024-01-{:02}T00:00:00.000Z", i + 1),
+                    ..BookmarkView::for_test()
+                },
+            )?;
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_list_first_page_has_no_prev_page_token() -> anyhow::Result<()> {
+        let reader = InMemoryBookmarkReader::new();
+        let user_id = UserId::new();
+        insert_15(&reader, user_id)?;
+        let result = reader.list(user_id, None).await?;
+        assert!(result.prev_page_token.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_list_next_page_has_prev_page_token() -> anyhow::Result<()> {
+        let reader = InMemoryBookmarkReader::new();
+        let user_id = UserId::new();
+        insert_15(&reader, user_id)?;
+        let first = reader.list(user_id, None).await?;
+        let next = first
+            .next_page_token
+            .ok_or_else(|| anyhow::anyhow!("expected next_page_token"))?;
+        let second = reader
+            .list(user_id, Some(next.parse::<PageToken>()?))
+            .await?;
+        assert!(second.prev_page_token.is_some());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_list_prev_page_token_returns_previous_page() -> anyhow::Result<()> {
+        let reader = InMemoryBookmarkReader::new();
+        let user_id = UserId::new();
+        insert_15(&reader, user_id)?;
+        let first = reader.list(user_id, None).await?;
+        let next = first
+            .next_page_token
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("expected next_page_token"))?;
+        let second = reader
+            .list(user_id, Some(next.parse::<PageToken>()?))
+            .await?;
+        let prev = second
+            .prev_page_token
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("expected prev_page_token"))?;
+        let back = reader
+            .list(user_id, Some(prev.parse::<PageToken>()?))
+            .await?;
+        let first_ids: Vec<_> = first.items.iter().map(|v| v.id.clone()).collect();
+        let back_ids: Vec<_> = back.items.iter().map(|v| v.id.clone()).collect();
+        assert_eq!(back_ids, first_ids);
         Ok(())
     }
 }
