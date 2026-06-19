@@ -1,6 +1,6 @@
-use crate::firestore::BookmarkDocumentData;
-use crate::firestore::BookmarksCollection;
-use crate::firestore::DocumentRef;
+use crate::BookmarkDocumentData;
+use crate::BookmarksCollection;
+use crate::DocumentRef;
 use kernel::BookmarkRepository;
 
 pub(crate) struct FirestoreBookmarkRepository {

@@ -1,5 +1,6 @@
-use crate::firestore::FirestoreCollection;
-use crate::firestore::UsersCollection;
+use crate::BookmarkDocumentData;
+use crate::FirestoreCollection;
+use crate::UsersCollection;
 
 /// Firestore の `users/{user_id}/bookmarks` サブコレクション。
 #[derive(Clone)]
@@ -8,7 +9,7 @@ pub(crate) struct BookmarksCollection;
 impl FirestoreCollection for BookmarksCollection {
     type DocumentId = kernel::BookmarkId;
     type ParentDocumentId = kernel::UserId;
-    type Schema = crate::firestore::BookmarkDocumentData;
+    type Schema = BookmarkDocumentData;
 
     fn collection_path(parent: &Self::ParentDocumentId) -> String {
         // 親ドキュメント (`users/{user_id}`) のパスは `UsersCollection` に委譲し、

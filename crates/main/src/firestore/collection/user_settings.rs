@@ -1,4 +1,5 @@
-use crate::firestore::FirestoreCollection;
+use crate::FirestoreCollection;
+use crate::UserSettingsDocumentData;
 
 /// Firestore の `user_settings` コレクション。
 #[derive(Clone)]
@@ -7,7 +8,7 @@ pub(crate) struct UserSettingsCollection;
 impl FirestoreCollection for UserSettingsCollection {
     type DocumentId = kernel::UserId;
     type ParentDocumentId = ();
-    type Schema = crate::firestore::UserSettingsDocumentData;
+    type Schema = UserSettingsDocumentData;
 
     fn collection_path(_parent: &Self::ParentDocumentId) -> String {
         "user_settings".to_string()

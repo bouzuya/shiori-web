@@ -1,4 +1,5 @@
-use crate::firestore::FirestoreCollection;
+use crate::FirestoreCollection;
+use crate::GoogleUserIdDocumentData;
 
 /// Firestore の `google_user_ids` コレクション。
 ///
@@ -9,7 +10,7 @@ pub(crate) struct GoogleUserIdsCollection;
 impl FirestoreCollection for GoogleUserIdsCollection {
     type DocumentId = kernel::GoogleUserId;
     type ParentDocumentId = ();
-    type Schema = crate::firestore::GoogleUserIdDocumentData;
+    type Schema = GoogleUserIdDocumentData;
 
     fn collection_path(_parent: &Self::ParentDocumentId) -> String {
         "google_user_ids".to_string()

@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::firestore::FirestoreCollection;
+use crate::FirestoreCollection;
 
 /// `FirestoreCollection` `C` に束ねられた型付きのドキュメント参照。
 ///

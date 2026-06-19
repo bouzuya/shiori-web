@@ -1,4 +1,5 @@
-use crate::firestore::FirestoreCollection;
+use crate::FirestoreCollection;
+use crate::UserDocumentData;
 
 /// Firestore の `users` コレクション。
 #[derive(Clone)]
@@ -7,7 +8,7 @@ pub(crate) struct UsersCollection;
 impl FirestoreCollection for UsersCollection {
     type DocumentId = kernel::UserId;
     type ParentDocumentId = ();
-    type Schema = crate::firestore::UserDocumentData;
+    type Schema = UserDocumentData;
 
     fn collection_path(_parent: &Self::ParentDocumentId) -> String {
         "users".to_string()

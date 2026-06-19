@@ -8,6 +8,21 @@ mod state;
 mod test_helpers;
 
 pub(crate) use self::cookie_jar::CookieJar;
+pub(crate) use self::firestore::BookmarkDocumentData;
+pub(crate) use self::firestore::BookmarksCollection;
+pub(crate) use self::firestore::DocumentRef;
+pub(crate) use self::firestore::FirestoreBookmarkReader;
+pub(crate) use self::firestore::FirestoreBookmarkRepository;
+pub(crate) use self::firestore::FirestoreCollection;
+pub(crate) use self::firestore::FirestoreUserRepository;
+pub(crate) use self::firestore::FirestoreUserSettingsReader;
+pub(crate) use self::firestore::FirestoreUserSettingsRepository;
+pub(crate) use self::firestore::GoogleUserIdDocumentData;
+pub(crate) use self::firestore::GoogleUserIdsCollection;
+pub(crate) use self::firestore::UserDocumentData;
+pub(crate) use self::firestore::UserSettingsCollection;
+pub(crate) use self::firestore::UserSettingsDocumentData;
+pub(crate) use self::firestore::UsersCollection;
 pub(crate) use self::state::AppState;
 
 fn generate_secret() -> String {

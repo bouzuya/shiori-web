@@ -1,6 +1,6 @@
-use crate::firestore::BookmarkDocumentData;
-use crate::firestore::BookmarksCollection;
-use crate::firestore::FirestoreCollection;
+use crate::BookmarkDocumentData;
+use crate::BookmarksCollection;
+use crate::FirestoreCollection;
 use kernel::BookmarkReader;
 
 const PAGE_SIZE: usize = 10;
@@ -86,18 +86,18 @@ impl BookmarkReader for FirestoreBookmarkReader {
 
 #[cfg(test)]
 mod tests {
+    use crate::FirestoreBookmarkRepository;
+
     use super::*;
 
-    fn firestore_reader_and_repo() -> anyhow::Result<(
-        FirestoreBookmarkReader,
-        crate::firestore::FirestoreBookmarkRepository,
-    )> {
+    fn firestore_reader_and_repo()
+    -> anyhow::Result<(FirestoreBookmarkReader, FirestoreBookmarkRepository)> {
         let firestore = bouzuya_firestore_client::Firestore::new(
             bouzuya_firestore_client::FirestoreOptions::default(),
         )?;
         Ok((
             FirestoreBookmarkReader::new(firestore.clone()),
-            crate::firestore::FirestoreBookmarkRepository::new(firestore),
+            FirestoreBookmarkRepository::new(firestore),
         ))
     }
 
@@ -172,7 +172,7 @@ mod tests {
     }
 
     async fn insert_n(
-        repo: &crate::firestore::FirestoreBookmarkRepository,
+        repo: &FirestoreBookmarkRepository,
         user_id: kernel::UserId,
         n: usize,
     ) -> anyhow::Result<()> {

@@ -1,8 +1,8 @@
-use crate::firestore::DocumentRef;
-use crate::firestore::GoogleUserIdDocumentData;
-use crate::firestore::GoogleUserIdsCollection;
-use crate::firestore::UserDocumentData;
-use crate::firestore::UsersCollection;
+use crate::DocumentRef;
+use crate::GoogleUserIdDocumentData;
+use crate::GoogleUserIdsCollection;
+use crate::UserDocumentData;
+use crate::UsersCollection;
 use kernel::GoogleUserId;
 use kernel::User;
 use kernel::UserId;

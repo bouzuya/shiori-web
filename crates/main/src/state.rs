@@ -2,6 +2,11 @@ use std::sync::Arc;
 
 use axum_extra::extract::cookie::Key;
 
+use crate::FirestoreBookmarkReader;
+use crate::FirestoreBookmarkRepository;
+use crate::FirestoreUserRepository;
+use crate::FirestoreUserSettingsReader;
+use crate::FirestoreUserSettingsRepository;
 use crate::extractor::OidcClient;
 use crate::extractor::real_oidc_client;
 use kernel::BookmarkReader;
@@ -65,19 +70,12 @@ impl AppState {
                 database_id: Some(env.database_id.clone()),
                 project_id: Some(env.project_id.clone()),
             })?;
-        let bookmark_reader = Arc::new(crate::firestore::FirestoreBookmarkReader::new(
-            firestore.clone(),
-        ));
-        let bookmark_repository = Arc::new(crate::firestore::FirestoreBookmarkRepository::new(
-            firestore.clone(),
-        ));
-        let user_settings_reader = Arc::new(crate::firestore::FirestoreUserSettingsReader::new(
-            firestore.clone(),
-        ));
-        let user_settings_repository = Arc::new(
-            crate::firestore::FirestoreUserSettingsRepository::new(firestore.clone()),
-        );
-        let user_repository = Arc::new(crate::firestore::FirestoreUserRepository::new(firestore));
+        let bookmark_reader = Arc::new(FirestoreBookmarkReader::new(firestore.clone()));
+        let bookmark_repository = Arc::new(FirestoreBookmarkRepository::new(firestore.clone()));
+        let user_settings_reader = Arc::new(FirestoreUserSettingsReader::new(firestore.clone()));
+        let user_settings_repository =
+            Arc::new(FirestoreUserSettingsRepository::new(firestore.clone()));
+        let user_repository = Arc::new(FirestoreUserRepository::new(firestore));
         Ok(Self::new(
             env.base_path.clone(),
             bookmark_reader,

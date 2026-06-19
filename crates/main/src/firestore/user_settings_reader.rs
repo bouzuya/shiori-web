@@ -1,4 +1,4 @@
-use crate::firestore::UserSettingsCollection;
+use crate::UserSettingsCollection;
 use kernel::UserSettingsReader;
 
 pub(crate) struct FirestoreUserSettingsReader {
@@ -32,7 +32,7 @@ impl UserSettingsReader for FirestoreUserSettingsReader {
 
 #[cfg(test)]
 mod tests {
-    use crate::firestore::FirestoreCollection as _;
+    use crate::FirestoreCollection as _;
 
     use super::*;
 

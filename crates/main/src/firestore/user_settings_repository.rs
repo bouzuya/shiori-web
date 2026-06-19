@@ -1,6 +1,6 @@
-use crate::firestore::DocumentRef;
-use crate::firestore::UserSettingsCollection;
-use crate::firestore::UserSettingsDocumentData;
+use crate::DocumentRef;
+use crate::UserSettingsCollection;
+use crate::UserSettingsDocumentData;
 use kernel::UserSettingsRepository;
 
 pub(crate) struct FirestoreUserSettingsRepository {
