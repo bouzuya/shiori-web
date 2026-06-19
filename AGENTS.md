@@ -8,7 +8,7 @@
 - フィールドはアルファベット順にソートすること
   - ただし `Ord` の実装など順序に意味がある場合は除く。その場合はコメントで明示すること
 - `#[derive(...)]` の項目はアルファベット順にソートすること
-  - 例: `#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, serde::Deserialize, serde::Serialize)]`
+  - 例: `#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, ::serde::Deserialize, ::serde::Serialize)]`
 - HTML テンプレートの要素の属性はアルファベット順にソートすること
   - 例: `<html data-color-scheme="light" lang="ja">`
 - テストは `#[cfg(test)] mod tests` 内にインラインで書くこと
@@ -17,12 +17,20 @@
   - `#[cfg(test)] impl T { pub fn for_test() -> Self { ... } }` の形で、全フィールドをランダム生成する
   - テストでは `T::for_test()` を基点とし、検証したいフィールドだけを構造体更新構文 (`T { field: ..., ..T::for_test() }`) で上書きして使う
   - テスト固有の値を毎回手書きせず、本質的な差分だけがテストに現れるようにするのが目的
-- 型はフルパスで参照せず、`use crate::Xxx;` で取り込んで `Xxx` だけで参照すること
-  - クレートルートの再エクスポート (`crate::Xxx`) を使う。`crate::entities::` / `crate::read_models::` / `crate::use_cases::` などの内部モジュールパスを参照に直接書かない
-  - ただしその型を定義しているモジュール内では、自分の型は `use` せず `Self` / 裸の型名で参照する (自己 import はローカル定義と衝突するため)
-  - `use` は使用箇所に最も近いスコープへ置き、本体ビルドでの未使用 import 警告を避けること
-    - 本体コードで使う型: ファイル先頭の `use`
-    - テストでのみ使う型: `#[cfg(test)] mod tests` 内 (`use super::*;` の後) に `use`。`mod tests` の外にある `#[cfg(test)] fn for_test` でのみ使う型は、その関数本体に `use` を書く
+- import / パス参照は「ワークスペース内」と「ワークスペース外」で扱いを分けること
+  - **ワークスペース内 (`crate` 自身・`super`・`self`、およびワークスペースメンバ crate `kernel`) は `use` で取り込み、裸の名前 (`Xxx`) で参照する**
+    - フルパスでの逐次参照や `::kernel::` のような絶対パス修飾はしない (`kernel` クレート自身の中では自己を crate 名で参照できないため、ワークスペース内 crate は一律 `use` に統一する)
+    - クレートルートの再エクスポート (`crate::Xxx`) を使う。`crate::entities::` / `crate::read_models::` / `crate::use_cases::` などの内部モジュールパスを参照に直接書かない
+    - ただしその型を定義しているモジュール内では、自分の型は `use` せず `Self` / 裸の型名で参照する (自己 import はローカル定義と衝突するため)
+    - `use` は使用箇所に最も近いスコープへ置き、本体ビルドでの未使用 import 警告を避けること
+      - 本体コードで使う型: ファイル先頭の `use`
+      - テストでのみ使う型: `#[cfg(test)] mod tests` 内 (`use super::*;` の後) に `use`。`mod tests` の外にある `#[cfg(test)] fn for_test` でのみ使う型は、その関数本体に `use` を書く
+  - **ワークスペース外 (外部依存 crate および `std`) は `use` せず、使用箇所で `::` 始まりの絶対パスでフルパス修飾して参照する**
+    - 例: `::std::sync::Arc`、`::axum::http::StatusCode`、`#[derive(::serde::Deserialize)]`、`#[::tokio::test]`、`::tracing::error!(...)`
+    - 先頭は必ず `::` を付けて crate ルートから辿る (ローカル定義との曖昧さを避けるため)。`axum::...` のような `::` なしの修飾にしない
+    - メソッド呼び出しや derive のために trait をスコープへ入れる必要がある場合も `use` せず修飾する。メソッドは UFCS で呼ぶ
+      - 例: `::askama::Template::render(&t)` / `::axum::response::IntoResponse::into_response(x)` / `<CookieJar as ::axum::extract::FromRequestParts<S>>::from_request_parts(..)` / `::rand::RngExt::random_range(&mut rng, ..)`
+    - 唯一の例外: `use ::anyhow::Context as _;` のみ `use` を許可する (`?` 直前の `.context()` 利用が頻出で、UFCS 化すると著しく冗長になるため)
 - `use` / 再エクスポートでグロブ (`::*`) を使わず、項目を1つずつ列挙すること
   - 例: `pub use self::entities::Bookmark;` のように個別に書く。`pub use self::entities::*;` は禁止
   - 唯一の例外: `#[cfg(test)] mod tests` 冒頭の `use super::*;` のみ許可する (テストから親モジュールを取り込む慣用)
