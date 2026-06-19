@@ -19,6 +19,7 @@ pub(crate) use self::collection::GoogleUserIdsCollection;
 pub(crate) use self::collection::UserSettingsCollection;
 pub(crate) use self::collection::UsersCollection;
 pub(crate) use self::document::DocumentRef;
+pub(crate) use self::document::FirestoreCollectionExt;
 pub(crate) use self::google_user_id_document_data::GoogleUserIdDocumentData;
 pub(crate) use self::user_document_data::UserDocumentData;
 pub(crate) use self::user_repository::FirestoreUserRepository;

@@ -89,12 +89,23 @@ impl<C: FirestoreCollection> DocumentRef<C> {
     }
 }
 
-/// `FirestoreCollection` `C` のドキュメントを 1 件取得する一発読み取りの薄い wrapper 。
-/// トランザクション外の単発の読み取りに使う。
-pub(crate) async fn get<C: FirestoreCollection>(
-    firestore: &bouzuya_firestore_client::Firestore,
-    parent: &C::ParentDocumentId,
-    id: &C::DocumentId,
-) -> anyhow::Result<Option<C::Schema>> {
-    DocumentRef::<C>::new(firestore, parent, id)?.get().await
+/// `FirestoreCollection` を拡張し、コレクション単位の一発読み取りを提供する。
+pub(crate) trait FirestoreCollectionExt: FirestoreCollection {
+    /// `FirestoreCollection` `Self` のドキュメントを 1 件取得する一発読み取りの薄い wrapper 。
+    /// トランザクション外の単発の読み取りに使う。
+    async fn get(
+        firestore: &bouzuya_firestore_client::Firestore,
+        parent: &Self::ParentDocumentId,
+        id: &Self::DocumentId,
+    ) -> anyhow::Result<Option<Self::Schema>>;
+}
+
+impl<C: FirestoreCollection> FirestoreCollectionExt for C {
+    async fn get(
+        firestore: &bouzuya_firestore_client::Firestore,
+        parent: &Self::ParentDocumentId,
+        id: &Self::DocumentId,
+    ) -> anyhow::Result<Option<Self::Schema>> {
+        DocumentRef::<C>::new(firestore, parent, id)?.get().await
+    }
 }

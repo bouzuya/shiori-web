@@ -14,6 +14,7 @@ pub(crate) use self::firestore::DocumentRef;
 pub(crate) use self::firestore::FirestoreBookmarkReader;
 pub(crate) use self::firestore::FirestoreBookmarkRepository;
 pub(crate) use self::firestore::FirestoreCollection;
+pub(crate) use self::firestore::FirestoreCollectionExt;
 pub(crate) use self::firestore::FirestoreUserRepository;
 pub(crate) use self::firestore::FirestoreUserSettingsReader;
 pub(crate) use self::firestore::FirestoreUserSettingsRepository;

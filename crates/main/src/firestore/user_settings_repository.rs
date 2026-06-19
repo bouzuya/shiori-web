@@ -1,4 +1,5 @@
 use crate::DocumentRef;
+use crate::FirestoreCollectionExt as _;
 use crate::UserSettingsCollection;
 use crate::UserSettingsDocumentData;
 use kernel::UserSettingsRepository;
@@ -16,13 +17,7 @@ impl FirestoreUserSettingsRepository {
 #[async_trait::async_trait]
 impl UserSettingsRepository for FirestoreUserSettingsRepository {
     async fn find(&self, user_id: &kernel::UserId) -> anyhow::Result<Option<kernel::UserSettings>> {
-        match crate::firestore::document::get::<UserSettingsCollection>(
-            &self.firestore,
-            &(),
-            user_id,
-        )
-        .await?
-        {
+        match UserSettingsCollection::get(&self.firestore, &(), user_id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_user_settings(*user_id)?)),
         }

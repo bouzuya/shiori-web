@@ -1,6 +1,7 @@
 use crate::BookmarkDocumentData;
 use crate::BookmarksCollection;
 use crate::DocumentRef;
+use crate::FirestoreCollectionExt as _;
 use kernel::BookmarkRepository;
 
 pub(crate) struct FirestoreBookmarkRepository {
@@ -20,13 +21,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         user_id: kernel::UserId,
         bookmark_id: kernel::BookmarkId,
     ) -> anyhow::Result<Option<kernel::Bookmark>> {
-        match crate::firestore::document::get::<BookmarksCollection>(
-            &self.firestore,
-            &user_id,
-            &bookmark_id,
-        )
-        .await?
-        {
+        match BookmarksCollection::get(&self.firestore, &user_id, &bookmark_id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_bookmark(user_id)?)),
         }

@@ -1,4 +1,5 @@
 use crate::DocumentRef;
+use crate::FirestoreCollectionExt as _;
 use crate::GoogleUserIdDocumentData;
 use crate::GoogleUserIdsCollection;
 use crate::UserDocumentData;
@@ -21,26 +22,18 @@ impl FirestoreUserRepository {
 #[async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
     async fn find(&self, id: &UserId) -> anyhow::Result<Option<User>> {
-        match crate::firestore::document::get::<UsersCollection>(&self.firestore, &(), id).await? {
+        match UsersCollection::get(&self.firestore, &(), id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_user()?)),
         }
     }
 
     async fn find_by_google_user_id(&self, id: &GoogleUserId) -> anyhow::Result<Option<User>> {
-        let user_id = match crate::firestore::document::get::<GoogleUserIdsCollection>(
-            &self.firestore,
-            &(),
-            id,
-        )
-        .await?
-        {
+        let user_id = match GoogleUserIdsCollection::get(&self.firestore, &(), id).await? {
             None => return Ok(None),
             Some(data) => data.into_user_id()?,
         };
-        match crate::firestore::document::get::<UsersCollection>(&self.firestore, &(), &user_id)
-            .await?
-        {
+        match UsersCollection::get(&self.firestore, &(), &user_id).await? {
             None => Ok(None),
             Some(user_data) => Ok(Some(user_data.into_user()?)),
         }

@@ -1,3 +1,4 @@
+use crate::FirestoreCollectionExt as _;
 use crate::UserSettingsCollection;
 use kernel::UserSettingsReader;
 
@@ -17,13 +18,7 @@ impl UserSettingsReader for FirestoreUserSettingsReader {
         &self,
         user_id: kernel::UserId,
     ) -> anyhow::Result<Option<kernel::UserSettingsView>> {
-        match crate::firestore::document::get::<UserSettingsCollection>(
-            &self.firestore,
-            &(),
-            &user_id,
-        )
-        .await?
-        {
+        match UserSettingsCollection::get(&self.firestore, &(), &user_id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_user_settings_view(user_id)?)),
         }
