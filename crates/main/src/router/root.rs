@@ -1,17 +1,8 @@
-use askama::Template;
-use axum::Router;
-use axum::extract::Query;
-use axum::extract::State;
-use axum::http::StatusCode;
-use axum::response::Html;
-use axum::response::IntoResponse;
-use axum::routing::get;
-
 use crate::AppState;
 use crate::extractor::CurrentUserId;
 
-pub(crate) fn router() -> Router<AppState> {
-    Router::new().route("/", get(handler))
+pub(crate) fn router() -> axum::Router<AppState> {
+    axum::Router::new().route("/", axum::routing::get(handler))
 }
 
 #[derive(serde::Deserialize)]
@@ -19,7 +10,7 @@ struct RootQuery {
     page_token: Option<String>,
 }
 
-#[derive(Template)]
+#[derive(askama::Template)]
 #[template(path = "landing.html")]
 struct LandingTemplate<'a> {
     base: &'a str,
@@ -38,7 +29,7 @@ struct DateGroup {
     items: Vec<BookmarkItem>,
 }
 
-#[derive(Template)]
+#[derive(askama::Template)]
 #[template(path = "list.html")]
 struct BookmarksTemplate<'a> {
     base: &'a str,
@@ -50,19 +41,21 @@ struct BookmarksTemplate<'a> {
 
 fn render_template(html: Result<String, askama::Error>) -> axum::response::Response {
     match html {
-        Ok(html) => Html(html).into_response(),
+        Ok(html) => axum::response::IntoResponse::into_response(axum::response::Html(html)),
         Err(e) => {
             tracing::error!("template render failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
         }
     }
 }
 
 async fn handler(
-    State(state): State<AppState>,
+    axum::extract::State(state): axum::extract::State<AppState>,
     auth: Option<CurrentUserId>,
-    Query(query): Query<RootQuery>,
-) -> impl IntoResponse {
+    axum::extract::Query(query): axum::extract::Query<RootQuery>,
+) -> impl axum::response::IntoResponse {
     match auth {
         Some(CurrentUserId(user_id)) => {
             let color_scheme = super::resolve_color_scheme(&state, user_id).await;
@@ -72,7 +65,11 @@ async fn handler(
                 None => None,
                 Some(s) => match s.parse::<kernel::PageToken>() {
                     Ok(token) => Some(token),
-                    Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+                    Err(_) => {
+                        return axum::response::IntoResponse::into_response(
+                            axum::http::StatusCode::BAD_REQUEST,
+                        );
+                    }
                 },
             };
             match state.bookmark_reader.list(user_id, page_token).await {
@@ -111,11 +108,13 @@ async fn handler(
                         next_page_token: list.next_page_token,
                         prev_page_token: list.prev_page_token,
                     };
-                    render_template(template.render())
+                    render_template(askama::Template::render(&template))
                 }
                 Err(e) => {
                     tracing::error!("failed to list bookmarks: {e}");
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                    axum::response::IntoResponse::into_response(
+                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    )
                 }
             }
         }
@@ -125,18 +124,13 @@ async fn handler(
                 base: &state.base_path,
                 color_scheme: &color_scheme,
             };
-            render_template(template.render())
+            render_template(askama::Template::render(&template))
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use axum::body::Body;
-    use axum::http::header;
-
     use crate::AppState;
     use crate::test_helpers::MockOidcClient;
     use crate::test_helpers::ResponseExt as _;
@@ -156,7 +150,7 @@ mod tests {
             app.clone(),
             axum::http::Request::builder()
                 .uri("/auth/signup")
-                .body(Body::empty())?,
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup);
@@ -164,13 +158,13 @@ mod tests {
             app.clone(),
             axum::http::Request::builder()
                 .uri("/auth/callback?code=test_code&state=test_state")
-                .header(header::COOKIE, &cookie_header)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &cookie_header)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let session = callback
             .headers()
-            .get_all(header::SET_COOKIE)
+            .get_all(axum::http::header::SET_COOKIE)
             .iter()
             .find_map(|v| {
                 let s = v.to_str().ok()?;
@@ -191,7 +185,7 @@ mod tests {
             app.clone(),
             axum::http::Request::builder()
                 .uri(format!("{base_path}/auth/signup"))
-                .body(Body::empty())?,
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup);
@@ -201,13 +195,13 @@ mod tests {
                 .uri(format!(
                     "{base_path}/auth/callback?code=test_code&state=test_state"
                 ))
-                .header(header::COOKIE, &cookie_header)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &cookie_header)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         callback
             .headers()
-            .get_all(header::SET_COOKIE)
+            .get_all(axum::http::header::SET_COOKIE)
             .iter()
             .find_map(|v| {
                 let s = v.to_str().ok()?;
@@ -251,7 +245,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -285,7 +279,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -343,7 +337,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -355,9 +349,12 @@ mod tests {
             axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
@@ -367,8 +364,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -397,7 +394,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -408,8 +405,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -434,7 +431,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -446,9 +443,12 @@ mod tests {
             axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
@@ -458,8 +458,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -486,7 +486,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -535,8 +535,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -561,7 +561,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -590,9 +590,12 @@ mod tests {
             axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
@@ -603,8 +606,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -628,7 +631,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -640,9 +643,12 @@ mod tests {
             axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
@@ -652,8 +658,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -673,7 +679,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -685,9 +691,12 @@ mod tests {
             axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
@@ -697,8 +706,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -732,7 +741,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -746,9 +755,12 @@ mod tests {
                 axum::http::Request::builder()
                     .method("POST")
                     .uri("/")
-                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                    .header(header::COOKIE, &session)
-                    .body(Body::from(format!(
+                    .header(
+                        axum::http::header::CONTENT_TYPE,
+                        "application/x-www-form-urlencoded",
+                    )
+                    .header(axum::http::header::COOKIE, &session)
+                    .body(axum::body::Body::from(format!(
                         "url=https%3A%2F%2Fexample.com%2F{i}&title=Title-{i:02}&comment="
                     )))?,
             )
@@ -760,8 +772,8 @@ mod tests {
             app.clone(),
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let first_body = first.into_body_string().await?;
@@ -776,8 +788,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri(format!("/?page_token={token}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(second.status(), axum::http::StatusCode::OK);
@@ -798,7 +810,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -812,9 +824,12 @@ mod tests {
                 axum::http::Request::builder()
                     .method("POST")
                     .uri("/")
-                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                    .header(header::COOKIE, &session)
-                    .body(Body::from(format!(
+                    .header(
+                        axum::http::header::CONTENT_TYPE,
+                        "application/x-www-form-urlencoded",
+                    )
+                    .header(axum::http::header::COOKIE, &session)
+                    .body(axum::body::Body::from(format!(
                         "url=https%3A%2F%2Fexample.com%2F{i}&title=Title-{i:02}&comment="
                     )))?,
             )
@@ -826,8 +841,8 @@ mod tests {
             app.clone(),
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let first_body = first.into_body_string().await?;
@@ -837,8 +852,8 @@ mod tests {
             app.clone(),
             axum::http::Request::builder()
                 .uri(format!("/?page_token={next_token}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let second_body = second.into_body_string().await?;
@@ -853,8 +868,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri(format!("/?page_token={prev_token}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(back.status(), axum::http::StatusCode::OK);
@@ -875,7 +890,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -886,8 +901,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/?page_token=not-a-valid-token")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
@@ -903,7 +918,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -917,9 +932,12 @@ mod tests {
                 axum::http::Request::builder()
                     .method("POST")
                     .uri("/")
-                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                    .header(header::COOKIE, &session)
-                    .body(Body::from(format!(
+                    .header(
+                        axum::http::header::CONTENT_TYPE,
+                        "application/x-www-form-urlencoded",
+                    )
+                    .header(axum::http::header::COOKIE, &session)
+                    .body(axum::body::Body::from(format!(
                         "url=https%3A%2F%2Fexample.com%2F{i}&title=Example+{i}&comment="
                     )))?,
             )
@@ -930,8 +948,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -952,7 +970,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&unique_user_id())),
+            std::sync::Arc::new(MockOidcClient::new(&unique_user_id())),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -966,9 +984,12 @@ mod tests {
                 axum::http::Request::builder()
                     .method("POST")
                     .uri("/app")
-                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                    .header(header::COOKIE, &session)
-                    .body(Body::from(format!(
+                    .header(
+                        axum::http::header::CONTENT_TYPE,
+                        "application/x-www-form-urlencoded",
+                    )
+                    .header(axum::http::header::COOKIE, &session)
+                    .body(axum::body::Body::from(format!(
                         "url=https%3A%2F%2Fexample.com%2F{i}&title=Example+{i}&comment="
                     )))?,
             )
@@ -979,8 +1000,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/app")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -1005,7 +1026,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -1017,9 +1038,12 @@ mod tests {
             axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example&comment=",
                 ))?,
         )
@@ -1029,8 +1053,8 @@ mod tests {
             app,
             axum::http::Request::builder()
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -1113,7 +1137,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new("base_path_links_user")),
+            std::sync::Arc::new(MockOidcClient::new("base_path_links_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -1147,7 +1171,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new("base_path_trailing_slash_user")),
+            std::sync::Arc::new(MockOidcClient::new("base_path_trailing_slash_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,

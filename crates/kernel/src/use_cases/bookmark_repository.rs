@@ -19,22 +19,19 @@ pub trait BookmarkRepository: Send + Sync {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
     use super::*;
     use crate::Comment;
     use crate::Title;
     use crate::Url;
 
     struct InMemoryBookmarkRepository {
-        store: Mutex<HashMap<BookmarkId, Bookmark>>,
+        store: std::sync::Mutex<std::collections::HashMap<BookmarkId, Bookmark>>,
     }
 
     impl InMemoryBookmarkRepository {
         fn new() -> Self {
             Self {
-                store: Mutex::new(HashMap::new()),
+                store: std::sync::Mutex::new(std::collections::HashMap::new()),
             }
         }
     }

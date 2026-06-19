@@ -63,12 +63,10 @@ impl std::str::FromStr for PageToken {
 #[cfg(test)]
 impl PageToken {
     pub fn for_test() -> Self {
-        use rand::RngExt as _;
         let mut rng = rand::rng();
-        let after = rng.random_range(0..2) == 0;
-        let len = rng.random_range(1..=20);
-        let created_at: String = rng
-            .sample_iter(rand::distr::Alphanumeric)
+        let after = rand::RngExt::random_range(&mut rng, 0..2) == 0;
+        let len = rand::RngExt::random_range(&mut rng, 1..=20);
+        let created_at: String = rand::RngExt::sample_iter(rng, rand::distr::Alphanumeric)
             .take(len)
             .map(char::from)
             .collect();

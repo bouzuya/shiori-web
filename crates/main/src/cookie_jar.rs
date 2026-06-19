@@ -1,21 +1,9 @@
-use std::convert::Infallible;
-
-use axum::extract::FromRef;
-use axum::extract::FromRequestParts;
-use axum::response::IntoResponse;
-use axum::response::IntoResponseParts;
-use axum::response::Response;
-use axum::response::ResponseParts;
-use axum_extra::extract::SignedCookieJar;
-use axum_extra::extract::cookie::Cookie;
-use axum_extra::extract::cookie::Key;
-
 use crate::extractor::AuthenticationRequest;
 use crate::state::BasePath;
 
 pub(crate) struct CookieJar {
     base_path: String,
-    jar: SignedCookieJar,
+    jar: axum_extra::extract::SignedCookieJar,
 }
 
 impl CookieJar {
@@ -65,10 +53,25 @@ impl CookieJar {
         let jar = self
             .jar
             .clone()
-            .remove(Cookie::build((Self::FLOW_COOKIE_NAME, "")).path(cp.clone()))
-            .remove(Cookie::build((Self::STATE_COOKIE_NAME, "")).path(cp.clone()))
-            .remove(Cookie::build((Self::NONCE_COOKIE_NAME, "")).path(cp.clone()))
-            .add(Cookie::build((Self::SESSION_COOKIE_NAME, session_value)).path(cp));
+            .remove(
+                axum_extra::extract::cookie::Cookie::build((Self::FLOW_COOKIE_NAME, ""))
+                    .path(cp.clone()),
+            )
+            .remove(
+                axum_extra::extract::cookie::Cookie::build((Self::STATE_COOKIE_NAME, ""))
+                    .path(cp.clone()),
+            )
+            .remove(
+                axum_extra::extract::cookie::Cookie::build((Self::NONCE_COOKIE_NAME, ""))
+                    .path(cp.clone()),
+            )
+            .add(
+                axum_extra::extract::cookie::Cookie::build((
+                    Self::SESSION_COOKIE_NAME,
+                    session_value,
+                ))
+                .path(cp),
+            );
 
         Self {
             base_path: self.base_path.clone(),
@@ -78,10 +81,9 @@ impl CookieJar {
 
     pub(crate) fn with_signout_cookies(&self) -> Self {
         let cp = self.cookie_path();
-        let jar = self
-            .jar
-            .clone()
-            .remove(Cookie::build((Self::SESSION_COOKIE_NAME, "")).path(cp));
+        let jar = self.jar.clone().remove(
+            axum_extra::extract::cookie::Cookie::build((Self::SESSION_COOKIE_NAME, "")).path(cp),
+        );
         Self {
             base_path: self.base_path.clone(),
             jar,
@@ -93,12 +95,24 @@ impl CookieJar {
         let jar = self
             .jar
             .clone()
-            .add(Cookie::build((Self::FLOW_COOKIE_NAME, "signin")).path(cp.clone()))
             .add(
-                Cookie::build((Self::NONCE_COOKIE_NAME, auth_request.nonce.clone()))
+                axum_extra::extract::cookie::Cookie::build((Self::FLOW_COOKIE_NAME, "signin"))
                     .path(cp.clone()),
             )
-            .add(Cookie::build((Self::STATE_COOKIE_NAME, auth_request.state.clone())).path(cp));
+            .add(
+                axum_extra::extract::cookie::Cookie::build((
+                    Self::NONCE_COOKIE_NAME,
+                    auth_request.nonce.clone(),
+                ))
+                .path(cp.clone()),
+            )
+            .add(
+                axum_extra::extract::cookie::Cookie::build((
+                    Self::STATE_COOKIE_NAME,
+                    auth_request.state.clone(),
+                ))
+                .path(cp),
+            );
         Self {
             base_path: self.base_path.clone(),
             jar,
@@ -110,12 +124,24 @@ impl CookieJar {
         let jar = self
             .jar
             .clone()
-            .add(Cookie::build((Self::FLOW_COOKIE_NAME, "signup")).path(cp.clone()))
             .add(
-                Cookie::build((Self::NONCE_COOKIE_NAME, auth_request.nonce.clone()))
+                axum_extra::extract::cookie::Cookie::build((Self::FLOW_COOKIE_NAME, "signup"))
                     .path(cp.clone()),
             )
-            .add(Cookie::build((Self::STATE_COOKIE_NAME, auth_request.state.clone())).path(cp));
+            .add(
+                axum_extra::extract::cookie::Cookie::build((
+                    Self::NONCE_COOKIE_NAME,
+                    auth_request.nonce.clone(),
+                ))
+                .path(cp.clone()),
+            )
+            .add(
+                axum_extra::extract::cookie::Cookie::build((
+                    Self::STATE_COOKIE_NAME,
+                    auth_request.state.clone(),
+                ))
+                .path(cp),
+            );
         Self {
             base_path: self.base_path.clone(),
             jar,
@@ -123,20 +149,21 @@ impl CookieJar {
     }
 }
 
-impl<S> FromRequestParts<S> for CookieJar
+impl<S> axum::extract::FromRequestParts<S> for CookieJar
 where
-    Key: axum::extract::FromRef<S>,
+    axum_extra::extract::cookie::Key: axum::extract::FromRef<S>,
     BasePath: axum::extract::FromRef<S>,
     S: Send + Sync,
 {
-    type Rejection = <SignedCookieJar as FromRequestParts<S>>::Rejection;
+    type Rejection =
+        <axum_extra::extract::SignedCookieJar as axum::extract::FromRequestParts<S>>::Rejection;
 
     async fn from_request_parts(
         parts: &mut axum::http::request::Parts,
         state: &S,
     ) -> Result<Self, Self::Rejection> {
-        let jar = SignedCookieJar::from_request_parts(parts, state).await?;
-        let base_path = BasePath::from_ref(state);
+        let jar = <axum_extra::extract::SignedCookieJar as axum::extract::FromRequestParts<S>>::from_request_parts(parts, state).await?;
+        let base_path = <BasePath as axum::extract::FromRef<S>>::from_ref(state);
         Ok(Self {
             base_path: base_path.0,
             jar,
@@ -144,24 +171,25 @@ where
     }
 }
 
-impl IntoResponseParts for CookieJar {
-    type Error = Infallible;
+impl axum::response::IntoResponseParts for CookieJar {
+    type Error = std::convert::Infallible;
 
-    fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Self::Error> {
-        self.jar.into_response_parts(res)
+    fn into_response_parts(
+        self,
+        res: axum::response::ResponseParts,
+    ) -> Result<axum::response::ResponseParts, Self::Error> {
+        axum::response::IntoResponseParts::into_response_parts(self.jar, res)
     }
 }
 
-impl IntoResponse for CookieJar {
-    fn into_response(self) -> Response {
-        self.jar.into_response()
+impl axum::response::IntoResponse for CookieJar {
+    fn into_response(self) -> axum::response::Response {
+        axum::response::IntoResponse::into_response(self.jar)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use axum_extra::extract::SignedCookieJar;
-    use axum_extra::extract::cookie::Key;
     use kernel::UserId;
 
     use crate::extractor::AuthenticationRequest;
@@ -169,10 +197,10 @@ mod tests {
     use super::CookieJar;
 
     fn make_empty_jar() -> CookieJar {
-        let key = Key::generate();
+        let key = axum_extra::extract::cookie::Key::generate();
         CookieJar {
             base_path: "".to_string(),
-            jar: SignedCookieJar::new(key),
+            jar: axum_extra::extract::SignedCookieJar::new(key),
         }
     }
 
@@ -294,10 +322,10 @@ mod tests {
 
     #[test]
     fn test_with_session_cookies_sets_base_path_when_base_path_is_set() -> anyhow::Result<()> {
-        let key = Key::generate();
+        let key = axum_extra::extract::cookie::Key::generate();
         let jar = CookieJar {
             base_path: "/app".to_string(),
-            jar: SignedCookieJar::new(key),
+            jar: axum_extra::extract::SignedCookieJar::new(key),
         };
         let jar = jar.with_session_cookies(make_session());
         let cookie = jar
@@ -321,10 +349,10 @@ mod tests {
 
     #[test]
     fn test_with_signin_cookies_sets_base_path_when_base_path_is_set() -> anyhow::Result<()> {
-        let key = Key::generate();
+        let key = axum_extra::extract::cookie::Key::generate();
         let jar = CookieJar {
             base_path: "/app".to_string(),
-            jar: SignedCookieJar::new(key),
+            jar: axum_extra::extract::SignedCookieJar::new(key),
         };
         let jar = jar.with_signin_cookies(&make_auth_request());
         let cookie = jar

@@ -1,19 +1,14 @@
-use axum::Router;
-use axum::http::header;
-use axum::response::IntoResponse;
-use axum::routing::get;
-
 use crate::AppState;
 
 const INDEX_CSS: &str = include_str!("../../assets/index.min.css");
 
-pub(crate) fn router() -> Router<AppState> {
-    Router::new().route("/index.css", get(handler))
+pub(crate) fn router() -> axum::Router<AppState> {
+    axum::Router::new().route("/index.css", axum::routing::get(handler))
 }
 
-async fn handler() -> impl IntoResponse {
+async fn handler() -> impl axum::response::IntoResponse {
     (
-        [(header::CONTENT_TYPE, "text/css; charset=utf-8")],
+        [(axum::http::header::CONTENT_TYPE, "text/css; charset=utf-8")],
         INDEX_CSS,
     )
 }

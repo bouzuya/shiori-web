@@ -1,18 +1,11 @@
-use axum::Router;
-use axum::extract::Query;
-use axum::extract::State;
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::response::Redirect;
-use axum::routing::get;
 use kernel::GoogleUserId;
 use kernel::User;
 
 use crate::AppState;
 use crate::CookieJar;
 
-pub(crate) fn router() -> Router<AppState> {
-    Router::new().route("/auth/callback", get(handler))
+pub(crate) fn router() -> axum::Router<AppState> {
+    axum::Router::new().route("/auth/callback", axum::routing::get(handler))
 }
 
 #[derive(serde::Deserialize)]
@@ -22,29 +15,29 @@ struct CallbackParams {
 }
 
 async fn handler(
-    State(app_state): State<AppState>,
+    axum::extract::State(app_state): axum::extract::State<AppState>,
     jar: CookieJar,
-    Query(params): Query<CallbackParams>,
-) -> Result<impl IntoResponse, StatusCode> {
+    axum::extract::Query(params): axum::extract::Query<CallbackParams>,
+) -> Result<impl axum::response::IntoResponse, axum::http::StatusCode> {
     tracing::info!("auth callback: received callback request");
 
     let csrf_state = jar.get_state().ok_or_else(|| {
         tracing::warn!("auth callback: oidc_state cookie not found, returning 400");
-        StatusCode::BAD_REQUEST
+        axum::http::StatusCode::BAD_REQUEST
     })?;
     if params.state != csrf_state {
         tracing::warn!("auth callback: CSRF state mismatch, returning 400");
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(axum::http::StatusCode::BAD_REQUEST);
     }
 
     let nonce = jar.get_nonce().ok_or_else(|| {
         tracing::warn!("auth callback: oidc_nonce cookie not found, returning 400");
-        StatusCode::BAD_REQUEST
+        axum::http::StatusCode::BAD_REQUEST
     })?;
 
     let flow = jar.get_flow().ok_or_else(|| {
         tracing::warn!("auth callback: auth_flow cookie not found, returning 400");
-        StatusCode::BAD_REQUEST
+        axum::http::StatusCode::BAD_REQUEST
     })?;
 
     let oidc_claims = app_state
@@ -53,12 +46,12 @@ async fn handler(
         .await
         .map_err(|e| {
             tracing::error!("auth callback: failed to exchange code: {e:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
     let google_user_id = oidc_claims.sub.parse::<GoogleUserId>().map_err(|e| {
         tracing::error!("auth callback: invalid google user id: {e:?}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        axum::http::StatusCode::INTERNAL_SERVER_ERROR
     })?;
     let user = app_state
         .user_repository
@@ -66,7 +59,7 @@ async fn handler(
         .await
         .map_err(|e| {
             tracing::error!("auth callback: failed to find user: {e:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR
         })?;
     let user_id = match (flow.as_str(), user) {
         ("signin", None) => {
@@ -74,7 +67,7 @@ async fn handler(
                 sub = %oidc_claims.sub,
                 "auth callback: user not found for signin, returning 403"
             );
-            return Err(StatusCode::FORBIDDEN);
+            return Err(axum::http::StatusCode::FORBIDDEN);
         }
         ("signin", Some(user)) => user.id(),
         ("signup", None) => {
@@ -86,7 +79,7 @@ async fn handler(
                 .await
                 .map_err(|e| {
                     tracing::error!("auth callback: failed to store user: {e:?}");
-                    StatusCode::INTERNAL_SERVER_ERROR
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR
                 })?;
             user_id
         }
@@ -95,11 +88,11 @@ async fn handler(
                 sub = %oidc_claims.sub,
                 "auth callback: user already exists for signup, returning 403"
             );
-            return Err(StatusCode::FORBIDDEN);
+            return Err(axum::http::StatusCode::FORBIDDEN);
         }
         _ => {
             tracing::warn!(flow, "auth callback: unknown auth flow, returning 400");
-            return Err(StatusCode::BAD_REQUEST);
+            return Err(axum::http::StatusCode::BAD_REQUEST);
         }
     };
 
@@ -111,13 +104,11 @@ async fn handler(
     } else {
         app_state.base_path.clone()
     };
-    Ok((jar, Redirect::temporary(&redirect_target)))
+    Ok((jar, axum::response::Redirect::temporary(&redirect_target)))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use kernel::GoogleUserId;
     use kernel::User;
 
@@ -142,7 +133,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -203,7 +194,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             user_repo,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -244,7 +235,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -283,7 +274,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -331,7 +322,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,

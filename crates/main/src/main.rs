@@ -27,8 +27,7 @@ pub(crate) use self::firestore::UsersCollection;
 pub(crate) use self::state::AppState;
 
 fn generate_secret() -> String {
-    use axum_extra::extract::cookie::Key;
-    let key = Key::generate();
+    let key = axum_extra::extract::cookie::Key::generate();
     key.master().iter().map(|b| format!("{b:02x}")).collect()
 }
 
@@ -62,7 +61,6 @@ async fn main() -> anyhow::Result<()> {
 mod tests {
     #[test]
     fn generate_secret_returns_string_usable_as_cookie_signing_secret() {
-        use axum_extra::extract::cookie::Key;
         let secret = super::generate_secret();
         // cookie_signing_secret は Key::from() に渡すため、UTF-8 バイト列が 64 バイト以上必要
         assert!(
@@ -71,6 +69,6 @@ mod tests {
             secret.len()
         );
         // 実際に Key::from() で変換できることを確認
-        let _ = Key::from(secret.as_bytes());
+        let _ = axum_extra::extract::cookie::Key::from(secret.as_bytes());
     }
 }

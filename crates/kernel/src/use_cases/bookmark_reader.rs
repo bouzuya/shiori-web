@@ -19,8 +19,6 @@ pub trait BookmarkReader: Send + Sync {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
-
     use super::*;
     use crate::BookmarkView;
     use crate::PageToken;
@@ -28,13 +26,13 @@ mod tests {
     const PAGE_SIZE: usize = 10;
 
     struct InMemoryBookmarkReader {
-        store: Mutex<Vec<(UserId, BookmarkView)>>,
+        store: std::sync::Mutex<Vec<(UserId, BookmarkView)>>,
     }
 
     impl InMemoryBookmarkReader {
         fn new() -> Self {
             Self {
-                store: Mutex::new(vec![]),
+                store: std::sync::Mutex::new(vec![]),
             }
         }
 

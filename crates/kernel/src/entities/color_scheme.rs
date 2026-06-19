@@ -35,12 +35,14 @@ impl std::str::FromStr for ColorScheme {
 #[cfg(test)]
 impl ColorScheme {
     pub fn for_test() -> Self {
-        use rand::seq::IndexedRandom;
         let mut rng = rand::rng();
-        *[ColorScheme::Dark, ColorScheme::Light, ColorScheme::System]
-            .sample(&mut rng, 1)
-            .next()
-            .expect("non-empty")
+        *rand::seq::IndexedRandom::sample(
+            [ColorScheme::Dark, ColorScheme::Light, ColorScheme::System].as_slice(),
+            &mut rng,
+            1,
+        )
+        .next()
+        .expect("non-empty")
     }
 }
 

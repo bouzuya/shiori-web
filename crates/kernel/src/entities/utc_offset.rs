@@ -61,17 +61,20 @@ impl std::str::FromStr for UtcOffset {
 #[cfg(test)]
 impl UtcOffset {
     pub fn for_test() -> Self {
-        use rand::seq::IndexedRandom;
         let mut rng = rand::rng();
-        [
-            UtcOffset { minutes: -720 },
-            UtcOffset { minutes: -300 },
-            UtcOffset { minutes: 0 },
-            UtcOffset { minutes: 330 },
-            UtcOffset { minutes: 540 },
-            UtcOffset { minutes: 840 },
-        ]
-        .sample(&mut rng, 1)
+        rand::seq::IndexedRandom::sample(
+            [
+                UtcOffset { minutes: -720 },
+                UtcOffset { minutes: -300 },
+                UtcOffset { minutes: 0 },
+                UtcOffset { minutes: 330 },
+                UtcOffset { minutes: 540 },
+                UtcOffset { minutes: 840 },
+            ]
+            .as_slice(),
+            &mut rng,
+            1,
+        )
         .next()
         .copied()
         .expect("non-empty")

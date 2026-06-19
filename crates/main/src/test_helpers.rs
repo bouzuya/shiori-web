@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use kernel::BookmarkReader;
 use kernel::BookmarkRepository;
 use kernel::GoogleUserId;
@@ -98,25 +96,36 @@ pub(crate) fn firestore() -> anyhow::Result<bouzuya_firestore_client::Firestore>
     )?)
 }
 
-pub(crate) fn firestore_user_repo() -> anyhow::Result<Arc<dyn UserRepository>> {
-    Ok(Arc::new(FirestoreUserRepository::new(firestore()?)))
+pub(crate) fn firestore_user_repo() -> anyhow::Result<std::sync::Arc<dyn UserRepository>> {
+    Ok(std::sync::Arc::new(FirestoreUserRepository::new(
+        firestore()?,
+    )))
 }
 
-pub(crate) fn firestore_user_settings_reader() -> anyhow::Result<Arc<dyn UserSettingsReader>> {
-    Ok(Arc::new(FirestoreUserSettingsReader::new(firestore()?)))
+pub(crate) fn firestore_user_settings_reader()
+-> anyhow::Result<std::sync::Arc<dyn UserSettingsReader>> {
+    Ok(std::sync::Arc::new(FirestoreUserSettingsReader::new(
+        firestore()?,
+    )))
 }
 
-pub(crate) fn firestore_user_settings_repository() -> anyhow::Result<Arc<dyn UserSettingsRepository>>
-{
-    Ok(Arc::new(FirestoreUserSettingsRepository::new(firestore()?)))
+pub(crate) fn firestore_user_settings_repository()
+-> anyhow::Result<std::sync::Arc<dyn UserSettingsRepository>> {
+    Ok(std::sync::Arc::new(FirestoreUserSettingsRepository::new(
+        firestore()?,
+    )))
 }
 
-pub(crate) fn firestore_bookmark_reader() -> anyhow::Result<Arc<dyn BookmarkReader>> {
-    Ok(Arc::new(FirestoreBookmarkReader::new(firestore()?)))
+pub(crate) fn firestore_bookmark_reader() -> anyhow::Result<std::sync::Arc<dyn BookmarkReader>> {
+    Ok(std::sync::Arc::new(FirestoreBookmarkReader::new(
+        firestore()?,
+    )))
 }
 
-pub(crate) fn firestore_bookmark_repo() -> anyhow::Result<Arc<dyn BookmarkRepository>> {
-    Ok(Arc::new(FirestoreBookmarkRepository::new(firestore()?)))
+pub(crate) fn firestore_bookmark_repo() -> anyhow::Result<std::sync::Arc<dyn BookmarkRepository>> {
+    Ok(std::sync::Arc::new(FirestoreBookmarkRepository::new(
+        firestore()?,
+    )))
 }
 
 pub(crate) fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
@@ -125,7 +134,7 @@ pub(crate) fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
         firestore_bookmark_reader()?,
         firestore_bookmark_repo()?,
         TEST_COOKIE_SIGNING_SECRET,
-        Arc::new(MockOidcClient::new(sub)),
+        std::sync::Arc::new(MockOidcClient::new(sub)),
         firestore_user_repo()?,
         firestore_user_settings_reader()?,
         firestore_user_settings_repository()?,
@@ -134,15 +143,15 @@ pub(crate) fn test_app(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
 }
 
 pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> anyhow::Result<axum::Router> {
-    let bookmark_repository =
-        Arc::new(FirestoreBookmarkRepository::new(firestore()?)) as Arc<dyn BookmarkRepository>;
+    let bookmark_repository = std::sync::Arc::new(FirestoreBookmarkRepository::new(firestore()?))
+        as std::sync::Arc<dyn BookmarkRepository>;
     let state = crate::AppState::new(
         "".to_string(),
         firestore_bookmark_reader()?,
         bookmark_repository,
         TEST_COOKIE_SIGNING_SECRET,
-        Arc::new(MockOidcClient::new(sub)),
-        Arc::new(MockUserRepository::new()),
+        std::sync::Arc::new(MockOidcClient::new(sub)),
+        std::sync::Arc::new(MockUserRepository::new()),
         firestore_user_settings_reader()?,
         firestore_user_settings_repository()?,
     );

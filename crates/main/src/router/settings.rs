@@ -1,10 +1,3 @@
-use askama::Template;
-use axum::extract::State;
-use axum::http::StatusCode;
-use axum::response::Html;
-use axum::response::IntoResponse;
-use axum::response::Redirect;
-
 use crate::AppState;
 use crate::extractor::CurrentUserId;
 
@@ -15,7 +8,7 @@ pub(crate) fn router() -> axum::Router<AppState> {
     )
 }
 
-#[derive(Template)]
+#[derive(askama::Template)]
 #[template(path = "settings.html")]
 struct SettingsTemplate<'a> {
     base: &'a str,
@@ -26,8 +19,8 @@ struct SettingsTemplate<'a> {
 
 async fn get_settings(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> impl axum::response::IntoResponse {
     let color_scheme = super::resolve_color_scheme(&state, user_id).await;
     let share_url = super::resolve_share_url(&state, user_id)
         .await
@@ -40,11 +33,13 @@ async fn get_settings(
         share_url: &share_url,
         utc_offset: &utc_offset,
     };
-    match template.render() {
-        Ok(html) => Html(html).into_response(),
+    match askama::Template::render(&template) {
+        Ok(html) => axum::response::IntoResponse::into_response(axum::response::Html(html)),
         Err(e) => {
             tracing::error!("template render failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
         }
     }
 }
@@ -66,19 +61,25 @@ struct PutSettingsRequest {
 
 async fn post_settings_dispatch(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
+    axum::extract::State(state): axum::extract::State<AppState>,
     axum::extract::Query(query): axum::extract::Query<MethodOverrideQuery>,
     body: axum::body::Bytes,
-) -> impl IntoResponse {
+) -> impl axum::response::IntoResponse {
     match query.method.as_deref() {
         Some("PUT") => {
             let form = match serde_urlencoded::from_bytes::<PutSettingsRequest>(&body) {
                 Ok(f) => f,
-                Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+                Err(_) => {
+                    return axum::response::IntoResponse::into_response(
+                        axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+                    );
+                }
             };
             put_settings_impl(user_id, state, form).await
         }
-        _ => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+        _ => {
+            axum::response::IntoResponse::into_response(axum::http::StatusCode::METHOD_NOT_ALLOWED)
+        }
     }
 }
 
@@ -89,7 +90,11 @@ async fn put_settings_impl(
 ) -> axum::response::Response {
     let color_scheme = match body.color_scheme.parse::<kernel::ColorScheme>() {
         Ok(cs) => cs,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     // 空文字は未設定 (None) として扱う。
     let share_url = if body.share_url.is_empty() {
@@ -97,32 +102,38 @@ async fn put_settings_impl(
     } else {
         match body.share_url.parse::<kernel::ShareUrl>() {
             Ok(s) => Some(s),
-            Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+            Err(_) => {
+                return axum::response::IntoResponse::into_response(
+                    axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+                );
+            }
         }
     };
     let utc_offset = match body.utc_offset.parse::<kernel::UtcOffset>() {
         Ok(o) => o,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     let settings = kernel::UserSettings::new(color_scheme, share_url, user_id, utc_offset);
     if let Err(e) = state.user_settings_repository.store(settings).await {
         tracing::error!("failed to store user settings: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return axum::response::IntoResponse::into_response(
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+        );
     }
     let redirect_url = if state.base_path.is_empty() {
         "/settings".to_string()
     } else {
         format!("{}/settings", state.base_path)
     };
-    Redirect::to(&redirect_url).into_response()
+    axum::response::IntoResponse::into_response(axum::response::Redirect::to(&redirect_url))
 }
 
 #[cfg(test)]
 mod tests {
-    use axum::body::Body;
-    use axum::http::Request;
-    use axum::http::header;
-
     use crate::test_helpers::ResponseExt as _;
     use crate::test_helpers::extract_cookies;
     use crate::test_helpers::send_request;
@@ -132,21 +143,23 @@ mod tests {
     async fn session_cookie(app: axum::Router, sub: &str) -> anyhow::Result<String> {
         let signup = send_request(
             app.clone(),
-            Request::builder().uri("/auth/signup").body(Body::empty())?,
+            axum::http::Request::builder()
+                .uri("/auth/signup")
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup);
         let callback = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .uri("/auth/callback?code=test&state=test_state")
-                .header(header::COOKIE, &cookie_header)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &cookie_header)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let session = callback
             .headers()
-            .get_all(header::SET_COOKIE)
+            .get_all(axum::http::header::SET_COOKIE)
             .iter()
             .find_map(|v| {
                 let s = v.to_str().ok()?;
@@ -167,10 +180,10 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .uri("/settings")
-                .header(header::COOKIE, session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::OK);
@@ -191,7 +204,9 @@ mod tests {
         let app = test_app(&sub)?;
         let response = send_request(
             app,
-            Request::builder().uri("/settings").body(Body::empty())?,
+            axum::http::Request::builder()
+                .uri("/settings")
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
@@ -206,21 +221,26 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/settings?_method=PUT")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from("color_scheme=dark&utc_offset=%2B09%3A00"))?,
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
+                    "color_scheme=dark&utc_offset=%2B09%3A00",
+                ))?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
         let get_response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .uri("/settings")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let body = get_response.into_body_string().await?;
@@ -243,12 +263,17 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/settings?_method=PUT")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from("color_scheme=invalid&utc_offset=%2B09%3A00"))?,
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
+                    "color_scheme=invalid&utc_offset=%2B09%3A00",
+                ))?,
         )
         .await?;
         assert_eq!(
@@ -266,12 +291,17 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/settings?_method=PUT")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from("color_scheme=dark&utc_offset=invalid"))?,
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(
+                    "color_scheme=dark&utc_offset=invalid",
+                ))?,
         )
         .await?;
         assert_eq!(
@@ -294,21 +324,24 @@ mod tests {
         ])?;
         let response = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/settings?_method=PUT")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(body))?,
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(body))?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
         let get_response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .uri("/settings")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let body = get_response.into_body_string().await?;
@@ -332,12 +365,15 @@ mod tests {
         ])?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/settings?_method=PUT")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from(body))?,
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from(body))?,
         )
         .await?;
         assert_eq!(
@@ -362,22 +398,25 @@ mod tests {
             ])?;
             let response = send_request(
                 app.clone(),
-                Request::builder()
+                axum::http::Request::builder()
                     .method("POST")
                     .uri("/settings?_method=PUT")
-                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                    .header(header::COOKIE, &session)
-                    .body(Body::from(body))?,
+                    .header(
+                        axum::http::header::CONTENT_TYPE,
+                        "application/x-www-form-urlencoded",
+                    )
+                    .header(axum::http::header::COOKIE, &session)
+                    .body(axum::body::Body::from(body))?,
             )
             .await?;
             assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
         }
         let get_response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .uri("/settings")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let body = get_response.into_body_string().await?;
@@ -399,11 +438,14 @@ mod tests {
         let app = test_app(&sub)?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/settings?_method=PUT")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .body(Body::from("color_scheme=dark"))?,
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .body(axum::body::Body::from("color_scheme=dark"))?,
         )
         .await?;
         assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
@@ -418,12 +460,15 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/settings")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::from("color_scheme=dark"))?,
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::from("color_scheme=dark"))?,
         )
         .await?;
         assert_eq!(

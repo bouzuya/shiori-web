@@ -4,12 +4,10 @@ mod index_css;
 mod root;
 mod settings;
 
-use axum::Router;
-
 use crate::AppState;
 
-pub(crate) fn router(base_path: &str) -> Router<AppState> {
-    let inner = Router::new()
+pub(crate) fn router(base_path: &str) -> axum::Router<AppState> {
+    let inner = axum::Router::new()
         .merge(auth::router())
         .merge(bookmark::router())
         .merge(index_css::router())
@@ -18,7 +16,7 @@ pub(crate) fn router(base_path: &str) -> Router<AppState> {
     if base_path.is_empty() {
         inner
     } else {
-        Router::new().nest(base_path, inner)
+        axum::Router::new().nest(base_path, inner)
     }
 }
 
@@ -74,8 +72,6 @@ pub(crate) async fn resolve_utc_offset(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use crate::AppState;
     use crate::test_helpers::MockOidcClient;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
@@ -95,7 +91,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new("base_path_route_user")),
+            std::sync::Arc::new(MockOidcClient::new("base_path_route_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,

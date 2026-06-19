@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::FirestoreCollection;
 
 /// `FirestoreCollection` `C` に束ねられた型付きのドキュメント参照。
@@ -27,7 +25,7 @@ use crate::FirestoreCollection;
 #[derive(Clone)]
 pub(crate) struct DocumentRef<C> {
     inner: bouzuya_firestore_client::DocumentReference,
-    _marker: PhantomData<C>,
+    _marker: std::marker::PhantomData<C>,
 }
 
 impl<C: FirestoreCollection> DocumentRef<C> {
@@ -41,7 +39,7 @@ impl<C: FirestoreCollection> DocumentRef<C> {
             .map_err(|e| anyhow::anyhow!(e))?;
         Ok(Self {
             inner,
-            _marker: PhantomData,
+            _marker: std::marker::PhantomData,
         })
     }
 

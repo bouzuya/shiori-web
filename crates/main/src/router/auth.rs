@@ -3,12 +3,10 @@ mod signin;
 mod signout;
 mod signup;
 
-use axum::Router;
-
 use crate::AppState;
 
-pub(crate) fn router() -> Router<AppState> {
-    Router::new()
+pub(crate) fn router() -> axum::Router<AppState> {
+    axum::Router::new()
         .merge(callback::router())
         .merge(signin::router())
         .merge(signout::router())

@@ -1,17 +1,14 @@
-use axum::Router;
-use axum::extract::State;
-use axum::response::IntoResponse;
-use axum::response::Redirect;
-use axum::routing::get;
-
 use crate::AppState;
 use crate::CookieJar;
 
-pub(crate) fn router() -> Router<AppState> {
-    Router::new().route("/auth/signout", get(handler))
+pub(crate) fn router() -> axum::Router<AppState> {
+    axum::Router::new().route("/auth/signout", axum::routing::get(handler))
 }
 
-async fn handler(State(state): State<AppState>, jar: CookieJar) -> impl IntoResponse {
+async fn handler(
+    axum::extract::State(state): axum::extract::State<AppState>,
+    jar: CookieJar,
+) -> impl axum::response::IntoResponse {
     tracing::info!("auth signout: removing session cookie");
     let jar = jar.with_signout_cookies();
     let redirect_target = if state.base_path.is_empty() {
@@ -19,13 +16,11 @@ async fn handler(State(state): State<AppState>, jar: CookieJar) -> impl IntoResp
     } else {
         state.base_path.clone()
     };
-    (jar, Redirect::temporary(&redirect_target))
+    (jar, axum::response::Redirect::temporary(&redirect_target))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use crate::AppState;
     use crate::test_helpers::MockOidcClient;
     use crate::test_helpers::MockUserRepository;
@@ -70,8 +65,8 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
-            Arc::new(MockUserRepository::new()),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockUserRepository::new()),
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
         );
@@ -133,8 +128,8 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new("signout_base_path_user")),
-            Arc::new(MockUserRepository::new()),
+            std::sync::Arc::new(MockOidcClient::new("signout_base_path_user")),
+            std::sync::Arc::new(MockUserRepository::new()),
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
         );

@@ -1,6 +1,3 @@
-use std::iter::Peekable;
-use std::str::Chars;
-
 /// bookmark を共有するための URL テンプレート。
 ///
 /// `{{ ... }}` ブロックで bookmark の値を差し込む (前後の空白は許容):
@@ -107,7 +104,9 @@ impl ShareUrl {
     }
 
     /// `{{` の直後から1ブロックをパースする (閉じ `}}` まで消費する)。
-    fn parse_block(chars: &mut Peekable<Chars<'_>>) -> anyhow::Result<Segment> {
+    fn parse_block(
+        chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
+    ) -> anyhow::Result<Segment> {
         Self::skip_spaces(chars);
         if chars.peek() == Some(&'"') {
             // 文字列リテラル: 次の `"` までをそのまま出力する。
@@ -151,13 +150,13 @@ impl ShareUrl {
     }
 
     /// 半角空白 (`' '`) のみを読み飛ばす (タブや全角空白などは許容しない)。
-    fn skip_spaces(chars: &mut Peekable<Chars<'_>>) {
+    fn skip_spaces(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
         while chars.peek() == Some(&' ') {
             chars.next();
         }
     }
 
-    fn take_ident(chars: &mut Peekable<Chars<'_>>) -> String {
+    fn take_ident(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> String {
         let mut ident = String::new();
         while let Some(&c) = chars.peek() {
             if c.is_ascii_alphanumeric() || c == '_' {
@@ -171,7 +170,7 @@ impl ShareUrl {
     }
 
     /// 閉じ `}}` を消費する。無ければエラー。
-    fn expect_close(chars: &mut Peekable<Chars<'_>>) -> anyhow::Result<()> {
+    fn expect_close(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> anyhow::Result<()> {
         if chars.next() == Some('}') && chars.next() == Some('}') {
             Ok(())
         } else {

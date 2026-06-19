@@ -23,11 +23,9 @@ impl std::str::FromStr for Comment {
 #[cfg(test)]
 impl Comment {
     pub fn for_test() -> Self {
-        use rand::RngExt as _;
         let mut rng = rand::rng();
-        let len = rng.random_range(0..=255);
-        let s: String = rng
-            .sample_iter(rand::distr::Alphanumeric)
+        let len = rand::RngExt::random_range(&mut rng, 0..=255);
+        let s: String = rand::RngExt::sample_iter(rng, rand::distr::Alphanumeric)
             .take(len)
             .map(char::from)
             .collect();

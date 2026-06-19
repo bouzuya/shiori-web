@@ -1,12 +1,3 @@
-use askama::Template;
-use axum::extract::Form;
-use axum::extract::Path;
-use axum::extract::State;
-use axum::http::StatusCode;
-use axum::response::Html;
-use axum::response::IntoResponse;
-use axum::response::Redirect;
-
 use crate::AppState;
 use crate::extractor::CurrentUserId;
 
@@ -24,7 +15,7 @@ pub(crate) fn router() -> axum::Router<AppState> {
         .route("/{bookmark_id}/delete", axum::routing::get(get_delete))
 }
 
-#[derive(Template)]
+#[derive(askama::Template)]
 #[template(path = "new.html")]
 struct NewBookmarkTemplate<'a> {
     base: &'a str,
@@ -43,9 +34,9 @@ struct NewBookmarkQuery {
 
 async fn get_new(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
+    axum::extract::State(state): axum::extract::State<AppState>,
     axum::extract::Query(query): axum::extract::Query<NewBookmarkQuery>,
-) -> impl IntoResponse {
+) -> impl axum::response::IntoResponse {
     let color_scheme = super::resolve_color_scheme(&state, user_id).await;
     let template = NewBookmarkTemplate {
         base: &state.base_path,
@@ -54,16 +45,18 @@ async fn get_new(
         title: query.title.unwrap_or_default(),
         url: query.url.unwrap_or_default(),
     };
-    match template.render() {
-        Ok(html) => Html(html).into_response(),
+    match askama::Template::render(&template) {
+        Ok(html) => axum::response::IntoResponse::into_response(axum::response::Html(html)),
         Err(e) => {
             tracing::error!("template render failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
         }
     }
 }
 
-#[derive(Template)]
+#[derive(askama::Template)]
 #[template(path = "show.html")]
 struct ShowBookmarkTemplate<'a> {
     base: &'a str,
@@ -77,19 +70,25 @@ struct ShowBookmarkTemplate<'a> {
 
 async fn get_show(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
-    Path(bookmark_id_str): Path<String>,
-) -> impl IntoResponse {
+    axum::extract::State(state): axum::extract::State<AppState>,
+    axum::extract::Path(bookmark_id_str): axum::extract::Path<String>,
+) -> impl axum::response::IntoResponse {
     let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
         Ok(id) => id,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
+        }
     };
     let bookmark = match state.bookmark_repository.find(user_id, bookmark_id).await {
         Ok(Some(b)) => b,
-        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Ok(None) => {
+            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
+        }
         Err(e) => {
             tracing::error!("failed to find bookmark: {e}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            );
         }
     };
     let color_scheme = super::resolve_color_scheme(&state, user_id).await;
@@ -102,16 +101,18 @@ async fn get_show(
         updated_at: bookmark.updated_at().to_rfc3339(),
         url: bookmark.url().to_string(),
     };
-    match template.render() {
-        Ok(html) => Html(html).into_response(),
+    match askama::Template::render(&template) {
+        Ok(html) => axum::response::IntoResponse::into_response(axum::response::Html(html)),
         Err(e) => {
             tracing::error!("template render failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
         }
     }
 }
 
-#[derive(Template)]
+#[derive(askama::Template)]
 #[template(path = "delete.html")]
 struct DeleteBookmarkTemplate<'a> {
     base: &'a str,
@@ -124,19 +125,25 @@ struct DeleteBookmarkTemplate<'a> {
 
 async fn get_delete(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
-    Path(bookmark_id_str): Path<String>,
-) -> impl IntoResponse {
+    axum::extract::State(state): axum::extract::State<AppState>,
+    axum::extract::Path(bookmark_id_str): axum::extract::Path<String>,
+) -> impl axum::response::IntoResponse {
     let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
         Ok(id) => id,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
+        }
     };
     let bookmark = match state.bookmark_repository.find(user_id, bookmark_id).await {
         Ok(Some(b)) => b,
-        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Ok(None) => {
+            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
+        }
         Err(e) => {
             tracing::error!("failed to find bookmark: {e}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            );
         }
     };
     let color_scheme = super::resolve_color_scheme(&state, user_id).await;
@@ -148,11 +155,13 @@ async fn get_delete(
         title: bookmark.title().to_string(),
         url: bookmark.url().to_string(),
     };
-    match template.render() {
-        Ok(html) => Html(html).into_response(),
+    match askama::Template::render(&template) {
+        Ok(html) => axum::response::IntoResponse::into_response(axum::response::Html(html)),
         Err(e) => {
             tracing::error!("template render failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
         }
     }
 }
@@ -179,31 +188,53 @@ async fn patch_bookmark_impl(
 ) -> axum::response::Response {
     let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
         Ok(id) => id,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
+        }
     };
     let current = match state.bookmark_repository.find(user_id, bookmark_id).await {
         Ok(Some(b)) => b,
-        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Ok(None) => {
+            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
+        }
         Err(e) => {
             tracing::error!("failed to find bookmark: {e}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            );
         }
     };
     let url = match body.url.parse::<kernel::Url>() {
         Ok(u) => u,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     let title = match body.title.parse::<kernel::Title>() {
         Ok(t) => t,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     let comment = match body.comment.parse::<kernel::Comment>() {
         Ok(c) => c,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     let updated_at = match kernel::DateTime::from_rfc3339(&body.updated_at) {
         Ok(t) => t,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     let now = kernel::DateTime::now();
     let updated = kernel::Bookmark::new(
@@ -222,18 +253,22 @@ async fn patch_bookmark_impl(
         .await
     {
         tracing::error!("failed to update bookmark: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return axum::response::IntoResponse::into_response(
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+        );
     }
     let base = &state.base_path;
-    Redirect::to(&format!("{base}/{bookmark_id_str}")).into_response()
+    axum::response::IntoResponse::into_response(axum::response::Redirect::to(&format!(
+        "{base}/{bookmark_id_str}"
+    )))
 }
 
 async fn patch_bookmark(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
-    Path(bookmark_id_str): Path<String>,
-    Form(body): Form<PatchBookmarkRequest>,
-) -> impl IntoResponse {
+    axum::extract::State(state): axum::extract::State<AppState>,
+    axum::extract::Path(bookmark_id_str): axum::extract::Path<String>,
+    axum::extract::Form(body): axum::extract::Form<PatchBookmarkRequest>,
+) -> impl axum::response::IntoResponse {
     patch_bookmark_impl(user_id, state, bookmark_id_str, body).await
 }
 
@@ -244,14 +279,20 @@ async fn delete_bookmark_impl(
 ) -> axum::response::Response {
     let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
         Ok(id) => id,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
+        }
     };
     let current = match state.bookmark_repository.find(user_id, bookmark_id).await {
         Ok(Some(b)) => b,
-        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Ok(None) => {
+            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
+        }
         Err(e) => {
             tracing::error!("failed to find bookmark: {e}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            );
         }
     };
     let now = kernel::DateTime::now();
@@ -271,37 +312,49 @@ async fn delete_bookmark_impl(
         .await
     {
         tracing::error!("failed to delete bookmark: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return axum::response::IntoResponse::into_response(
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+        );
     }
     let base = &state.base_path;
-    Redirect::to(if base.is_empty() { "/" } else { base }).into_response()
+    axum::response::IntoResponse::into_response(axum::response::Redirect::to(if base.is_empty() {
+        "/"
+    } else {
+        base
+    }))
 }
 
 async fn delete_bookmark(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
-    Path(bookmark_id_str): Path<String>,
-) -> impl IntoResponse {
+    axum::extract::State(state): axum::extract::State<AppState>,
+    axum::extract::Path(bookmark_id_str): axum::extract::Path<String>,
+) -> impl axum::response::IntoResponse {
     delete_bookmark_impl(user_id, state, bookmark_id_str).await
 }
 
 async fn post_bookmark_dispatch(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
-    Path(bookmark_id_str): Path<String>,
+    axum::extract::State(state): axum::extract::State<AppState>,
+    axum::extract::Path(bookmark_id_str): axum::extract::Path<String>,
     axum::extract::Query(query): axum::extract::Query<MethodOverrideQuery>,
     body: axum::body::Bytes,
-) -> impl IntoResponse {
+) -> impl axum::response::IntoResponse {
     match query.method.as_deref() {
         Some("PATCH") => {
             let form = match serde_urlencoded::from_bytes::<PatchBookmarkRequest>(&body) {
                 Ok(f) => f,
-                Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+                Err(_) => {
+                    return axum::response::IntoResponse::into_response(
+                        axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+                    );
+                }
             };
             patch_bookmark_impl(user_id, state, bookmark_id_str, form).await
         }
         Some("DELETE") => delete_bookmark_impl(user_id, state, bookmark_id_str).await,
-        _ => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+        _ => {
+            axum::response::IntoResponse::into_response(axum::http::StatusCode::METHOD_NOT_ALLOWED)
+        }
     }
 }
 
@@ -314,39 +367,50 @@ pub(crate) struct PostRootRequest {
 
 async fn post_root(
     CurrentUserId(user_id): CurrentUserId,
-    State(state): State<AppState>,
-    Form(body): Form<PostRootRequest>,
-) -> impl IntoResponse {
+    axum::extract::State(state): axum::extract::State<AppState>,
+    axum::extract::Form(body): axum::extract::Form<PostRootRequest>,
+) -> impl axum::response::IntoResponse {
     let url = match body.url.parse::<kernel::Url>() {
         Ok(u) => u,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     let title = match body.title.parse::<kernel::Title>() {
         Ok(t) => t,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     let comment = match body.comment.parse::<kernel::Comment>() {
         Ok(c) => c,
-        Err(_) => return StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+        Err(_) => {
+            return axum::response::IntoResponse::into_response(
+                axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+            );
+        }
     };
     let bookmark = kernel::Bookmark::create(user_id, url, title, comment);
     if let Err(e) = state.bookmark_repository.store(None, bookmark).await {
         tracing::error!("failed to store bookmark: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return axum::response::IntoResponse::into_response(
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+        );
     }
     let base = &state.base_path;
-    Redirect::to(if base.is_empty() { "/" } else { base }).into_response()
+    axum::response::IntoResponse::into_response(axum::response::Redirect::to(if base.is_empty() {
+        "/"
+    } else {
+        base
+    }))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use axum::body::Body;
-    use axum::http::Request;
-    use axum::http::StatusCode;
-    use axum::http::header;
-
     use crate::AppState;
     use crate::test_helpers::MockOidcClient;
     use crate::test_helpers::ResponseExt as _;
@@ -368,21 +432,23 @@ mod tests {
     async fn session_cookie(app: axum::Router, sub: &str) -> anyhow::Result<String> {
         let signup = send_request(
             app.clone(),
-            Request::builder().uri("/auth/signup").body(Body::empty())?,
+            axum::http::Request::builder()
+                .uri("/auth/signup")
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup);
         let callback = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .uri("/auth/callback?code=test&state=test_state")
-                .header(header::COOKIE, &cookie_header)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &cookie_header)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let session = callback
             .headers()
-            .get_all(header::SET_COOKIE)
+            .get_all(axum::http::header::SET_COOKIE)
             .iter()
             .find_map(|v| {
                 let s = v.to_str().ok()?;
@@ -408,11 +474,11 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/new")
-                .header(header::COOKIE, session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -440,11 +506,11 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/new")
-                .header(header::COOKIE, session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -465,13 +531,13 @@ mod tests {
         let app = test_app("get_new_auth_test_user")?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/new")
-                .body(Body::empty())?,
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
         Ok(())
     }
 
@@ -488,14 +554,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/new?url=https%3A%2F%2Fexample.com&title=My+Title&comment=My+Comment")
-                .header(header::COOKIE, session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains(r#"value="https://example.com""#),
@@ -525,14 +591,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/new")
-                .header(header::COOKIE, session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains(r#"action="/""#),
@@ -560,10 +626,13 @@ mod tests {
         let app = test_app("post_root_auth_test_user")?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
                 .body(form_body(&PostRootRequest {
                     comment: "".to_string(),
                     title: "".to_string(),
@@ -571,7 +640,7 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
         Ok(())
     }
 
@@ -588,11 +657,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, session)
                 .body(form_body(&PostRootRequest {
                     comment: "my note".to_string(),
                     title: "Example".to_string(),
@@ -600,11 +672,11 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
         assert_eq!(
             response
                 .headers()
-                .get(header::LOCATION)
+                .get(axum::http::header::LOCATION)
                 .and_then(|v| v.to_str().ok()),
             Some("/")
         );
@@ -625,11 +697,14 @@ mod tests {
         // ブックマークを作成
         let create_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PostRootRequest {
                     comment: "test comment".to_string(),
                     title: "Test Title".to_string(),
@@ -637,15 +712,15 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(create_res.status(), axum::http::StatusCode::SEE_OTHER);
         // 一覧から bookmark_id を取得
         let list_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let list_body = list_res.into_body_string().await?;
@@ -667,14 +742,14 @@ mod tests {
         // 詳細ページを取得
         let res = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), axum::http::StatusCode::OK);
         let body = res.into_body_string().await?;
         assert!(body.contains("test comment"), "comment missing: {body}");
         Ok(())
@@ -686,13 +761,13 @@ mod tests {
         let app = test_app("get_show_auth_test_user")?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/01939c78-e42a-7000-0000-000000000000")
-                .body(Body::empty())?,
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
         Ok(())
     }
 
@@ -709,14 +784,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/01939c78-e42a-7000-0000-000000000000")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(response.status(), axum::http::StatusCode::NOT_FOUND);
         Ok(())
     }
 
@@ -733,11 +808,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, session)
                 .body(form_body(&PostRootRequest {
                     comment: "".to_string(),
                     title: "".to_string(),
@@ -745,7 +823,10 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::UNPROCESSABLE_ENTITY
+        );
         Ok(())
     }
 
@@ -780,11 +861,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let create_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PostRootRequest {
                     comment: "edit test".to_string(),
                     title: "Edit Test".to_string(),
@@ -792,28 +876,28 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(create_res.status(), axum::http::StatusCode::SEE_OTHER);
         let list_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let list_body = list_res.into_body_string().await?;
         let bookmark_id = extract_bookmark_id(&list_body)?;
         let res = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), axum::http::StatusCode::OK);
         let body = res.into_body_string().await?;
         assert!(body.contains(r#"name="url""#), "url field missing: {body}");
         assert!(
@@ -838,10 +922,13 @@ mod tests {
         let app = test_app("patch_bookmark_auth_test_user")?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("PATCH")
                 .uri("/01939c78-e42a-7000-0000-000000000000")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
                 .body(form_body(&PatchBookmarkRequest {
                     comment: "".to_string(),
                     title: "".to_string(),
@@ -850,7 +937,7 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
         Ok(())
     }
 
@@ -867,11 +954,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let create_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PostRootRequest {
                     comment: "original".to_string(),
                     title: "Original Title".to_string(),
@@ -879,25 +969,25 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(create_res.status(), axum::http::StatusCode::SEE_OTHER);
         let list_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let list_body = list_res.into_body_string().await?;
         let bookmark_id = extract_bookmark_id(&list_body)?;
         let edit_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let edit_body = edit_res.into_body_string().await?;
@@ -917,11 +1007,14 @@ mod tests {
             .ok_or_else(|| anyhow::anyhow!("updated_at not found in edit form: {edit_body}"))?;
         let res = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("PATCH")
                 .uri(format!("/{bookmark_id}"))
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PatchBookmarkRequest {
                     comment: "updated".to_string(),
                     title: "Updated Title".to_string(),
@@ -930,10 +1023,10 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(res.status(), axum::http::StatusCode::SEE_OTHER);
         assert_eq!(
             res.headers()
-                .get(header::LOCATION)
+                .get(axum::http::header::LOCATION)
                 .and_then(|v| v.to_str().ok()),
             Some(format!("/{bookmark_id}").as_str())
         );
@@ -953,11 +1046,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let create_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PostRootRequest {
                     comment: "original".to_string(),
                     title: "Original Title".to_string(),
@@ -965,25 +1061,25 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(create_res.status(), axum::http::StatusCode::SEE_OTHER);
         let list_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let list_body = list_res.into_body_string().await?;
         let bookmark_id = extract_bookmark_id(&list_body)?;
         let show_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let show_body = show_res.into_body_string().await?;
@@ -1003,11 +1099,14 @@ mod tests {
             .ok_or_else(|| anyhow::anyhow!("updated_at not found: {show_body}"))?;
         let res = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri(format!("/{bookmark_id}?_method=PATCH"))
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PatchBookmarkRequest {
                     comment: "updated".to_string(),
                     title: "Updated Title".to_string(),
@@ -1016,7 +1115,7 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(res.status(), axum::http::StatusCode::SEE_OTHER);
         Ok(())
     }
 
@@ -1026,13 +1125,13 @@ mod tests {
         let app = test_app("delete_bookmark_auth_test_user")?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("DELETE")
                 .uri("/01939c78-e42a-7000-0000-000000000000")
-                .body(Body::empty())?,
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
         Ok(())
     }
 
@@ -1049,11 +1148,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let create_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PostRootRequest {
                     comment: "to be deleted".to_string(),
                     title: "Delete Me".to_string(),
@@ -1061,44 +1163,44 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(create_res.status(), axum::http::StatusCode::SEE_OTHER);
         let list_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let list_body = list_res.into_body_string().await?;
         let bookmark_id = extract_bookmark_id(&list_body)?;
         let res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("DELETE")
                 .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(res.status(), axum::http::StatusCode::SEE_OTHER);
         assert_eq!(
             res.headers()
-                .get(header::LOCATION)
+                .get(axum::http::header::LOCATION)
                 .and_then(|v| v.to_str().ok()),
             Some("/")
         );
         let get_res = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(get_res.status(), StatusCode::NOT_FOUND);
+        assert_eq!(get_res.status(), axum::http::StatusCode::NOT_FOUND);
         Ok(())
     }
 
@@ -1115,11 +1217,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let create_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PostRootRequest {
                     comment: "to be deleted".to_string(),
                     title: "Delete Me".to_string(),
@@ -1127,45 +1232,48 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(create_res.status(), axum::http::StatusCode::SEE_OTHER);
         let list_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let list_body = list_res.into_body_string().await?;
         let bookmark_id = extract_bookmark_id(&list_body)?;
         let res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri(format!("/{bookmark_id}?_method=DELETE"))
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(res.status(), axum::http::StatusCode::SEE_OTHER);
         assert_eq!(
             res.headers()
-                .get(header::LOCATION)
+                .get(axum::http::header::LOCATION)
                 .and_then(|v| v.to_str().ok()),
             Some("/")
         );
         let get_res = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri(format!("/{bookmark_id}"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(get_res.status(), StatusCode::NOT_FOUND);
+        assert_eq!(get_res.status(), axum::http::StatusCode::NOT_FOUND);
         Ok(())
     }
 
@@ -1175,13 +1283,13 @@ mod tests {
         let app = test_app("get_delete_confirm_auth_test_user")?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/01939c78-e42a-7000-0000-000000000000/delete")
-                .body(Body::empty())?,
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.status(), axum::http::StatusCode::UNAUTHORIZED);
         Ok(())
     }
 
@@ -1198,14 +1306,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/01939c78-e42a-7000-0000-000000000000/delete")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert_eq!(response.status(), axum::http::StatusCode::NOT_FOUND);
         Ok(())
     }
 
@@ -1222,11 +1330,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let create_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PostRootRequest {
                     comment: "confirm delete".to_string(),
                     title: "Delete Confirm".to_string(),
@@ -1234,28 +1345,28 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(create_res.status(), StatusCode::SEE_OTHER);
+        assert_eq!(create_res.status(), axum::http::StatusCode::SEE_OTHER);
         let list_res = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri("/")
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let list_body = list_res.into_body_string().await?;
         let bookmark_id = extract_bookmark_id(&list_body)?;
         let res = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("GET")
                 .uri(format!("/{bookmark_id}/delete"))
-                .header(header::COOKIE, &session)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &session)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), axum::http::StatusCode::OK);
         let body = res.into_body_string().await?;
         assert!(
             body.contains("Delete Confirm"),
@@ -1285,11 +1396,14 @@ mod tests {
         let session = session_cookie(app.clone(), &sub).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/01939c78-e42a-7000-0000-000000000000")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PatchBookmarkRequest {
                     comment: "".to_string(),
                     title: "".to_string(),
@@ -1298,7 +1412,10 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::METHOD_NOT_ALLOWED
+        );
         Ok(())
     }
 
@@ -1308,25 +1425,25 @@ mod tests {
     ) -> anyhow::Result<String> {
         let signup = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .uri(&format!("{base_path}/auth/signup"))
-                .body(Body::empty())?,
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         let signup_cookie = extract_cookies(&signup);
         let callback = send_request(
             app.clone(),
-            Request::builder()
+            axum::http::Request::builder()
                 .uri(&format!(
                     "{base_path}/auth/callback?code=test_code&state=test_state"
                 ))
-                .header(header::COOKIE, &signup_cookie)
-                .body(Body::empty())?,
+                .header(axum::http::header::COOKIE, &signup_cookie)
+                .body(axum::body::Body::empty())?,
         )
         .await?;
         callback
             .headers()
-            .get_all(header::SET_COOKIE)
+            .get_all(axum::http::header::SET_COOKIE)
             .iter()
             .find_map(|v| {
                 let s = v.to_str().ok()?;
@@ -1348,7 +1465,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            Arc::new(MockOidcClient::new(&sub)),
+            std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -1357,11 +1474,14 @@ mod tests {
         let session = session_cookie_with_base(app.clone(), base_path).await?;
         let response = send_request(
             app,
-            Request::builder()
+            axum::http::Request::builder()
                 .method("POST")
                 .uri("/app")
-                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                .header(header::COOKIE, &session)
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(axum::http::header::COOKIE, &session)
                 .body(form_body(&PostRootRequest {
                     comment: "".to_string(),
                     title: "Test".to_string(),
@@ -1369,11 +1489,11 @@ mod tests {
                 })?)?,
         )
         .await?;
-        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
         assert_eq!(
             response
                 .headers()
-                .get(header::LOCATION)
+                .get(axum::http::header::LOCATION)
                 .and_then(|v| v.to_str().ok()),
             Some("/app")
         );
