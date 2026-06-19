@@ -1,5 +1,12 @@
 use crate::AppState;
 use crate::extractor::CurrentUserId;
+use kernel::Bookmark;
+use kernel::BookmarkId;
+use kernel::Comment;
+use kernel::DateTime;
+use kernel::Title;
+use kernel::Url;
+use kernel::UserId;
 
 pub(crate) fn router() -> ::axum::Router<AppState> {
     ::axum::Router::new()
@@ -73,7 +80,7 @@ async fn get_show(
     ::axum::extract::State(state): ::axum::extract::State<AppState>,
     ::axum::extract::Path(bookmark_id_str): ::axum::extract::Path<String>,
 ) -> impl ::axum::response::IntoResponse {
-    let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
+    let bookmark_id = match bookmark_id_str.parse::<BookmarkId>() {
         Ok(id) => id,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -132,7 +139,7 @@ async fn get_delete(
     ::axum::extract::State(state): ::axum::extract::State<AppState>,
     ::axum::extract::Path(bookmark_id_str): ::axum::extract::Path<String>,
 ) -> impl ::axum::response::IntoResponse {
-    let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
+    let bookmark_id = match bookmark_id_str.parse::<BookmarkId>() {
         Ok(id) => id,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -189,12 +196,12 @@ pub(crate) struct PatchBookmarkRequest {
 }
 
 async fn patch_bookmark_impl(
-    user_id: kernel::UserId,
+    user_id: UserId,
     state: AppState,
     bookmark_id_str: String,
     body: PatchBookmarkRequest,
 ) -> ::axum::response::Response {
-    let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
+    let bookmark_id = match bookmark_id_str.parse::<BookmarkId>() {
         Ok(id) => id,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -216,7 +223,7 @@ async fn patch_bookmark_impl(
             );
         }
     };
-    let url = match body.url.parse::<kernel::Url>() {
+    let url = match body.url.parse::<Url>() {
         Ok(u) => u,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -224,7 +231,7 @@ async fn patch_bookmark_impl(
             );
         }
     };
-    let title = match body.title.parse::<kernel::Title>() {
+    let title = match body.title.parse::<Title>() {
         Ok(t) => t,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -232,7 +239,7 @@ async fn patch_bookmark_impl(
             );
         }
     };
-    let comment = match body.comment.parse::<kernel::Comment>() {
+    let comment = match body.comment.parse::<Comment>() {
         Ok(c) => c,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -240,7 +247,7 @@ async fn patch_bookmark_impl(
             );
         }
     };
-    let updated_at = match kernel::DateTime::from_rfc3339(&body.updated_at) {
+    let updated_at = match DateTime::from_rfc3339(&body.updated_at) {
         Ok(t) => t,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -248,8 +255,8 @@ async fn patch_bookmark_impl(
             );
         }
     };
-    let now = kernel::DateTime::now();
-    let updated = kernel::Bookmark::new(
+    let now = DateTime::now();
+    let updated = Bookmark::new(
         comment,
         current.created_at(),
         None,
@@ -285,11 +292,11 @@ async fn patch_bookmark(
 }
 
 async fn delete_bookmark_impl(
-    user_id: kernel::UserId,
+    user_id: UserId,
     state: AppState,
     bookmark_id_str: String,
 ) -> ::axum::response::Response {
-    let bookmark_id = match bookmark_id_str.parse::<kernel::BookmarkId>() {
+    let bookmark_id = match bookmark_id_str.parse::<BookmarkId>() {
         Ok(id) => id,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -311,8 +318,8 @@ async fn delete_bookmark_impl(
             );
         }
     };
-    let now = kernel::DateTime::now();
-    let deleted = kernel::Bookmark::new(
+    let now = DateTime::now();
+    let deleted = Bookmark::new(
         current.comment().clone(),
         current.created_at(),
         Some(now),
@@ -384,7 +391,7 @@ async fn post_root(
     ::axum::extract::State(state): ::axum::extract::State<AppState>,
     ::axum::extract::Form(body): ::axum::extract::Form<PostRootRequest>,
 ) -> impl ::axum::response::IntoResponse {
-    let url = match body.url.parse::<kernel::Url>() {
+    let url = match body.url.parse::<Url>() {
         Ok(u) => u,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -392,7 +399,7 @@ async fn post_root(
             );
         }
     };
-    let title = match body.title.parse::<kernel::Title>() {
+    let title = match body.title.parse::<Title>() {
         Ok(t) => t,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -400,7 +407,7 @@ async fn post_root(
             );
         }
     };
-    let comment = match body.comment.parse::<kernel::Comment>() {
+    let comment = match body.comment.parse::<Comment>() {
         Ok(c) => c,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -408,7 +415,7 @@ async fn post_root(
             );
         }
     };
-    let bookmark = kernel::Bookmark::create(user_id, url, title, comment);
+    let bookmark = Bookmark::create(user_id, url, title, comment);
     if let Err(e) = state.bookmark_repository.store(None, bookmark).await {
         ::tracing::error!("failed to store bookmark: {e}");
         return ::axum::response::IntoResponse::into_response(

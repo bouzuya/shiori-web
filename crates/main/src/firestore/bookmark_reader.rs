@@ -1,7 +1,11 @@
 use crate::BookmarkDocumentData;
 use crate::BookmarksCollection;
 use crate::FirestoreCollection;
+use kernel::BookmarkList;
 use kernel::BookmarkReader;
+use kernel::BookmarkView;
+use kernel::PageToken;
+use kernel::UserId;
 
 const PAGE_SIZE: usize = 10;
 
@@ -19,28 +23,28 @@ impl FirestoreBookmarkReader {
 impl BookmarkReader for FirestoreBookmarkReader {
     async fn list(
         &self,
-        user_id: kernel::UserId,
-        page_token: Option<kernel::PageToken>,
-    ) -> ::anyhow::Result<kernel::BookmarkList> {
+        user_id: UserId,
+        page_token: Option<PageToken>,
+    ) -> ::anyhow::Result<BookmarkList> {
         let collection_ref = self
             .firestore
             .collection(BookmarksCollection::collection_path(&user_id))
             .map_err(|e| ::anyhow::anyhow!(e))?;
         // Prev は表示順 (desc) の逆向きへ進むため asc で取得し、表示用に reverse する。
         let direction = match page_token {
-            None | Some(kernel::PageToken::Next(_)) => "desc",
-            Some(kernel::PageToken::Prev(_)) => "asc",
+            None | Some(PageToken::Next(_)) => "desc",
+            Some(PageToken::Prev(_)) => "asc",
         };
         let mut query = collection_ref
             .order_by("created_at", direction)
             .map_err(|e| ::anyhow::anyhow!(e))?
             .limit(i32::try_from(PAGE_SIZE + 1)?)
             .map_err(|e| ::anyhow::anyhow!(e))?;
-        if let Some(kernel::PageToken::Next(t) | kernel::PageToken::Prev(t)) = &page_token {
+        if let Some(PageToken::Next(t) | PageToken::Prev(t)) = &page_token {
             query = query.start_after([t]).map_err(|e| ::anyhow::anyhow!(e))?;
         }
         let snapshot = query.get().await.map_err(|e| ::anyhow::anyhow!(e))?;
-        let mut views: Vec<kernel::BookmarkView> = Vec::new();
+        let mut views: Vec<BookmarkView> = Vec::new();
         for doc in snapshot {
             let data = doc
                 .data::<BookmarkDocumentData>()
@@ -50,33 +54,33 @@ impl BookmarkReader for FirestoreBookmarkReader {
         let has_more = views.len() > PAGE_SIZE;
         let mut page: Vec<_> = views.into_iter().take(PAGE_SIZE).collect();
         match page_token {
-            None | Some(kernel::PageToken::Next(_)) => {
+            None | Some(PageToken::Next(_)) => {
                 // desc で取得しているのでこのままでOK
             }
-            Some(kernel::PageToken::Prev(_)) => {
+            Some(PageToken::Prev(_)) => {
                 // asc で取得しているので表示用に created_at 降順へ戻す
                 page.reverse();
             }
         }
         // first = 表示先頭 (最新側), last = 表示末尾 (最古側)
-        let next_of = |page: &[kernel::BookmarkView]| {
+        let next_of = |page: &[BookmarkView]| {
             page.last()
-                .map(|v| kernel::PageToken::Next(v.created_at.clone()).to_string())
+                .map(|v| PageToken::Next(v.created_at.clone()).to_string())
         };
-        let prev_of = |page: &[kernel::BookmarkView]| {
+        let prev_of = |page: &[BookmarkView]| {
             page.first()
-                .map(|v| kernel::PageToken::Prev(v.created_at.clone()).to_string())
+                .map(|v| PageToken::Prev(v.created_at.clone()).to_string())
         };
         let (next_page_token, prev_page_token) = match page_token {
             None => (has_more.then(|| next_of(&page)).flatten(), None),
-            Some(kernel::PageToken::Next(_)) => {
+            Some(PageToken::Next(_)) => {
                 (has_more.then(|| next_of(&page)).flatten(), prev_of(&page))
             }
-            Some(kernel::PageToken::Prev(_)) => {
+            Some(PageToken::Prev(_)) => {
                 (next_of(&page), has_more.then(|| prev_of(&page)).flatten())
             }
         };
-        Ok(kernel::BookmarkList {
+        Ok(BookmarkList {
             items: page,
             next_page_token,
             prev_page_token,
@@ -89,6 +93,12 @@ mod tests {
     use crate::FirestoreBookmarkRepository;
 
     use super::*;
+    use kernel::Bookmark;
+    use kernel::BookmarkId;
+    use kernel::Comment;
+    use kernel::DateTime;
+    use kernel::Title;
+    use kernel::Url;
 
     fn firestore_reader_and_repo()
     -> ::anyhow::Result<(FirestoreBookmarkReader, FirestoreBookmarkRepository)> {
@@ -105,7 +115,7 @@ mod tests {
     #[::serial_test::serial]
     async fn test_list_returns_empty_for_unknown_user() -> ::anyhow::Result<()> {
         let (reader, _repo) = firestore_reader_and_repo()?;
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let result = reader.list(user_id, None).await?;
         assert!(result.items.is_empty());
         assert!(result.next_page_token.is_none());
@@ -117,12 +127,12 @@ mod tests {
     async fn test_list_returns_stored_bookmark() -> ::anyhow::Result<()> {
         use kernel::BookmarkRepository as _;
         let (reader, repo) = firestore_reader_and_repo()?;
-        let user_id = kernel::UserId::new();
-        let bookmark = kernel::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            "https://example.com".parse::<kernel::Url>()?,
-            "title".parse::<kernel::Title>()?,
-            "comment".parse::<kernel::Comment>()?,
+            "https://example.com".parse::<Url>()?,
+            "title".parse::<Title>()?,
+            "comment".parse::<Comment>()?,
         );
         let bookmark_id = bookmark.id();
         repo.store(None, bookmark).await?;
@@ -139,25 +149,25 @@ mod tests {
     async fn test_list_sorts_by_created_at_desc() -> ::anyhow::Result<()> {
         use kernel::BookmarkRepository as _;
         let (reader, repo) = firestore_reader_and_repo()?;
-        let user_id = kernel::UserId::new();
-        let older = kernel::Bookmark::new(
-            "c".parse::<kernel::Comment>()?,
-            kernel::DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
+        let user_id = UserId::new();
+        let older = Bookmark::new(
+            "c".parse::<Comment>()?,
+            DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
             None,
-            kernel::BookmarkId::new(),
-            "t".parse::<kernel::Title>()?,
-            kernel::DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
-            "https://example.com/older".parse::<kernel::Url>()?,
+            BookmarkId::new(),
+            "t".parse::<Title>()?,
+            DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
+            "https://example.com/older".parse::<Url>()?,
             user_id,
         );
-        let newer = kernel::Bookmark::new(
-            "c".parse::<kernel::Comment>()?,
-            kernel::DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?,
+        let newer = Bookmark::new(
+            "c".parse::<Comment>()?,
+            DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?,
             None,
-            kernel::BookmarkId::new(),
-            "t".parse::<kernel::Title>()?,
-            kernel::DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?,
-            "https://example.com/newer".parse::<kernel::Url>()?,
+            BookmarkId::new(),
+            "t".parse::<Title>()?,
+            DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?,
+            "https://example.com/newer".parse::<Url>()?,
             user_id,
         );
         let older_id = older.id();
@@ -173,21 +183,21 @@ mod tests {
 
     async fn insert_n(
         repo: &FirestoreBookmarkRepository,
-        user_id: kernel::UserId,
+        user_id: UserId,
         n: usize,
     ) -> ::anyhow::Result<()> {
         use kernel::BookmarkRepository as _;
         for i in 0..n {
             let created_at =
-                kernel::DateTime::from_rfc3339(&format!("2024-01-{:02}T00:00:00.000Z", i + 1))?;
-            let bookmark = kernel::Bookmark::new(
-                "c".parse::<kernel::Comment>()?,
+                DateTime::from_rfc3339(&format!("2024-01-{:02}T00:00:00.000Z", i + 1))?;
+            let bookmark = Bookmark::new(
+                "c".parse::<Comment>()?,
                 created_at,
                 None,
-                kernel::BookmarkId::new(),
-                "t".parse::<kernel::Title>()?,
+                BookmarkId::new(),
+                "t".parse::<Title>()?,
                 created_at,
-                format!("https://example.com/{i}").parse::<kernel::Url>()?,
+                format!("https://example.com/{i}").parse::<Url>()?,
                 user_id,
             );
             repo.store(None, bookmark).await?;
@@ -199,7 +209,7 @@ mod tests {
     #[::serial_test::serial]
     async fn test_list_first_page_has_no_prev_page_token() -> ::anyhow::Result<()> {
         let (reader, repo) = firestore_reader_and_repo()?;
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         insert_n(&repo, user_id, 15).await?;
         let result = reader.list(user_id, None).await?;
         assert!(result.prev_page_token.is_none());
@@ -210,14 +220,14 @@ mod tests {
     #[::serial_test::serial]
     async fn test_list_next_page_has_prev_page_token() -> ::anyhow::Result<()> {
         let (reader, repo) = firestore_reader_and_repo()?;
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         insert_n(&repo, user_id, 15).await?;
         let first = reader.list(user_id, None).await?;
         let next = first
             .next_page_token
             .ok_or_else(|| ::anyhow::anyhow!("expected next_page_token"))?;
         let second = reader
-            .list(user_id, Some(next.parse::<kernel::PageToken>()?))
+            .list(user_id, Some(next.parse::<PageToken>()?))
             .await?;
         assert!(second.prev_page_token.is_some());
         Ok(())
@@ -227,7 +237,7 @@ mod tests {
     #[::serial_test::serial]
     async fn test_list_prev_page_token_returns_previous_page() -> ::anyhow::Result<()> {
         let (reader, repo) = firestore_reader_and_repo()?;
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         insert_n(&repo, user_id, 15).await?;
         let first = reader.list(user_id, None).await?;
         let next = first
@@ -235,14 +245,14 @@ mod tests {
             .clone()
             .ok_or_else(|| ::anyhow::anyhow!("expected next_page_token"))?;
         let second = reader
-            .list(user_id, Some(next.parse::<kernel::PageToken>()?))
+            .list(user_id, Some(next.parse::<PageToken>()?))
             .await?;
         let prev = second
             .prev_page_token
             .clone()
             .ok_or_else(|| ::anyhow::anyhow!("expected prev_page_token"))?;
         let back = reader
-            .list(user_id, Some(prev.parse::<kernel::PageToken>()?))
+            .list(user_id, Some(prev.parse::<PageToken>()?))
             .await?;
         let first_ids: Vec<_> = first.items.iter().map(|v| v.id.clone()).collect();
         let back_ids: Vec<_> = back.items.iter().map(|v| v.id.clone()).collect();

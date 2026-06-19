@@ -2,7 +2,11 @@ use crate::BookmarkDocumentData;
 use crate::BookmarksCollection;
 use crate::DocumentRef;
 use crate::FirestoreCollectionExt as _;
+use kernel::Bookmark;
+use kernel::BookmarkId;
 use kernel::BookmarkRepository;
+use kernel::DateTime;
+use kernel::UserId;
 
 pub(crate) struct FirestoreBookmarkRepository {
     firestore: ::bouzuya_firestore_client::Firestore,
@@ -18,9 +22,9 @@ impl FirestoreBookmarkRepository {
 impl BookmarkRepository for FirestoreBookmarkRepository {
     async fn find(
         &self,
-        user_id: kernel::UserId,
-        bookmark_id: kernel::BookmarkId,
-    ) -> ::anyhow::Result<Option<kernel::Bookmark>> {
+        user_id: UserId,
+        bookmark_id: BookmarkId,
+    ) -> ::anyhow::Result<Option<Bookmark>> {
         match BookmarksCollection::get(&self.firestore, &user_id, &bookmark_id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_bookmark(user_id)?)),
@@ -29,8 +33,8 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
 
     async fn store(
         &self,
-        updated_at: Option<kernel::DateTime>,
-        bookmark: kernel::Bookmark,
+        updated_at: Option<DateTime>,
+        bookmark: Bookmark,
     ) -> ::anyhow::Result<()> {
         let user_id = bookmark.user_id();
         let bookmark_id = bookmark.id();
@@ -58,7 +62,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                                         )
                                     })?;
                                 let existing_updated_at =
-                                    kernel::DateTime::from_rfc3339(stored.updated_at())
+                                    DateTime::from_rfc3339(stored.updated_at())
                                         .map_err(&to_fs_err)?;
                                 if existing_updated_at != t {
                                     return Err(::bouzuya_firestore_client::Error::custom(
@@ -89,6 +93,9 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use kernel::Comment;
+    use kernel::Title;
+    use kernel::Url;
 
     fn firestore_repo() -> ::anyhow::Result<FirestoreBookmarkRepository> {
         let firestore = ::bouzuya_firestore_client::Firestore::new(
@@ -101,8 +108,8 @@ mod tests {
     #[::serial_test::serial]
     async fn test_firestore_find_returns_none_for_unknown() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let user_id = kernel::UserId::new();
-        let bookmark_id = kernel::BookmarkId::new();
+        let user_id = UserId::new();
+        let bookmark_id = BookmarkId::new();
         let result = repo.find(user_id, bookmark_id).await?;
         assert!(result.is_none());
         Ok(())
@@ -112,12 +119,12 @@ mod tests {
     #[::serial_test::serial]
     async fn test_firestore_store_new_then_find() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let user_id = kernel::UserId::new();
-        let bookmark = kernel::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            "https://example.com".parse::<kernel::Url>()?,
-            "test title".parse::<kernel::Title>()?,
-            "test comment".parse::<kernel::Comment>()?,
+            "https://example.com".parse::<Url>()?,
+            "test title".parse::<Title>()?,
+            "test comment".parse::<Comment>()?,
         );
         let bookmark_id = bookmark.id();
         repo.store(None, bookmark).await?;
@@ -134,12 +141,12 @@ mod tests {
     #[::serial_test::serial]
     async fn test_firestore_store_new_fails_if_already_exists() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let user_id = kernel::UserId::new();
-        let bookmark = kernel::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            "https://example.com".parse::<kernel::Url>()?,
-            "test title".parse::<kernel::Title>()?,
-            "test comment".parse::<kernel::Comment>()?,
+            "https://example.com".parse::<Url>()?,
+            "test title".parse::<Title>()?,
+            "test comment".parse::<Comment>()?,
         );
         repo.store(None, bookmark.clone()).await?;
         assert!(repo.store(None, bookmark).await.is_err());
@@ -151,25 +158,25 @@ mod tests {
     async fn test_firestore_store_update_succeeds_when_updated_at_matches() -> ::anyhow::Result<()>
     {
         let repo = firestore_repo()?;
-        let user_id = kernel::UserId::new();
-        let bookmark = kernel::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            "https://example.com".parse::<kernel::Url>()?,
-            "test title".parse::<kernel::Title>()?,
-            "test comment".parse::<kernel::Comment>()?,
+            "https://example.com".parse::<Url>()?,
+            "test title".parse::<Title>()?,
+            "test comment".parse::<Comment>()?,
         );
         let original_updated_at = bookmark.updated_at();
         let id = bookmark.id();
         repo.store(None, bookmark).await?;
 
-        let updated = kernel::Bookmark::new(
-            "updated comment".parse::<kernel::Comment>()?,
-            kernel::DateTime::now(),
+        let updated = Bookmark::new(
+            "updated comment".parse::<Comment>()?,
+            DateTime::now(),
             None,
             id,
-            "updated title".parse::<kernel::Title>()?,
-            kernel::DateTime::now(),
-            "https://updated.example.com".parse::<kernel::Url>()?,
+            "updated title".parse::<Title>()?,
+            DateTime::now(),
+            "https://updated.example.com".parse::<Url>()?,
             user_id,
         );
         repo.store(Some(original_updated_at), updated).await?;
@@ -181,25 +188,25 @@ mod tests {
     async fn test_firestore_store_update_fails_when_updated_at_mismatches() -> ::anyhow::Result<()>
     {
         let repo = firestore_repo()?;
-        let user_id = kernel::UserId::new();
-        let bookmark = kernel::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            "https://example.com".parse::<kernel::Url>()?,
-            "test title".parse::<kernel::Title>()?,
-            "test comment".parse::<kernel::Comment>()?,
+            "https://example.com".parse::<Url>()?,
+            "test title".parse::<Title>()?,
+            "test comment".parse::<Comment>()?,
         );
         let id = bookmark.id();
         repo.store(None, bookmark).await?;
 
-        let stale_updated_at = kernel::DateTime::from_rfc3339("2000-01-01T00:00:00.000Z")?;
-        let updated = kernel::Bookmark::new(
-            "updated comment".parse::<kernel::Comment>()?,
-            kernel::DateTime::now(),
+        let stale_updated_at = DateTime::from_rfc3339("2000-01-01T00:00:00.000Z")?;
+        let updated = Bookmark::new(
+            "updated comment".parse::<Comment>()?,
+            DateTime::now(),
             None,
             id,
-            "updated title".parse::<kernel::Title>()?,
-            kernel::DateTime::now(),
-            "https://updated.example.com".parse::<kernel::Url>()?,
+            "updated title".parse::<Title>()?,
+            DateTime::now(),
+            "https://updated.example.com".parse::<Url>()?,
             user_id,
         );
         assert!(repo.store(Some(stale_updated_at), updated).await.is_err());
@@ -210,24 +217,24 @@ mod tests {
     #[::serial_test::serial]
     async fn test_firestore_store_delete_removes_bookmark() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
-        let user_id = kernel::UserId::new();
-        let bookmark = kernel::Bookmark::create(
+        let user_id = UserId::new();
+        let bookmark = Bookmark::create(
             user_id,
-            "https://example.com".parse::<kernel::Url>()?,
-            "test title".parse::<kernel::Title>()?,
-            "test comment".parse::<kernel::Comment>()?,
+            "https://example.com".parse::<Url>()?,
+            "test title".parse::<Title>()?,
+            "test comment".parse::<Comment>()?,
         );
         let original_updated_at = bookmark.updated_at();
         let id = bookmark.id();
         repo.store(None, bookmark).await?;
-        let deleted = kernel::Bookmark::new(
-            "test comment".parse::<kernel::Comment>()?,
-            kernel::DateTime::now(),
-            Some(kernel::DateTime::now()),
+        let deleted = Bookmark::new(
+            "test comment".parse::<Comment>()?,
+            DateTime::now(),
+            Some(DateTime::now()),
             id,
-            "test title".parse::<kernel::Title>()?,
-            kernel::DateTime::now(),
-            "https://example.com".parse::<kernel::Url>()?,
+            "test title".parse::<Title>()?,
+            DateTime::now(),
+            "https://example.com".parse::<Url>()?,
             user_id,
         );
         repo.store(Some(original_updated_at), deleted).await?;

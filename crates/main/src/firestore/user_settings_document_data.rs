@@ -1,3 +1,9 @@
+use kernel::ColorScheme;
+use kernel::ShareUrl;
+use kernel::UserId;
+use kernel::UserSettings;
+use kernel::UserSettingsView;
+use kernel::UtcOffset;
 /// Firestore の `user_settings/{user_id}` ドキュメントの永続化形式。
 ///
 /// `user_id` はドキュメントのパスから復元できるため保存しない。
@@ -11,16 +17,13 @@ pub(crate) struct UserSettingsDocumentData {
 impl UserSettingsDocumentData {
     pub(crate) fn into_user_settings_view(
         self,
-        user_id: kernel::UserId,
-    ) -> ::anyhow::Result<kernel::UserSettingsView> {
+        user_id: UserId,
+    ) -> ::anyhow::Result<UserSettingsView> {
         // 不正な値を弾き、正規化した文字列を保持する。
-        let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
-        let share_url = self
-            .share_url
-            .map(|s| s.parse::<kernel::ShareUrl>())
-            .transpose()?;
-        let utc_offset = self.utc_offset.parse::<kernel::UtcOffset>()?;
-        Ok(kernel::UserSettingsView {
+        let color_scheme = self.color_scheme.parse::<ColorScheme>()?;
+        let share_url = self.share_url.map(|s| s.parse::<ShareUrl>()).transpose()?;
+        let utc_offset = self.utc_offset.parse::<UtcOffset>()?;
+        Ok(UserSettingsView {
             color_scheme: color_scheme.to_string(),
             share_url: share_url.map(|s| s.to_string()),
             user_id: user_id.to_string(),
@@ -28,7 +31,7 @@ impl UserSettingsDocumentData {
         })
     }
 
-    pub(crate) fn from_user_settings(settings: &kernel::UserSettings) -> Self {
+    pub(crate) fn from_user_settings(settings: &UserSettings) -> Self {
         Self {
             color_scheme: settings.color_scheme().to_string(),
             share_url: settings.share_url().map(|s| s.to_string()),
@@ -36,17 +39,11 @@ impl UserSettingsDocumentData {
         }
     }
 
-    pub(crate) fn into_user_settings(
-        self,
-        user_id: kernel::UserId,
-    ) -> ::anyhow::Result<kernel::UserSettings> {
-        let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
-        let share_url = self
-            .share_url
-            .map(|s| s.parse::<kernel::ShareUrl>())
-            .transpose()?;
-        let utc_offset = self.utc_offset.parse::<kernel::UtcOffset>()?;
-        Ok(kernel::UserSettings::new(
+    pub(crate) fn into_user_settings(self, user_id: UserId) -> ::anyhow::Result<UserSettings> {
+        let color_scheme = self.color_scheme.parse::<ColorScheme>()?;
+        let share_url = self.share_url.map(|s| s.parse::<ShareUrl>()).transpose()?;
+        let utc_offset = self.utc_offset.parse::<UtcOffset>()?;
+        Ok(UserSettings::new(
             color_scheme,
             share_url,
             user_id,
@@ -61,7 +58,7 @@ mod tests {
 
     #[test]
     fn test_into_user_settings_view() -> ::anyhow::Result<()> {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "dark".to_string(),
             share_url: Some("https://example.com/?u={{url}}".to_string()),
@@ -80,7 +77,7 @@ mod tests {
 
     #[test]
     fn test_into_user_settings_view_without_share_url() -> ::anyhow::Result<()> {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "dark".to_string(),
             share_url: None,
@@ -103,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_into_user_settings_view_rejects_invalid_color_scheme() {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "auto".to_string(),
             share_url: None,
@@ -114,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_into_user_settings_view_rejects_invalid_share_url() {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "dark".to_string(),
             share_url: Some("not a url".to_string()),
@@ -125,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_into_user_settings_view_rejects_invalid_utc_offset() {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "dark".to_string(),
             share_url: None,
@@ -136,11 +133,11 @@ mod tests {
 
     #[test]
     fn test_from_user_settings() -> ::anyhow::Result<()> {
-        let settings = kernel::UserSettings::new(
-            kernel::ColorScheme::Dark,
-            Some("https://example.com/?u={{url}}".parse::<kernel::ShareUrl>()?),
-            kernel::UserId::new(),
-            kernel::UtcOffset::new(540)?,
+        let settings = UserSettings::new(
+            ColorScheme::Dark,
+            Some("https://example.com/?u={{url}}".parse::<ShareUrl>()?),
+            UserId::new(),
+            UtcOffset::new(540)?,
         );
         let data = UserSettingsDocumentData::from_user_settings(&settings);
         assert_eq!(data.color_scheme, "dark");
@@ -154,33 +151,33 @@ mod tests {
 
     #[test]
     fn test_from_user_settings_without_share_url() {
-        let settings = kernel::UserSettings::create(kernel::UserId::new());
+        let settings = UserSettings::create(UserId::new());
         let data = UserSettingsDocumentData::from_user_settings(&settings);
         assert_eq!(data.share_url, None);
     }
 
     #[test]
     fn test_into_user_settings() -> ::anyhow::Result<()> {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "light".to_string(),
             share_url: Some("https://example.com/?u={{url}}".to_string()),
             utc_offset: "-05:00".to_string(),
         };
         let settings = data.into_user_settings(user_id)?;
-        assert_eq!(settings.color_scheme(), kernel::ColorScheme::Light);
+        assert_eq!(settings.color_scheme(), ColorScheme::Light);
         assert_eq!(
             settings.share_url(),
-            Some(&"https://example.com/?u={{url}}".parse::<kernel::ShareUrl>()?)
+            Some(&"https://example.com/?u={{url}}".parse::<ShareUrl>()?)
         );
         assert_eq!(settings.user_id(), user_id);
-        assert_eq!(settings.utc_offset(), kernel::UtcOffset::new(-300)?);
+        assert_eq!(settings.utc_offset(), UtcOffset::new(-300)?);
         Ok(())
     }
 
     #[test]
     fn test_into_user_settings_rejects_invalid_share_url() {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "light".to_string(),
             share_url: Some("not a url".to_string()),
@@ -191,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_into_user_settings_rejects_invalid_utc_offset() {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "light".to_string(),
             share_url: None,

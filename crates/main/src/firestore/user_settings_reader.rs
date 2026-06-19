@@ -1,6 +1,8 @@
 use crate::FirestoreCollectionExt as _;
 use crate::UserSettingsCollection;
+use kernel::UserId;
 use kernel::UserSettingsReader;
+use kernel::UserSettingsView;
 
 pub(crate) struct FirestoreUserSettingsReader {
     firestore: ::bouzuya_firestore_client::Firestore,
@@ -14,10 +16,7 @@ impl FirestoreUserSettingsReader {
 
 #[::async_trait::async_trait]
 impl UserSettingsReader for FirestoreUserSettingsReader {
-    async fn get(
-        &self,
-        user_id: kernel::UserId,
-    ) -> ::anyhow::Result<Option<kernel::UserSettingsView>> {
+    async fn get(&self, user_id: UserId) -> ::anyhow::Result<Option<UserSettingsView>> {
         match UserSettingsCollection::get(&self.firestore, &(), &user_id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_user_settings_view(user_id)?)),
@@ -41,7 +40,7 @@ mod tests {
     /// `user_settings/{user_id}` ドキュメントを直接書き込む。
     async fn seed_settings(
         firestore: &::bouzuya_firestore_client::Firestore,
-        user_id: kernel::UserId,
+        user_id: UserId,
         color_scheme: &'static str,
         utc_offset: &'static str,
     ) -> ::anyhow::Result<()> {
@@ -80,7 +79,7 @@ mod tests {
     #[::serial_test::serial]
     async fn test_get_returns_none_for_unknown() -> ::anyhow::Result<()> {
         let reader = FirestoreUserSettingsReader::new(firestore()?);
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         assert!(reader.get(user_id).await?.is_none());
         Ok(())
     }
@@ -89,7 +88,7 @@ mod tests {
     #[::serial_test::serial]
     async fn test_get_returns_stored_settings() -> ::anyhow::Result<()> {
         let firestore = firestore()?;
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         seed_settings(&firestore, user_id, "dark", "+09:00").await?;
         let reader = FirestoreUserSettingsReader::new(firestore);
         let view = reader.get(user_id).await?;

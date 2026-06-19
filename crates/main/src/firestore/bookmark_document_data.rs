@@ -1,3 +1,11 @@
+use kernel::Bookmark;
+use kernel::BookmarkId;
+use kernel::BookmarkView;
+use kernel::Comment;
+use kernel::DateTime;
+use kernel::Title;
+use kernel::Url;
+use kernel::UserId;
 /// Firestore の `users/{user_id}/bookmarks/{bookmark_id}` ドキュメントの永続化形式。
 ///
 /// `user_id` はドキュメントのパスから復元できるため保存しない。
@@ -13,7 +21,7 @@ pub(crate) struct BookmarkDocumentData {
 }
 
 impl BookmarkDocumentData {
-    pub(crate) fn from_bookmark(bookmark: &kernel::Bookmark) -> Self {
+    pub(crate) fn from_bookmark(bookmark: &Bookmark) -> Self {
         Self {
             bookmark_id: bookmark.id().to_string(),
             comment: bookmark.comment().to_string(),
@@ -24,24 +32,21 @@ impl BookmarkDocumentData {
         }
     }
 
-    pub(crate) fn into_bookmark(
-        self,
-        user_id: kernel::UserId,
-    ) -> ::anyhow::Result<kernel::Bookmark> {
-        Ok(kernel::Bookmark::new(
-            self.comment.parse::<kernel::Comment>()?,
-            kernel::DateTime::from_rfc3339(&self.created_at)?,
+    pub(crate) fn into_bookmark(self, user_id: UserId) -> ::anyhow::Result<Bookmark> {
+        Ok(Bookmark::new(
+            self.comment.parse::<Comment>()?,
+            DateTime::from_rfc3339(&self.created_at)?,
             None,
-            self.bookmark_id.parse::<kernel::BookmarkId>()?,
-            self.title.parse::<kernel::Title>()?,
-            kernel::DateTime::from_rfc3339(&self.updated_at)?,
-            self.url.parse::<kernel::Url>()?,
+            self.bookmark_id.parse::<BookmarkId>()?,
+            self.title.parse::<Title>()?,
+            DateTime::from_rfc3339(&self.updated_at)?,
+            self.url.parse::<Url>()?,
             user_id,
         ))
     }
 
-    pub(crate) fn into_bookmark_view(self, user_id: kernel::UserId) -> kernel::BookmarkView {
-        kernel::BookmarkView {
+    pub(crate) fn into_bookmark_view(self, user_id: UserId) -> BookmarkView {
+        BookmarkView {
             comment: self.comment,
             created_at: self.created_at,
             id: self.bookmark_id,
@@ -63,15 +68,15 @@ mod tests {
 
     #[test]
     fn test_from_bookmark_then_into_bookmark_roundtrip() -> ::anyhow::Result<()> {
-        let user_id = kernel::UserId::new();
-        let bookmark = kernel::Bookmark::new(
-            "comment".parse::<kernel::Comment>()?,
-            kernel::DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
+        let user_id = UserId::new();
+        let bookmark = Bookmark::new(
+            "comment".parse::<Comment>()?,
+            DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
             None,
-            kernel::BookmarkId::new(),
-            "title".parse::<kernel::Title>()?,
-            kernel::DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?,
-            "https://example.com/".parse::<kernel::Url>()?,
+            BookmarkId::new(),
+            "title".parse::<Title>()?,
+            DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?,
+            "https://example.com/".parse::<Url>()?,
             user_id,
         );
         let restored = BookmarkDocumentData::from_bookmark(&bookmark).into_bookmark(user_id)?;
@@ -89,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_into_bookmark_view() -> ::anyhow::Result<()> {
-        let user_id = kernel::UserId::new();
+        let user_id = UserId::new();
         let data = BookmarkDocumentData {
             bookmark_id: "bid".to_string(),
             comment: "c".to_string(),

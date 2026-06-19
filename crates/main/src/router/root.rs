@@ -1,5 +1,8 @@
 use crate::AppState;
 use crate::extractor::CurrentUserId;
+use kernel::ColorScheme;
+use kernel::DateTime;
+use kernel::PageToken;
 
 pub(crate) fn router() -> ::axum::Router<AppState> {
     ::axum::Router::new().route("/", ::axum::routing::get(handler))
@@ -63,7 +66,7 @@ async fn handler(
             let share_url = super::resolve_share_url(&state, user_id).await;
             let page_token = match query.page_token {
                 None => None,
-                Some(s) => match s.parse::<kernel::PageToken>() {
+                Some(s) => match s.parse::<PageToken>() {
                     Ok(token) => Some(token),
                     Err(_) => {
                         return ::axum::response::IntoResponse::into_response(
@@ -76,7 +79,7 @@ async fn handler(
                 Ok(list) => {
                     let mut groups: Vec<DateGroup> = Vec::new();
                     for b in &list.items {
-                        let date = match kernel::DateTime::from_rfc3339(&b.created_at) {
+                        let date = match DateTime::from_rfc3339(&b.created_at) {
                             Ok(dt) => dt.to_date_string_in(offset),
                             // 不正値は従来どおり先頭10文字でフォールバック
                             Err(_) => b.created_at.chars().take(10).collect::<String>(),
@@ -119,7 +122,7 @@ async fn handler(
             }
         }
         None => {
-            let color_scheme = kernel::ColorScheme::default().to_string();
+            let color_scheme = ColorScheme::default().to_string();
             let template = LandingTemplate {
                 base: &state.base_path,
                 color_scheme: &color_scheme,
@@ -144,6 +147,17 @@ mod tests {
     use crate::test_helpers::send_request;
     use crate::test_helpers::test_app;
     use crate::test_helpers::unique_user_id;
+    use kernel::Bookmark;
+    use kernel::BookmarkId;
+    use kernel::ColorScheme;
+    use kernel::Comment;
+    use kernel::DateTime;
+    use kernel::GoogleUserId;
+    use kernel::ShareUrl;
+    use kernel::Title;
+    use kernel::Url;
+    use kernel::UserSettings;
+    use kernel::UtcOffset;
 
     async fn session_cookie(app: ::axum::Router) -> ::anyhow::Result<String> {
         let signup = send_request(
@@ -464,7 +478,7 @@ mod tests {
         .await?;
         assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
-        let today = kernel::DateTime::now()
+        let today = DateTime::now()
             .to_rfc3339()
             .to_string()
             .chars()
@@ -497,7 +511,7 @@ mod tests {
         // 認証済みユーザーの user_id を取得する。
         let user_id = state
             .user_repository
-            .find_by_google_user_id(&sub.parse::<kernel::GoogleUserId>()?)
+            .find_by_google_user_id(&sub.parse::<GoogleUserId>()?)
             .await?
             .ok_or_else(|| ::anyhow::anyhow!("user not found"))?
             .id();
@@ -505,11 +519,11 @@ mod tests {
         // +09:00 を保存する。
         state
             .user_settings_repository
-            .store(kernel::UserSettings::new(
-                kernel::ColorScheme::default(),
+            .store(UserSettings::new(
+                ColorScheme::default(),
                 None,
                 user_id,
-                kernel::UtcOffset::new(540)?,
+                UtcOffset::new(540)?,
             ))
             .await?;
 
@@ -518,14 +532,14 @@ mod tests {
             .bookmark_repository
             .store(
                 None,
-                kernel::Bookmark::new(
-                    "".parse::<kernel::Comment>()?,
-                    kernel::DateTime::from_rfc3339("2024-01-15T20:00:00.000Z")?,
+                Bookmark::new(
+                    "".parse::<Comment>()?,
+                    DateTime::from_rfc3339("2024-01-15T20:00:00.000Z")?,
                     None,
-                    kernel::BookmarkId::new(),
-                    "Example Title".parse::<kernel::Title>()?,
-                    kernel::DateTime::from_rfc3339("2024-01-15T20:00:00.000Z")?,
-                    "https://example.com".parse::<kernel::Url>()?,
+                    BookmarkId::new(),
+                    "Example Title".parse::<Title>()?,
+                    DateTime::from_rfc3339("2024-01-15T20:00:00.000Z")?,
+                    "https://example.com".parse::<Url>()?,
                     user_id,
                 ),
             )
@@ -570,18 +584,18 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let user_id = state
             .user_repository
-            .find_by_google_user_id(&sub.parse::<kernel::GoogleUserId>()?)
+            .find_by_google_user_id(&sub.parse::<GoogleUserId>()?)
             .await?
             .ok_or_else(|| ::anyhow::anyhow!("user not found"))?
             .id();
 
         state
             .user_settings_repository
-            .store(kernel::UserSettings::new(
-                kernel::ColorScheme::default(),
-                Some("https://example.com/share?u={{url}}".parse::<kernel::ShareUrl>()?),
+            .store(UserSettings::new(
+                ColorScheme::default(),
+                Some("https://example.com/share?u={{url}}".parse::<ShareUrl>()?),
                 user_id,
-                kernel::UtcOffset::default(),
+                UtcOffset::default(),
             ))
             .await?;
 

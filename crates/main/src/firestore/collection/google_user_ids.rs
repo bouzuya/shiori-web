@@ -1,5 +1,6 @@
 use crate::FirestoreCollection;
 use crate::GoogleUserIdDocumentData;
+use kernel::GoogleUserId;
 
 /// Firestore の `google_user_ids` コレクション。
 ///
@@ -8,7 +9,7 @@ use crate::GoogleUserIdDocumentData;
 pub(crate) struct GoogleUserIdsCollection;
 
 impl FirestoreCollection for GoogleUserIdsCollection {
-    type DocumentId = kernel::GoogleUserId;
+    type DocumentId = GoogleUserId;
     type ParentDocumentId = ();
     type Schema = GoogleUserIdDocumentData;
 
@@ -39,7 +40,7 @@ mod tests {
     #[test]
     fn test_document_path() -> ::anyhow::Result<()> {
         // a=0x61, b=0x62, c=0x63, 1=0x31, 2=0x32, 3=0x33
-        let google_user_id = "abc123".parse::<kernel::GoogleUserId>()?;
+        let google_user_id = "abc123".parse::<GoogleUserId>()?;
         assert_eq!(
             GoogleUserIdsCollection::document_path(&(), &google_user_id),
             "google_user_ids/616263313233"

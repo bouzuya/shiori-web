@@ -5,6 +5,10 @@ mod root;
 mod settings;
 
 use crate::AppState;
+use kernel::ColorScheme;
+use kernel::ShareUrl;
+use kernel::UserId;
+use kernel::UtcOffset;
 
 pub(crate) fn router(base_path: &str) -> ::axum::Router<AppState> {
     let inner = ::axum::Router::new()
@@ -22,27 +26,22 @@ pub(crate) fn router(base_path: &str) -> ::axum::Router<AppState> {
 
 /// 現在ユーザーの配色設定 (`data-color-scheme` 属性値) を解決する。
 /// 未保存・取得失敗時は既定値 (`system`) にフォールバックする。
-pub(crate) async fn resolve_color_scheme(state: &AppState, user_id: kernel::UserId) -> String {
+pub(crate) async fn resolve_color_scheme(state: &AppState, user_id: UserId) -> String {
     match state.user_settings_reader.get(user_id).await {
         Ok(Some(view)) => view.color_scheme,
-        Ok(None) => kernel::ColorScheme::default().to_string(),
+        Ok(None) => ColorScheme::default().to_string(),
         Err(e) => {
             ::tracing::error!("failed to get user settings: {e}");
-            kernel::ColorScheme::default().to_string()
+            ColorScheme::default().to_string()
         }
     }
 }
 
 /// 現在ユーザーの共有 URL テンプレートを解決する。
 /// 未保存・未設定・取得失敗・パース失敗時は `None` を返す。
-pub(crate) async fn resolve_share_url(
-    state: &AppState,
-    user_id: kernel::UserId,
-) -> Option<kernel::ShareUrl> {
+pub(crate) async fn resolve_share_url(state: &AppState, user_id: UserId) -> Option<ShareUrl> {
     match state.user_settings_reader.get(user_id).await {
-        Ok(Some(view)) => view
-            .share_url
-            .and_then(|s| s.parse::<kernel::ShareUrl>().ok()),
+        Ok(Some(view)) => view.share_url.and_then(|s| s.parse::<ShareUrl>().ok()),
         Ok(None) => None,
         Err(e) => {
             ::tracing::error!("failed to get user settings: {e}");
@@ -53,19 +52,13 @@ pub(crate) async fn resolve_share_url(
 
 /// 現在ユーザーの UTC オフセットを解決する。
 /// 未保存・取得失敗・パース失敗時は既定値 (UTC) にフォールバックする。
-pub(crate) async fn resolve_utc_offset(
-    state: &AppState,
-    user_id: kernel::UserId,
-) -> kernel::UtcOffset {
+pub(crate) async fn resolve_utc_offset(state: &AppState, user_id: UserId) -> UtcOffset {
     match state.user_settings_reader.get(user_id).await {
-        Ok(Some(view)) => view
-            .utc_offset
-            .parse::<kernel::UtcOffset>()
-            .unwrap_or_default(),
-        Ok(None) => kernel::UtcOffset::default(),
+        Ok(Some(view)) => view.utc_offset.parse::<UtcOffset>().unwrap_or_default(),
+        Ok(None) => UtcOffset::default(),
         Err(e) => {
             ::tracing::error!("failed to get user settings: {e}");
-            kernel::UtcOffset::default()
+            UtcOffset::default()
         }
     }
 }

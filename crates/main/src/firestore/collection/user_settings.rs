@@ -1,12 +1,13 @@
 use crate::FirestoreCollection;
 use crate::UserSettingsDocumentData;
+use kernel::UserId;
 
 /// Firestore の `user_settings` コレクション。
 #[derive(Clone)]
 pub(crate) struct UserSettingsCollection;
 
 impl FirestoreCollection for UserSettingsCollection {
-    type DocumentId = kernel::UserId;
+    type DocumentId = UserId;
     type ParentDocumentId = ();
     type Schema = UserSettingsDocumentData;
 
@@ -30,7 +31,7 @@ mod tests {
 
     #[test]
     fn test_document_path() -> ::anyhow::Result<()> {
-        let user_id = "01234567-89ab-cdef-0123-456789abcdef".parse::<kernel::UserId>()?;
+        let user_id = "01234567-89ab-cdef-0123-456789abcdef".parse::<UserId>()?;
         assert_eq!(
             UserSettingsCollection::document_path(&(), &user_id),
             "user_settings/01234567-89ab-cdef-0123-456789abcdef"

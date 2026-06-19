@@ -1,5 +1,10 @@
 use crate::AppState;
 use crate::extractor::CurrentUserId;
+use kernel::ColorScheme;
+use kernel::ShareUrl;
+use kernel::UserId;
+use kernel::UserSettings;
+use kernel::UtcOffset;
 
 pub(crate) fn router() -> ::axum::Router<AppState> {
     ::axum::Router::new().route(
@@ -84,11 +89,11 @@ async fn post_settings_dispatch(
 }
 
 async fn put_settings_impl(
-    user_id: kernel::UserId,
+    user_id: UserId,
     state: AppState,
     body: PutSettingsRequest,
 ) -> ::axum::response::Response {
-    let color_scheme = match body.color_scheme.parse::<kernel::ColorScheme>() {
+    let color_scheme = match body.color_scheme.parse::<ColorScheme>() {
         Ok(cs) => cs,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -100,7 +105,7 @@ async fn put_settings_impl(
     let share_url = if body.share_url.is_empty() {
         None
     } else {
-        match body.share_url.parse::<kernel::ShareUrl>() {
+        match body.share_url.parse::<ShareUrl>() {
             Ok(s) => Some(s),
             Err(_) => {
                 return ::axum::response::IntoResponse::into_response(
@@ -109,7 +114,7 @@ async fn put_settings_impl(
             }
         }
     };
-    let utc_offset = match body.utc_offset.parse::<kernel::UtcOffset>() {
+    let utc_offset = match body.utc_offset.parse::<UtcOffset>() {
         Ok(o) => o,
         Err(_) => {
             return ::axum::response::IntoResponse::into_response(
@@ -117,7 +122,7 @@ async fn put_settings_impl(
             );
         }
     };
-    let settings = kernel::UserSettings::new(color_scheme, share_url, user_id, utc_offset);
+    let settings = UserSettings::new(color_scheme, share_url, user_id, utc_offset);
     if let Err(e) = state.user_settings_repository.store(settings).await {
         ::tracing::error!("failed to store user settings: {e}");
         return ::axum::response::IntoResponse::into_response(
