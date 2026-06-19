@@ -984,7 +984,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            ::std::sync::Arc::new(MockOidcClient::new(&unique_user_id())),
+            ::std::sync::Arc::new(MockOidcClient::new(unique_user_id())),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,

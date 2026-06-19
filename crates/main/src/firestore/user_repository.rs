@@ -94,11 +94,11 @@ mod tests {
         let repo = firestore_repo()?;
         let google_user_id = "firestore_test_find_user1".parse::<GoogleUserId>()?;
         let user = User::create(google_user_id);
-        let user_id = user.id().clone();
+        let user_id = user.id();
         repo.store(user).await?;
         let result = repo.find(&user_id).await?;
         assert!(result.is_some());
-        assert_eq!(result.as_ref().map(|u| u.id().clone()), Some(user_id));
+        assert_eq!(result.as_ref().map(|u| u.id()), Some(user_id));
         Ok(())
     }
 

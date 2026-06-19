@@ -1445,7 +1445,7 @@ mod tests {
         let signup = send_request(
             app.clone(),
             ::axum::http::Request::builder()
-                .uri(&format!("{base_path}/auth/signup"))
+                .uri(format!("{base_path}/auth/signup"))
                 .body(::axum::body::Body::empty())?,
         )
         .await?;
@@ -1453,7 +1453,7 @@ mod tests {
         let callback = send_request(
             app.clone(),
             ::axum::http::Request::builder()
-                .uri(&format!(
+                .uri(format!(
                     "{base_path}/auth/callback?code=test_code&state=test_state"
                 ))
                 .header(::axum::http::header::COOKIE, &signup_cookie)

@@ -232,6 +232,7 @@ mod tests {
         assert!(millis <= after_millis);
     }
 
+    #[allow(clippy::clone_on_copy)]
     #[test]
     fn test_clone() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
