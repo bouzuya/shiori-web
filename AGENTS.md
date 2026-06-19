@@ -73,5 +73,5 @@ TDD (テスト駆動開発) で開発を進めること。
 ## コマンド
 
 - format: `cargo +nightly fmt`
-- lint: `cargo clippy -- -D warnings`
+- lint: `cargo clippy --all-targets -- -D warnings`
 - test: `cargo test`
