@@ -2,7 +2,7 @@
 ///
 /// `user_id` はドキュメントのパスから復元できるため保存しない。
 /// `deleted_at` も保存しない (削除は論理削除フラグではなくドキュメントの物理削除で表現するため)。
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(::serde::Deserialize, ::serde::Serialize)]
 pub(crate) struct BookmarkDocumentData {
     bookmark_id: String,
     comment: String,
@@ -24,7 +24,10 @@ impl BookmarkDocumentData {
         }
     }
 
-    pub(crate) fn into_bookmark(self, user_id: kernel::UserId) -> anyhow::Result<kernel::Bookmark> {
+    pub(crate) fn into_bookmark(
+        self,
+        user_id: kernel::UserId,
+    ) -> ::anyhow::Result<kernel::Bookmark> {
         Ok(kernel::Bookmark::new(
             self.comment.parse::<kernel::Comment>()?,
             kernel::DateTime::from_rfc3339(&self.created_at)?,
@@ -59,7 +62,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_from_bookmark_then_into_bookmark_roundtrip() -> anyhow::Result<()> {
+    fn test_from_bookmark_then_into_bookmark_roundtrip() -> ::anyhow::Result<()> {
         let user_id = kernel::UserId::new();
         let bookmark = kernel::Bookmark::new(
             "comment".parse::<kernel::Comment>()?,
@@ -85,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn test_into_bookmark_view() -> anyhow::Result<()> {
+    fn test_into_bookmark_view() -> ::anyhow::Result<()> {
         let user_id = kernel::UserId::new();
         let data = BookmarkDocumentData {
             bookmark_id: "bid".to_string(),
@@ -107,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn test_updated_at_accessor() -> anyhow::Result<()> {
+    fn test_updated_at_accessor() -> ::anyhow::Result<()> {
         let data = BookmarkDocumentData {
             bookmark_id: "bid".to_string(),
             comment: "c".to_string(),

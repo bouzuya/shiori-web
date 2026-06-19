@@ -7,32 +7,32 @@ const MAX_MILLIS: i64 = 253_402_300_799_999;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct DateTime {
-    inner: chrono::DateTime<chrono::Utc>,
+    inner: ::chrono::DateTime<::chrono::Utc>,
 }
 
 impl DateTime {
-    fn from_millis(millis: i64) -> anyhow::Result<Self> {
+    fn from_millis(millis: i64) -> ::anyhow::Result<Self> {
         if !(MIN_MILLIS..=MAX_MILLIS).contains(&millis) {
-            anyhow::bail!(
+            ::anyhow::bail!(
                 "datetime out of range: must be between 0001-01-01T00:00:00.000Z and 9999-12-31T23:59:59.999Z"
             );
         }
         let secs = millis.div_euclid(1000);
         let nanos = (millis.rem_euclid(1000) * 1_000_000) as u32;
-        let inner = chrono::TimeZone::timestamp_opt(&chrono::Utc, secs, nanos)
+        let inner = ::chrono::TimeZone::timestamp_opt(&::chrono::Utc, secs, nanos)
             .single()
-            .ok_or_else(|| anyhow::anyhow!("timestamp out of range: {millis}"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("timestamp out of range: {millis}"))?;
         Ok(Self { inner })
     }
 
-    pub fn from_rfc3339(s: &str) -> anyhow::Result<Self> {
+    pub fn from_rfc3339(s: &str) -> ::anyhow::Result<Self> {
         // Validate millisecond precision: require exactly 3 fractional second digits.
         // RFC3339 format is YYYY-MM-DDTHH:MM:SS[.fraction]timezone, so the dot
         // appears at position 19 or later (after the fixed-length datetime prefix).
         let dot_pos = s.get(19..).and_then(|tail| tail.find('.')).map(|p| p + 19);
         match dot_pos {
             None => {
-                anyhow::bail!("RFC3339 string must have millisecond precision (3 decimal places)")
+                ::anyhow::bail!("RFC3339 string must have millisecond precision (3 decimal places)")
             }
             Some(pos) => {
                 let digits = s[pos + 1..]
@@ -40,36 +40,36 @@ impl DateTime {
                     .take_while(|c| c.is_ascii_digit())
                     .count();
                 if digits != 3 {
-                    anyhow::bail!(
+                    ::anyhow::bail!(
                         "RFC3339 string must have millisecond precision (3 decimal places), got {digits}"
                     );
                 }
             }
         }
-        let dt = chrono::DateTime::parse_from_rfc3339(s)?;
+        let dt = ::chrono::DateTime::parse_from_rfc3339(s)?;
         Self::from_millis(dt.timestamp_millis())
     }
 
-    pub fn from_unix_timestamp(secs: i64) -> anyhow::Result<Self> {
+    pub fn from_unix_timestamp(secs: i64) -> ::anyhow::Result<Self> {
         let millis = secs
             .checked_mul(1000)
-            .ok_or_else(|| anyhow::anyhow!("unix timestamp overflow: {secs}"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("unix timestamp overflow: {secs}"))?;
         Self::from_millis(millis)
     }
 
-    pub fn from_unix_timestamp_as_millis(millis: i64) -> anyhow::Result<Self> {
+    pub fn from_unix_timestamp_as_millis(millis: i64) -> ::anyhow::Result<Self> {
         Self::from_millis(millis)
     }
 
     pub fn now() -> Self {
-        let millis = chrono::Utc::now().timestamp_millis();
+        let millis = ::chrono::Utc::now().timestamp_millis();
         // System time is always within [0001-01-01, 9999-12-31], so from_millis cannot fail here.
         Self::from_millis(millis).unwrap_or_else(|_| unreachable!("system clock is out of range"))
     }
 
     pub fn to_date_string_in(&self, offset: UtcOffset) -> String {
         // offset は UtcOffset で範囲検証済みのため east_opt が None になることはない。
-        let fixed = chrono::FixedOffset::east_opt(offset.minutes() * 60)
+        let fixed = ::chrono::FixedOffset::east_opt(offset.minutes() * 60)
             .unwrap_or_else(|| unreachable!("UtcOffset is always within FixedOffset range"));
         self.inner
             .with_timezone(&fixed)
@@ -79,7 +79,7 @@ impl DateTime {
 
     pub fn to_rfc3339(&self) -> String {
         self.inner
-            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+            .to_rfc3339_opts(::chrono::SecondsFormat::Millis, true)
     }
 
     pub fn to_unix_timestamp(&self) -> i64 {
@@ -96,7 +96,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_from_rfc3339_and_to_rfc3339_roundtrip() -> anyhow::Result<()> {
+    fn test_from_rfc3339_and_to_rfc3339_roundtrip() -> ::anyhow::Result<()> {
         let s = "2024-01-15T10:30:45.123Z";
         let dt = DateTime::from_rfc3339(s)?;
         assert_eq!(dt.to_rfc3339(), s);
@@ -129,7 +129,7 @@ mod tests {
     }
 
     #[test]
-    fn test_to_date_string_in_utc_matches_rfc3339_prefix() -> anyhow::Result<()> {
+    fn test_to_date_string_in_utc_matches_rfc3339_prefix() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
         assert_eq!(
             dt.to_date_string_in(UtcOffset::default()),
@@ -139,21 +139,21 @@ mod tests {
     }
 
     #[test]
-    fn test_to_date_string_in_positive_offset_rolls_to_next_day() -> anyhow::Result<()> {
+    fn test_to_date_string_in_positive_offset_rolls_to_next_day() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("2024-01-15T20:00:00.000Z")?;
         assert_eq!(dt.to_date_string_in(UtcOffset::new(540)?), "2024-01-16");
         Ok(())
     }
 
     #[test]
-    fn test_to_date_string_in_negative_offset_rolls_to_previous_day() -> anyhow::Result<()> {
+    fn test_to_date_string_in_negative_offset_rolls_to_previous_day() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("2024-01-15T02:00:00.000Z")?;
         assert_eq!(dt.to_date_string_in(UtcOffset::new(-300)?), "2024-01-14");
         Ok(())
     }
 
     #[test]
-    fn test_from_unix_timestamp_and_to_unix_timestamp_roundtrip() -> anyhow::Result<()> {
+    fn test_from_unix_timestamp_and_to_unix_timestamp_roundtrip() -> ::anyhow::Result<()> {
         let secs = 1705314645_i64;
         let dt = DateTime::from_unix_timestamp(secs)?;
         assert_eq!(dt.to_unix_timestamp(), secs);
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_unix_timestamp_as_millis_and_to_millis_roundtrip() -> anyhow::Result<()> {
+    fn test_from_unix_timestamp_as_millis_and_to_millis_roundtrip() -> ::anyhow::Result<()> {
         let millis = 1705314645123_i64;
         let dt = DateTime::from_unix_timestamp_as_millis(millis)?;
         assert_eq!(dt.to_unix_timestamp_as_millis(), millis);
@@ -169,35 +169,35 @@ mod tests {
     }
 
     #[test]
-    fn test_from_unix_timestamp_to_rfc3339() -> anyhow::Result<()> {
+    fn test_from_unix_timestamp_to_rfc3339() -> ::anyhow::Result<()> {
         let dt = DateTime::from_unix_timestamp(0)?;
         assert_eq!(dt.to_rfc3339(), "1970-01-01T00:00:00.000Z");
         Ok(())
     }
 
     #[test]
-    fn test_from_unix_timestamp_as_millis_to_rfc3339() -> anyhow::Result<()> {
+    fn test_from_unix_timestamp_as_millis_to_rfc3339() -> ::anyhow::Result<()> {
         let dt = DateTime::from_unix_timestamp_as_millis(1705314645123)?;
         assert_eq!(dt.to_rfc3339(), "2024-01-15T10:30:45.123Z");
         Ok(())
     }
 
     #[test]
-    fn test_to_unix_timestamp_truncates_millis() -> anyhow::Result<()> {
+    fn test_to_unix_timestamp_truncates_millis() -> ::anyhow::Result<()> {
         let dt = DateTime::from_unix_timestamp_as_millis(1705314645999)?;
         assert_eq!(dt.to_unix_timestamp(), 1705314645);
         Ok(())
     }
 
     #[test]
-    fn test_from_rfc3339_to_unix_timestamp_as_millis() -> anyhow::Result<()> {
+    fn test_from_rfc3339_to_unix_timestamp_as_millis() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
         assert_eq!(dt.to_unix_timestamp_as_millis(), 1705314645123);
         Ok(())
     }
 
     #[test]
-    fn test_min_value_is_accepted() -> anyhow::Result<()> {
+    fn test_min_value_is_accepted() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("0001-01-01T00:00:00.000Z")?;
         assert_eq!(dt.to_rfc3339(), "0001-01-01T00:00:00.000Z");
         assert_eq!(dt.to_unix_timestamp_as_millis(), MIN_MILLIS);
@@ -205,7 +205,7 @@ mod tests {
     }
 
     #[test]
-    fn test_max_value_is_accepted() -> anyhow::Result<()> {
+    fn test_max_value_is_accepted() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("9999-12-31T23:59:59.999Z")?;
         assert_eq!(dt.to_rfc3339(), "9999-12-31T23:59:59.999Z");
         assert_eq!(dt.to_unix_timestamp_as_millis(), MAX_MILLIS);
@@ -224,16 +224,16 @@ mod tests {
 
     #[test]
     fn test_now_returns_current_time() {
-        let before_millis = chrono::Utc::now().timestamp_millis();
+        let before_millis = ::chrono::Utc::now().timestamp_millis();
         let dt = DateTime::now();
-        let after_millis = chrono::Utc::now().timestamp_millis();
+        let after_millis = ::chrono::Utc::now().timestamp_millis();
         let millis = dt.to_unix_timestamp_as_millis();
         assert!(before_millis <= millis);
         assert!(millis <= after_millis);
     }
 
     #[test]
-    fn test_clone() -> anyhow::Result<()> {
+    fn test_clone() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
         let cloned = dt.clone();
         assert_eq!(dt, cloned);
@@ -241,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    fn test_copy() -> anyhow::Result<()> {
+    fn test_copy() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
         let copied = dt;
         // dt is still usable after copy
@@ -250,7 +250,7 @@ mod tests {
     }
 
     #[test]
-    fn test_debug() -> anyhow::Result<()> {
+    fn test_debug() -> ::anyhow::Result<()> {
         let dt = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
         let s = format!("{dt:?}");
         assert!(!s.is_empty());
@@ -258,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eq() -> anyhow::Result<()> {
+    fn test_eq() -> ::anyhow::Result<()> {
         let a = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
         let b = DateTime::from_rfc3339("2024-01-15T10:30:45.123Z")?;
         let c = DateTime::from_rfc3339("2024-01-15T10:30:45.456Z")?;
@@ -268,27 +268,27 @@ mod tests {
     }
 
     #[test]
-    fn test_ord() -> anyhow::Result<()> {
+    fn test_ord() -> ::anyhow::Result<()> {
         let earlier = DateTime::from_rfc3339("2024-01-15T10:30:45.000Z")?;
         let later = DateTime::from_rfc3339("2024-01-15T10:30:45.999Z")?;
         assert!(earlier < later);
         assert!(later > earlier);
-        assert_eq!(earlier.cmp(&earlier), std::cmp::Ordering::Equal);
+        assert_eq!(earlier.cmp(&earlier), ::std::cmp::Ordering::Equal);
         Ok(())
     }
 
     #[test]
-    fn test_partial_ord() -> anyhow::Result<()> {
+    fn test_partial_ord() -> ::anyhow::Result<()> {
         let earlier = DateTime::from_rfc3339("2024-01-15T10:30:45.000Z")?;
         let later = DateTime::from_rfc3339("2024-01-15T10:30:45.999Z")?;
-        assert!(earlier.partial_cmp(&later) == Some(std::cmp::Ordering::Less));
-        assert!(later.partial_cmp(&earlier) == Some(std::cmp::Ordering::Greater));
-        assert!(earlier.partial_cmp(&earlier) == Some(std::cmp::Ordering::Equal));
+        assert!(earlier.partial_cmp(&later) == Some(::std::cmp::Ordering::Less));
+        assert!(later.partial_cmp(&earlier) == Some(::std::cmp::Ordering::Greater));
+        assert!(earlier.partial_cmp(&earlier) == Some(::std::cmp::Ordering::Equal));
         Ok(())
     }
 
     #[test]
-    fn test_negative_unix_timestamp() -> anyhow::Result<()> {
+    fn test_negative_unix_timestamp() -> ::anyhow::Result<()> {
         let dt = DateTime::from_unix_timestamp_as_millis(-1500)?;
         assert_eq!(dt.to_unix_timestamp_as_millis(), -1500);
         assert_eq!(dt.to_unix_timestamp(), -2);

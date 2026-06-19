@@ -44,21 +44,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_user_create() -> anyhow::Result<()> {
+    fn test_user_create() -> ::anyhow::Result<()> {
         let user = User::create("user1".parse::<GoogleUserId>()?);
         assert_eq!(user.google_user_id().to_string(), "user1");
         Ok(())
     }
 
     #[test]
-    fn test_user_create_generates_user_id() -> anyhow::Result<()> {
+    fn test_user_create_generates_user_id() -> ::anyhow::Result<()> {
         let user = User::create("user1".parse::<GoogleUserId>()?);
         let _id: UserId = user.id();
         Ok(())
     }
 
     #[test]
-    fn test_user_create_has_created_at() -> anyhow::Result<()> {
+    fn test_user_create_has_created_at() -> ::anyhow::Result<()> {
         let before = DateTime::now();
         let user = User::create("user1".parse::<GoogleUserId>()?);
         let after = DateTime::now();

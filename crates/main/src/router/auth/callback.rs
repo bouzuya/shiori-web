@@ -4,40 +4,40 @@ use kernel::User;
 use crate::AppState;
 use crate::CookieJar;
 
-pub(crate) fn router() -> axum::Router<AppState> {
-    axum::Router::new().route("/auth/callback", axum::routing::get(handler))
+pub(crate) fn router() -> ::axum::Router<AppState> {
+    ::axum::Router::new().route("/auth/callback", ::axum::routing::get(handler))
 }
 
-#[derive(serde::Deserialize)]
+#[derive(::serde::Deserialize)]
 struct CallbackParams {
     code: String,
     state: String,
 }
 
 async fn handler(
-    axum::extract::State(app_state): axum::extract::State<AppState>,
+    ::axum::extract::State(app_state): ::axum::extract::State<AppState>,
     jar: CookieJar,
-    axum::extract::Query(params): axum::extract::Query<CallbackParams>,
-) -> Result<impl axum::response::IntoResponse, axum::http::StatusCode> {
-    tracing::info!("auth callback: received callback request");
+    ::axum::extract::Query(params): ::axum::extract::Query<CallbackParams>,
+) -> Result<impl ::axum::response::IntoResponse, ::axum::http::StatusCode> {
+    ::tracing::info!("auth callback: received callback request");
 
     let csrf_state = jar.get_state().ok_or_else(|| {
-        tracing::warn!("auth callback: oidc_state cookie not found, returning 400");
-        axum::http::StatusCode::BAD_REQUEST
+        ::tracing::warn!("auth callback: oidc_state cookie not found, returning 400");
+        ::axum::http::StatusCode::BAD_REQUEST
     })?;
     if params.state != csrf_state {
-        tracing::warn!("auth callback: CSRF state mismatch, returning 400");
-        return Err(axum::http::StatusCode::BAD_REQUEST);
+        ::tracing::warn!("auth callback: CSRF state mismatch, returning 400");
+        return Err(::axum::http::StatusCode::BAD_REQUEST);
     }
 
     let nonce = jar.get_nonce().ok_or_else(|| {
-        tracing::warn!("auth callback: oidc_nonce cookie not found, returning 400");
-        axum::http::StatusCode::BAD_REQUEST
+        ::tracing::warn!("auth callback: oidc_nonce cookie not found, returning 400");
+        ::axum::http::StatusCode::BAD_REQUEST
     })?;
 
     let flow = jar.get_flow().ok_or_else(|| {
-        tracing::warn!("auth callback: auth_flow cookie not found, returning 400");
-        axum::http::StatusCode::BAD_REQUEST
+        ::tracing::warn!("auth callback: auth_flow cookie not found, returning 400");
+        ::axum::http::StatusCode::BAD_REQUEST
     })?;
 
     let oidc_claims = app_state
@@ -45,29 +45,29 @@ async fn handler(
         .exchange_code(&params.code, &nonce)
         .await
         .map_err(|e| {
-            tracing::error!("auth callback: failed to exchange code: {e:?}");
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR
+            ::tracing::error!("auth callback: failed to exchange code: {e:?}");
+            ::axum::http::StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
     let google_user_id = oidc_claims.sub.parse::<GoogleUserId>().map_err(|e| {
-        tracing::error!("auth callback: invalid google user id: {e:?}");
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        ::tracing::error!("auth callback: invalid google user id: {e:?}");
+        ::axum::http::StatusCode::INTERNAL_SERVER_ERROR
     })?;
     let user = app_state
         .user_repository
         .find_by_google_user_id(&google_user_id)
         .await
         .map_err(|e| {
-            tracing::error!("auth callback: failed to find user: {e:?}");
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR
+            ::tracing::error!("auth callback: failed to find user: {e:?}");
+            ::axum::http::StatusCode::INTERNAL_SERVER_ERROR
         })?;
     let user_id = match (flow.as_str(), user) {
         ("signin", None) => {
-            tracing::warn!(
+            ::tracing::warn!(
                 sub = %oidc_claims.sub,
                 "auth callback: user not found for signin, returning 403"
             );
-            return Err(axum::http::StatusCode::FORBIDDEN);
+            return Err(::axum::http::StatusCode::FORBIDDEN);
         }
         ("signin", Some(user)) => user.id(),
         ("signup", None) => {
@@ -78,25 +78,25 @@ async fn handler(
                 .store(new_user)
                 .await
                 .map_err(|e| {
-                    tracing::error!("auth callback: failed to store user: {e:?}");
-                    axum::http::StatusCode::INTERNAL_SERVER_ERROR
+                    ::tracing::error!("auth callback: failed to store user: {e:?}");
+                    ::axum::http::StatusCode::INTERNAL_SERVER_ERROR
                 })?;
             user_id
         }
         ("signup", Some(_)) => {
-            tracing::warn!(
+            ::tracing::warn!(
                 sub = %oidc_claims.sub,
                 "auth callback: user already exists for signup, returning 403"
             );
-            return Err(axum::http::StatusCode::FORBIDDEN);
+            return Err(::axum::http::StatusCode::FORBIDDEN);
         }
         _ => {
-            tracing::warn!(flow, "auth callback: unknown auth flow, returning 400");
-            return Err(axum::http::StatusCode::BAD_REQUEST);
+            ::tracing::warn!(flow, "auth callback: unknown auth flow, returning 400");
+            return Err(::axum::http::StatusCode::BAD_REQUEST);
         }
     };
 
-    tracing::info!(sub = %oidc_claims.sub, "auth callback: authentication successful, setting session cookie");
+    ::tracing::info!(sub = %oidc_claims.sub, "auth callback: authentication successful, setting session cookie");
     let jar = jar.with_session_cookies(user_id.to_string());
 
     let redirect_target = if app_state.base_path.is_empty() {
@@ -104,7 +104,7 @@ async fn handler(
     } else {
         app_state.base_path.clone()
     };
-    Ok((jar, axum::response::Redirect::temporary(&redirect_target)))
+    Ok((jar, ::axum::response::Redirect::temporary(&redirect_target)))
 }
 
 #[cfg(test)]
@@ -124,16 +124,16 @@ mod tests {
     use crate::test_helpers::send_request;
     use crate::test_helpers::unique_user_id;
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn signup_callback_creates_user_and_sets_session() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn signup_callback_creates_user_and_sets_session() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -142,9 +142,9 @@ mod tests {
         // Step 1: Signup to get CSRF and nonce cookies
         let signup_response = send_request(
             crate::router::router("").with_state(state.clone()),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/signup")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup_response);
@@ -152,25 +152,25 @@ mod tests {
         // Step 2: Call callback with code, state, and cookies
         let response = send_request(
             crate::router::router("").with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/callback?code=test_code&state=test_state")
-                .header(axum::http::header::COOKIE, &cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(
             response.status(),
-            axum::http::StatusCode::TEMPORARY_REDIRECT
+            ::axum::http::StatusCode::TEMPORARY_REDIRECT
         );
         let location = response
             .headers()
-            .get(axum::http::header::LOCATION)
+            .get(::axum::http::header::LOCATION)
             .expect("Expected location header")
             .to_str()?;
         assert_eq!(location, "/");
         let set_cookies: Vec<_> = response
             .headers()
-            .get_all(axum::http::header::SET_COOKIE)
+            .get_all(::axum::http::header::SET_COOKIE)
             .iter()
             .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
             .collect();
@@ -181,9 +181,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn signin_callback_with_existing_user_sets_session() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn signin_callback_with_existing_user_sets_session() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let user_repo = firestore_user_repo()?;
         user_repo
@@ -194,7 +194,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             user_repo,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -203,9 +203,9 @@ mod tests {
         // Step 1: Signin
         let signin_response = send_request(
             crate::router::router("").with_state(state.clone()),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/signin")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signin_response);
@@ -213,29 +213,29 @@ mod tests {
         // Step 2: Callback
         let response = send_request(
             crate::router::router("").with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/callback?code=test_code&state=test_state")
-                .header(axum::http::header::COOKIE, &cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(
             response.status(),
-            axum::http::StatusCode::TEMPORARY_REDIRECT
+            ::axum::http::StatusCode::TEMPORARY_REDIRECT
         );
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn signin_callback_with_unknown_user_returns_error() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn signin_callback_with_unknown_user_returns_error() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -244,9 +244,9 @@ mod tests {
         // Step 1: Signin (no user in DB)
         let signin_response = send_request(
             crate::router::router("").with_state(state.clone()),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/signin")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signin_response);
@@ -254,19 +254,19 @@ mod tests {
         // Step 2: Callback — should fail because user doesn't exist
         let response = send_request(
             crate::router::router("").with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/callback?code=test_code&state=test_state")
-                .header(axum::http::header::COOKIE, &cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::FORBIDDEN);
+        assert_eq!(response.status(), ::axum::http::StatusCode::FORBIDDEN);
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn with_base_path_callback_redirects_to_base_path() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn with_base_path_callback_redirects_to_base_path() -> ::anyhow::Result<()> {
         let base_path = "/app";
         let sub = unique_user_id();
         let state = AppState::new(
@@ -274,7 +274,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -283,9 +283,9 @@ mod tests {
         // Step 1: Signup
         let signup_response = send_request(
             crate::router::router(base_path).with_state(state.clone()),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/app/auth/signup")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup_response);
@@ -293,28 +293,28 @@ mod tests {
         // Step 2: Callback — redirect target should be base_path
         let response = send_request(
             crate::router::router(base_path).with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/app/auth/callback?code=test_code&state=test_state")
-                .header(axum::http::header::COOKIE, &cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(
             response.status(),
-            axum::http::StatusCode::TEMPORARY_REDIRECT
+            ::axum::http::StatusCode::TEMPORARY_REDIRECT
         );
         let location = response
             .headers()
-            .get(axum::http::header::LOCATION)
+            .get(::axum::http::header::LOCATION)
             .expect("Expected location header")
             .to_str()?;
         assert_eq!(location, "/app");
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn with_base_path_session_cookie_has_base_path() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn with_base_path_session_cookie_has_base_path() -> ::anyhow::Result<()> {
         let base_path = "/app";
         let sub = unique_user_id();
         let state = AppState::new(
@@ -322,7 +322,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -331,9 +331,9 @@ mod tests {
         // Step 1: Signup
         let signup_response = send_request(
             crate::router::router(base_path).with_state(state.clone()),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/app/auth/signup")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup_response);
@@ -341,15 +341,15 @@ mod tests {
         // Step 2: Callback — session cookie Path should be base_path
         let response = send_request(
             crate::router::router(base_path).with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/app/auth/callback?code=test_code&state=test_state")
-                .header(axum::http::header::COOKIE, &cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let set_cookies: Vec<_> = response
             .headers()
-            .get_all(axum::http::header::SET_COOKIE)
+            .get_all(::axum::http::header::SET_COOKIE)
             .iter()
             .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
             .collect();

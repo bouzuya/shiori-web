@@ -6,8 +6,8 @@ mod settings;
 
 use crate::AppState;
 
-pub(crate) fn router(base_path: &str) -> axum::Router<AppState> {
-    let inner = axum::Router::new()
+pub(crate) fn router(base_path: &str) -> ::axum::Router<AppState> {
+    let inner = ::axum::Router::new()
         .merge(auth::router())
         .merge(bookmark::router())
         .merge(index_css::router())
@@ -16,7 +16,7 @@ pub(crate) fn router(base_path: &str) -> axum::Router<AppState> {
     if base_path.is_empty() {
         inner
     } else {
-        axum::Router::new().nest(base_path, inner)
+        ::axum::Router::new().nest(base_path, inner)
     }
 }
 
@@ -27,7 +27,7 @@ pub(crate) async fn resolve_color_scheme(state: &AppState, user_id: kernel::User
         Ok(Some(view)) => view.color_scheme,
         Ok(None) => kernel::ColorScheme::default().to_string(),
         Err(e) => {
-            tracing::error!("failed to get user settings: {e}");
+            ::tracing::error!("failed to get user settings: {e}");
             kernel::ColorScheme::default().to_string()
         }
     }
@@ -45,7 +45,7 @@ pub(crate) async fn resolve_share_url(
             .and_then(|s| s.parse::<kernel::ShareUrl>().ok()),
         Ok(None) => None,
         Err(e) => {
-            tracing::error!("failed to get user settings: {e}");
+            ::tracing::error!("failed to get user settings: {e}");
             None
         }
     }
@@ -64,7 +64,7 @@ pub(crate) async fn resolve_utc_offset(
             .unwrap_or_default(),
         Ok(None) => kernel::UtcOffset::default(),
         Err(e) => {
-            tracing::error!("failed to get user settings: {e}");
+            ::tracing::error!("failed to get user settings: {e}");
             kernel::UtcOffset::default()
         }
     }
@@ -82,16 +82,16 @@ mod tests {
     use crate::test_helpers::firestore_user_settings_repository;
     use crate::test_helpers::send_request;
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn with_base_path_routes_are_under_base_path() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn with_base_path_routes_are_under_base_path() -> ::anyhow::Result<()> {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new("base_path_route_user")),
+            ::std::sync::Arc::new(MockOidcClient::new("base_path_route_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -100,28 +100,28 @@ mod tests {
         // Route exists under base path
         let response = send_request(
             super::router(base_path).with_state(state.clone()),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/app/auth/signup")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(
             response.status(),
-            axum::http::StatusCode::TEMPORARY_REDIRECT,
+            ::axum::http::StatusCode::TEMPORARY_REDIRECT,
             "Expected route under base path to exist"
         );
 
         // Route does NOT exist without base path
         let response = send_request(
             super::router(base_path).with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/signup")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(
             response.status(),
-            axum::http::StatusCode::NOT_FOUND,
+            ::axum::http::StatusCode::NOT_FOUND,
             "Expected route without base path to return 404"
         );
         Ok(())

@@ -4,7 +4,7 @@ use kernel::User;
 use kernel::UserId;
 
 /// Firestore の `users/{user_id}` ドキュメントの永続化形式。
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(::serde::Deserialize, ::serde::Serialize)]
 pub(crate) struct UserDocumentData {
     created_at: String,
     google_user_id: String,
@@ -20,7 +20,7 @@ impl UserDocumentData {
         }
     }
 
-    pub(crate) fn into_user(self) -> anyhow::Result<User> {
+    pub(crate) fn into_user(self) -> ::anyhow::Result<User> {
         Ok(User::new(
             DateTime::from_rfc3339(&self.created_at)?,
             self.google_user_id.parse::<GoogleUserId>()?,
@@ -34,7 +34,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_from_user_then_into_user_roundtrip() -> anyhow::Result<()> {
+    fn test_from_user_then_into_user_roundtrip() -> ::anyhow::Result<()> {
         let user = User::new(
             DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?,
             "google_user_id".parse::<GoogleUserId>()?,

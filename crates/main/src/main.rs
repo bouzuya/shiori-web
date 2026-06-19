@@ -27,29 +27,29 @@ pub(crate) use self::firestore::UsersCollection;
 pub(crate) use self::state::AppState;
 
 fn generate_secret() -> String {
-    let key = axum_extra::extract::cookie::Key::generate();
+    let key = ::axum_extra::extract::cookie::Key::generate();
     key.master().iter().map(|b| format!("{b:02x}")).collect()
 }
 
-async fn run_server() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
+async fn run_server() -> ::anyhow::Result<()> {
+    ::tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+            ::tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| ::tracing_subscriber::EnvFilter::new("info")),
         )
         .init();
 
     let env = env::Env::from_env()?;
     let state = AppState::from_env(&env).await?;
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", env.port)).await?;
-    tracing::info!("listening on 0.0.0.0:{}", env.port);
-    axum::serve(listener, router::router(&env.base_path).with_state(state)).await?;
+    let listener = ::tokio::net::TcpListener::bind(format!("0.0.0.0:{}", env.port)).await?;
+    ::tracing::info!("listening on 0.0.0.0:{}", env.port);
+    ::axum::serve(listener, router::router(&env.base_path).with_state(state)).await?;
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let args: Vec<String> = std::env::args().collect();
+#[::tokio::main]
+async fn main() -> ::anyhow::Result<()> {
+    let args: Vec<String> = ::std::env::args().collect();
     if args.get(1).map(|s| s.as_str()) == Some("generate-secret") {
         println!("{}", generate_secret());
         return Ok(());
@@ -69,6 +69,6 @@ mod tests {
             secret.len()
         );
         // 実際に Key::from() で変換できることを確認
-        let _ = axum_extra::extract::cookie::Key::from(secret.as_bytes());
+        let _ = ::axum_extra::extract::cookie::Key::from(secret.as_bytes());
     }
 }

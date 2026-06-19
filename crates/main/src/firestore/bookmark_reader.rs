@@ -6,26 +6,26 @@ use kernel::BookmarkReader;
 const PAGE_SIZE: usize = 10;
 
 pub(crate) struct FirestoreBookmarkReader {
-    firestore: bouzuya_firestore_client::Firestore,
+    firestore: ::bouzuya_firestore_client::Firestore,
 }
 
 impl FirestoreBookmarkReader {
-    pub(crate) fn new(firestore: bouzuya_firestore_client::Firestore) -> Self {
+    pub(crate) fn new(firestore: ::bouzuya_firestore_client::Firestore) -> Self {
         Self { firestore }
     }
 }
 
-#[async_trait::async_trait]
+#[::async_trait::async_trait]
 impl BookmarkReader for FirestoreBookmarkReader {
     async fn list(
         &self,
         user_id: kernel::UserId,
         page_token: Option<kernel::PageToken>,
-    ) -> anyhow::Result<kernel::BookmarkList> {
+    ) -> ::anyhow::Result<kernel::BookmarkList> {
         let collection_ref = self
             .firestore
             .collection(BookmarksCollection::collection_path(&user_id))
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| ::anyhow::anyhow!(e))?;
         // Prev は表示順 (desc) の逆向きへ進むため asc で取得し、表示用に reverse する。
         let direction = match page_token {
             None | Some(kernel::PageToken::Next(_)) => "desc",
@@ -33,18 +33,18 @@ impl BookmarkReader for FirestoreBookmarkReader {
         };
         let mut query = collection_ref
             .order_by("created_at", direction)
-            .map_err(|e| anyhow::anyhow!(e))?
+            .map_err(|e| ::anyhow::anyhow!(e))?
             .limit(i32::try_from(PAGE_SIZE + 1)?)
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| ::anyhow::anyhow!(e))?;
         if let Some(kernel::PageToken::Next(t) | kernel::PageToken::Prev(t)) = &page_token {
-            query = query.start_after([t]).map_err(|e| anyhow::anyhow!(e))?;
+            query = query.start_after([t]).map_err(|e| ::anyhow::anyhow!(e))?;
         }
-        let snapshot = query.get().await.map_err(|e| anyhow::anyhow!(e))?;
+        let snapshot = query.get().await.map_err(|e| ::anyhow::anyhow!(e))?;
         let mut views: Vec<kernel::BookmarkView> = Vec::new();
         for doc in snapshot {
             let data = doc
                 .data::<BookmarkDocumentData>()
-                .map_err(|e| anyhow::anyhow!(e))?;
+                .map_err(|e| ::anyhow::anyhow!(e))?;
             views.push(data.into_bookmark_view(user_id));
         }
         let has_more = views.len() > PAGE_SIZE;
@@ -91,9 +91,9 @@ mod tests {
     use super::*;
 
     fn firestore_reader_and_repo()
-    -> anyhow::Result<(FirestoreBookmarkReader, FirestoreBookmarkRepository)> {
-        let firestore = bouzuya_firestore_client::Firestore::new(
-            bouzuya_firestore_client::FirestoreOptions::default(),
+    -> ::anyhow::Result<(FirestoreBookmarkReader, FirestoreBookmarkRepository)> {
+        let firestore = ::bouzuya_firestore_client::Firestore::new(
+            ::bouzuya_firestore_client::FirestoreOptions::default(),
         )?;
         Ok((
             FirestoreBookmarkReader::new(firestore.clone()),
@@ -101,9 +101,9 @@ mod tests {
         ))
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_list_returns_empty_for_unknown_user() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_returns_empty_for_unknown_user() -> ::anyhow::Result<()> {
         let (reader, _repo) = firestore_reader_and_repo()?;
         let user_id = kernel::UserId::new();
         let result = reader.list(user_id, None).await?;
@@ -112,9 +112,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_list_returns_stored_bookmark() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_returns_stored_bookmark() -> ::anyhow::Result<()> {
         use kernel::BookmarkRepository as _;
         let (reader, repo) = firestore_reader_and_repo()?;
         let user_id = kernel::UserId::new();
@@ -134,9 +134,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_list_sorts_by_created_at_desc() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_sorts_by_created_at_desc() -> ::anyhow::Result<()> {
         use kernel::BookmarkRepository as _;
         let (reader, repo) = firestore_reader_and_repo()?;
         let user_id = kernel::UserId::new();
@@ -175,7 +175,7 @@ mod tests {
         repo: &FirestoreBookmarkRepository,
         user_id: kernel::UserId,
         n: usize,
-    ) -> anyhow::Result<()> {
+    ) -> ::anyhow::Result<()> {
         use kernel::BookmarkRepository as _;
         for i in 0..n {
             let created_at =
@@ -195,9 +195,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_list_first_page_has_no_prev_page_token() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_first_page_has_no_prev_page_token() -> ::anyhow::Result<()> {
         let (reader, repo) = firestore_reader_and_repo()?;
         let user_id = kernel::UserId::new();
         insert_n(&repo, user_id, 15).await?;
@@ -206,16 +206,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_list_next_page_has_prev_page_token() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_next_page_has_prev_page_token() -> ::anyhow::Result<()> {
         let (reader, repo) = firestore_reader_and_repo()?;
         let user_id = kernel::UserId::new();
         insert_n(&repo, user_id, 15).await?;
         let first = reader.list(user_id, None).await?;
         let next = first
             .next_page_token
-            .ok_or_else(|| anyhow::anyhow!("expected next_page_token"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("expected next_page_token"))?;
         let second = reader
             .list(user_id, Some(next.parse::<kernel::PageToken>()?))
             .await?;
@@ -223,9 +223,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_list_prev_page_token_returns_previous_page() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_prev_page_token_returns_previous_page() -> ::anyhow::Result<()> {
         let (reader, repo) = firestore_reader_and_repo()?;
         let user_id = kernel::UserId::new();
         insert_n(&repo, user_id, 15).await?;
@@ -233,14 +233,14 @@ mod tests {
         let next = first
             .next_page_token
             .clone()
-            .ok_or_else(|| anyhow::anyhow!("expected next_page_token"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("expected next_page_token"))?;
         let second = reader
             .list(user_id, Some(next.parse::<kernel::PageToken>()?))
             .await?;
         let prev = second
             .prev_page_token
             .clone()
-            .ok_or_else(|| anyhow::anyhow!("expected prev_page_token"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("expected prev_page_token"))?;
         let back = reader
             .list(user_id, Some(prev.parse::<kernel::PageToken>()?))
             .await?;

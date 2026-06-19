@@ -1,4 +1,4 @@
-use anyhow::Context as _;
+use ::anyhow::Context as _;
 
 /// アプリケーション全体で使用する環境変数。
 pub(crate) struct Env {
@@ -23,20 +23,20 @@ pub(crate) struct Env {
 }
 
 impl Env {
-    pub fn from_env() -> anyhow::Result<Self> {
-        fn read_var(name: &str) -> anyhow::Result<String> {
-            std::env::var(name).with_context(|| format!("environment variable {name} is not set"))
+    pub fn from_env() -> ::anyhow::Result<Self> {
+        fn read_var(name: &str) -> ::anyhow::Result<String> {
+            ::std::env::var(name).with_context(|| format!("environment variable {name} is not set"))
         }
 
         Ok(Self {
-            base_path: std::env::var("BASE_PATH").unwrap_or_default(),
+            base_path: ::std::env::var("BASE_PATH").unwrap_or_default(),
             cookie_signing_secret: read_var("COOKIE_SIGNING_SECRET")?,
             database_id: read_var("DATABASE_ID")?,
             oidc_client_id: read_var("OIDC_CLIENT_ID")?,
             oidc_client_secret: read_var("OIDC_CLIENT_SECRET")?,
             oidc_issuer_url: read_var("OIDC_ISSUER_URL")?,
             oidc_redirect_uri: read_var("OIDC_REDIRECT_URI")?,
-            port: std::env::var("PORT")
+            port: ::std::env::var("PORT")
                 .ok()
                 .map(|v| v.parse::<u16>())
                 .transpose()
@@ -52,8 +52,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn from_env_reads_all_variables() -> anyhow::Result<()> {
-        temp_env::with_vars(
+    fn from_env_reads_all_variables() -> ::anyhow::Result<()> {
+        ::temp_env::with_vars(
             [
                 ("BASE_PATH", Some("/app")),
                 (
@@ -91,8 +91,8 @@ mod tests {
     }
 
     #[test]
-    fn from_env_port_defaults_to_3000() -> anyhow::Result<()> {
-        temp_env::with_vars(
+    fn from_env_port_defaults_to_3000() -> ::anyhow::Result<()> {
+        ::temp_env::with_vars(
             [
                 ("BASE_PATH", None::<&str>),
                 (
@@ -119,8 +119,8 @@ mod tests {
     }
 
     #[test]
-    fn from_env_base_path_defaults_to_empty() -> anyhow::Result<()> {
-        temp_env::with_vars(
+    fn from_env_base_path_defaults_to_empty() -> ::anyhow::Result<()> {
+        ::temp_env::with_vars(
             [
                 ("BASE_PATH", None::<&str>),
                 (
@@ -146,8 +146,8 @@ mod tests {
     }
 
     #[test]
-    fn from_env_fails_when_variable_is_missing() -> anyhow::Result<()> {
-        temp_env::with_vars(
+    fn from_env_fails_when_variable_is_missing() -> ::anyhow::Result<()> {
+        ::temp_env::with_vars(
             [
                 ("BASE_PATH", None::<&str>),
                 ("COOKIE_SIGNING_SECRET", None::<&str>),

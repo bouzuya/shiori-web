@@ -1,7 +1,7 @@
 /// Firestore の `user_settings/{user_id}` ドキュメントの永続化形式。
 ///
 /// `user_id` はドキュメントのパスから復元できるため保存しない。
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(::serde::Deserialize, ::serde::Serialize)]
 pub(crate) struct UserSettingsDocumentData {
     color_scheme: String,
     share_url: Option<String>,
@@ -12,7 +12,7 @@ impl UserSettingsDocumentData {
     pub(crate) fn into_user_settings_view(
         self,
         user_id: kernel::UserId,
-    ) -> anyhow::Result<kernel::UserSettingsView> {
+    ) -> ::anyhow::Result<kernel::UserSettingsView> {
         // 不正な値を弾き、正規化した文字列を保持する。
         let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
         let share_url = self
@@ -39,7 +39,7 @@ impl UserSettingsDocumentData {
     pub(crate) fn into_user_settings(
         self,
         user_id: kernel::UserId,
-    ) -> anyhow::Result<kernel::UserSettings> {
+    ) -> ::anyhow::Result<kernel::UserSettings> {
         let color_scheme = self.color_scheme.parse::<kernel::ColorScheme>()?;
         let share_url = self
             .share_url
@@ -60,7 +60,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_into_user_settings_view() -> anyhow::Result<()> {
+    fn test_into_user_settings_view() -> ::anyhow::Result<()> {
         let user_id = kernel::UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "dark".to_string(),
@@ -79,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    fn test_into_user_settings_view_without_share_url() -> anyhow::Result<()> {
+    fn test_into_user_settings_view_without_share_url() -> ::anyhow::Result<()> {
         let user_id = kernel::UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "dark".to_string(),
@@ -92,9 +92,9 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_without_share_url_defaults_to_none() -> anyhow::Result<()> {
+    fn test_deserialize_without_share_url_defaults_to_none() -> ::anyhow::Result<()> {
         // 既存ドキュメント (share_url フィールドなし) との後方互換。
-        let data = serde_json::from_str::<UserSettingsDocumentData>(
+        let data = ::serde_json::from_str::<UserSettingsDocumentData>(
             r#"{"color_scheme":"dark","utc_offset":"+09:00"}"#,
         )?;
         assert_eq!(data.share_url, None);
@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_user_settings() -> anyhow::Result<()> {
+    fn test_from_user_settings() -> ::anyhow::Result<()> {
         let settings = kernel::UserSettings::new(
             kernel::ColorScheme::Dark,
             Some("https://example.com/?u={{url}}".parse::<kernel::ShareUrl>()?),
@@ -160,7 +160,7 @@ mod tests {
     }
 
     #[test]
-    fn test_into_user_settings() -> anyhow::Result<()> {
+    fn test_into_user_settings() -> ::anyhow::Result<()> {
         let user_id = kernel::UserId::new();
         let data = UserSettingsDocumentData {
             color_scheme: "light".to_string(),

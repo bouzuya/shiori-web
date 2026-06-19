@@ -3,18 +3,18 @@
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct GoogleUserId(String);
 
-impl std::fmt::Display for GoogleUserId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ::std::fmt::Display for GoogleUserId {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl std::str::FromStr for GoogleUserId {
-    type Err = anyhow::Error;
+impl ::std::str::FromStr for GoogleUserId {
+    type Err = ::anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        anyhow::ensure!(s.is_ascii(), "GoogleUserId must be ASCII");
-        anyhow::ensure!(
+        ::anyhow::ensure!(s.is_ascii(), "GoogleUserId must be ASCII");
+        ::anyhow::ensure!(
             s.len() <= 255,
             "GoogleUserId must be at most 255 characters"
         );
@@ -27,14 +27,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_google_user_id_from_str_valid() -> anyhow::Result<()> {
+    fn test_google_user_id_from_str_valid() -> ::anyhow::Result<()> {
         let id = "abc123".parse::<GoogleUserId>()?;
         assert_eq!(id.to_string(), "abc123");
         Ok(())
     }
 
     #[test]
-    fn test_google_user_id_from_str_case_sensitive() -> anyhow::Result<()> {
+    fn test_google_user_id_from_str_case_sensitive() -> ::anyhow::Result<()> {
         let lower = "abc".parse::<GoogleUserId>()?;
         let upper = "ABC".parse::<GoogleUserId>()?;
         assert_ne!(lower, upper);
@@ -42,7 +42,7 @@ mod tests {
     }
 
     #[test]
-    fn test_google_user_id_from_str_max_length() -> anyhow::Result<()> {
+    fn test_google_user_id_from_str_max_length() -> ::anyhow::Result<()> {
         let s = "a".repeat(255);
         let id = s.parse::<GoogleUserId>()?;
         assert_eq!(id.to_string().len(), 255);
@@ -61,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    fn test_google_user_id_display() -> anyhow::Result<()> {
+    fn test_google_user_id_display() -> ::anyhow::Result<()> {
         let id = "abc123".parse::<GoogleUserId>()?;
         assert_eq!(format!("{id}"), "abc123");
         Ok(())

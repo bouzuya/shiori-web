@@ -28,11 +28,11 @@ pub(crate) use self::users::UsersCollection;
 /// 3 層以上を扱うことになった場合はこの前提ごと再設計すること。
 pub(crate) trait FirestoreCollection {
     /// コレクション内のドキュメントを指す ID
-    type DocumentId: std::fmt::Display;
+    type DocumentId: ::std::fmt::Display;
     /// このコレクションがぶら下がる親ドキュメントを指す ID。トップレベルは `()`。
     type ParentDocumentId;
     /// このコレクションのドキュメントの永続化形式 (スキーマ)。
-    type Schema: serde::de::DeserializeOwned + serde::Serialize;
+    type Schema: ::serde::de::DeserializeOwned + ::serde::Serialize;
 
     fn collection_path(parent: &Self::ParentDocumentId) -> String;
 

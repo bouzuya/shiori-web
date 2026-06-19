@@ -10,9 +10,9 @@ impl UtcOffset {
     const MAX_MINUTES: i32 = 840;
     const MIN_MINUTES: i32 = -720;
 
-    pub fn new(minutes: i32) -> anyhow::Result<Self> {
+    pub fn new(minutes: i32) -> ::anyhow::Result<Self> {
         if !(Self::MIN_MINUTES..=Self::MAX_MINUTES).contains(&minutes) {
-            anyhow::bail!("UtcOffset out of range: {minutes}");
+            ::anyhow::bail!("UtcOffset out of range: {minutes}");
         }
         Ok(Self { minutes })
     }
@@ -22,37 +22,37 @@ impl UtcOffset {
     }
 }
 
-impl std::fmt::Display for UtcOffset {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ::std::fmt::Display for UtcOffset {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         let sign = if self.minutes < 0 { '-' } else { '+' };
         let abs = self.minutes.abs();
         write!(f, "{sign}{:02}:{:02}", abs / 60, abs % 60)
     }
 }
 
-impl std::str::FromStr for UtcOffset {
-    type Err = anyhow::Error;
+impl ::std::str::FromStr for UtcOffset {
+    type Err = ::anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let sign = match s.as_bytes().first() {
             Some(b'+') => 1,
             Some(b'-') => -1,
-            _ => anyhow::bail!("invalid UtcOffset: {s}"),
+            _ => ::anyhow::bail!("invalid UtcOffset: {s}"),
         };
         let (hours, mins) = s[1..]
             .split_once(':')
-            .ok_or_else(|| anyhow::anyhow!("invalid UtcOffset: {s}"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("invalid UtcOffset: {s}"))?;
         if hours.len() != 2
             || mins.len() != 2
             || !hours.bytes().all(|b| b.is_ascii_digit())
             || !mins.bytes().all(|b| b.is_ascii_digit())
         {
-            anyhow::bail!("invalid UtcOffset: {s}");
+            ::anyhow::bail!("invalid UtcOffset: {s}");
         }
         let hours = hours.parse::<i32>()?;
         let mins = mins.parse::<i32>()?;
         if mins >= 60 {
-            anyhow::bail!("invalid UtcOffset: {s}");
+            ::anyhow::bail!("invalid UtcOffset: {s}");
         }
         Self::new(sign * (hours * 60 + mins))
     }
@@ -61,8 +61,8 @@ impl std::str::FromStr for UtcOffset {
 #[cfg(test)]
 impl UtcOffset {
     pub fn for_test() -> Self {
-        let mut rng = rand::rng();
-        rand::seq::IndexedRandom::sample(
+        let mut rng = ::rand::rng();
+        ::rand::seq::IndexedRandom::sample(
             [
                 UtcOffset { minutes: -720 },
                 UtcOffset { minutes: -300 },
@@ -86,7 +86,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_utc_offset_display() -> anyhow::Result<()> {
+    fn test_utc_offset_display() -> ::anyhow::Result<()> {
         assert_eq!(UtcOffset::new(540)?.to_string(), "+09:00");
         assert_eq!(UtcOffset::new(-300)?.to_string(), "-05:00");
         assert_eq!(UtcOffset::new(0)?.to_string(), "+00:00");
@@ -95,7 +95,7 @@ mod tests {
     }
 
     #[test]
-    fn test_utc_offset_from_str() -> anyhow::Result<()> {
+    fn test_utc_offset_from_str() -> ::anyhow::Result<()> {
         assert_eq!("+09:00".parse::<UtcOffset>()?, UtcOffset::new(540)?);
         assert_eq!("-05:00".parse::<UtcOffset>()?, UtcOffset::new(-300)?);
         assert_eq!("+00:00".parse::<UtcOffset>()?, UtcOffset::new(0)?);
@@ -104,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn test_utc_offset_display_then_from_str_roundtrip() -> anyhow::Result<()> {
+    fn test_utc_offset_display_then_from_str_roundtrip() -> ::anyhow::Result<()> {
         for minutes in [-720, -300, 0, 60, 330, 540, 840] {
             let offset = UtcOffset::new(minutes)?;
             assert_eq!(offset.to_string().parse::<UtcOffset>()?, offset);
@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn test_utc_offset_minutes() -> anyhow::Result<()> {
+    fn test_utc_offset_minutes() -> ::anyhow::Result<()> {
         assert_eq!(UtcOffset::new(540)?.minutes(), 540);
         Ok(())
     }

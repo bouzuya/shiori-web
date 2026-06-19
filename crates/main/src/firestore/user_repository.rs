@@ -10,25 +10,25 @@ use kernel::UserId;
 use kernel::UserRepository;
 
 pub(crate) struct FirestoreUserRepository {
-    firestore: bouzuya_firestore_client::Firestore,
+    firestore: ::bouzuya_firestore_client::Firestore,
 }
 
 impl FirestoreUserRepository {
-    pub(crate) fn new(firestore: bouzuya_firestore_client::Firestore) -> Self {
+    pub(crate) fn new(firestore: ::bouzuya_firestore_client::Firestore) -> Self {
         Self { firestore }
     }
 }
 
-#[async_trait::async_trait]
+#[::async_trait::async_trait]
 impl UserRepository for FirestoreUserRepository {
-    async fn find(&self, id: &UserId) -> anyhow::Result<Option<User>> {
+    async fn find(&self, id: &UserId) -> ::anyhow::Result<Option<User>> {
         match UsersCollection::get(&self.firestore, &(), id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_user()?)),
         }
     }
 
-    async fn find_by_google_user_id(&self, id: &GoogleUserId) -> anyhow::Result<Option<User>> {
+    async fn find_by_google_user_id(&self, id: &GoogleUserId) -> ::anyhow::Result<Option<User>> {
         let user_id = match GoogleUserIdsCollection::get(&self.firestore, &(), id).await? {
             None => return Ok(None),
             Some(data) => data.into_user_id()?,
@@ -39,7 +39,7 @@ impl UserRepository for FirestoreUserRepository {
         }
     }
 
-    async fn store(&self, user: User) -> anyhow::Result<()> {
+    async fn store(&self, user: User) -> ::anyhow::Result<()> {
         let user_ref = DocumentRef::<UsersCollection>::new(&self.firestore, &(), &user.id())?;
         let google_user_id_ref = DocumentRef::<GoogleUserIdsCollection>::new(
             &self.firestore,
@@ -59,10 +59,10 @@ impl UserRepository for FirestoreUserRepository {
                         Ok(())
                     })
                 },
-                bouzuya_firestore_client::TransactionOptions::default(),
+                ::bouzuya_firestore_client::TransactionOptions::default(),
             )
             .await
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| ::anyhow::anyhow!(e))?;
         Ok(())
     }
 }
@@ -71,16 +71,16 @@ impl UserRepository for FirestoreUserRepository {
 mod tests {
     use super::*;
 
-    fn firestore_repo() -> anyhow::Result<FirestoreUserRepository> {
-        let firestore = bouzuya_firestore_client::Firestore::new(
-            bouzuya_firestore_client::FirestoreOptions::default(),
+    fn firestore_repo() -> ::anyhow::Result<FirestoreUserRepository> {
+        let firestore = ::bouzuya_firestore_client::Firestore::new(
+            ::bouzuya_firestore_client::FirestoreOptions::default(),
         )?;
         Ok(FirestoreUserRepository::new(firestore))
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_find_returns_none_for_unknown() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_find_returns_none_for_unknown() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
         let id = UserId::new();
         let result = repo.find(&id).await?;
@@ -88,9 +88,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_store_then_find_returns_user() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_store_then_find_returns_user() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
         let google_user_id = "firestore_test_find_user1".parse::<GoogleUserId>()?;
         let user = User::create(google_user_id);
@@ -102,9 +102,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_find_by_google_user_id_returns_none_for_unknown() -> anyhow::Result<()>
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_find_by_google_user_id_returns_none_for_unknown() -> ::anyhow::Result<()>
     {
         let repo = firestore_repo()?;
         let result = repo
@@ -114,9 +114,10 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_store_then_find_by_google_user_id_returns_user() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_store_then_find_by_google_user_id_returns_user() -> ::anyhow::Result<()>
+    {
         let repo = firestore_repo()?;
         let id = "firestore_test_user1".parse::<GoogleUserId>()?;
         repo.store(User::create(id.clone())).await?;
@@ -129,9 +130,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_store_is_idempotent() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_store_is_idempotent() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
         let id = "firestore_test_user2".parse::<GoogleUserId>()?;
         repo.store(User::create(id.clone())).await?;

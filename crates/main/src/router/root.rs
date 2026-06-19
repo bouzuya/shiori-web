@@ -1,16 +1,16 @@
 use crate::AppState;
 use crate::extractor::CurrentUserId;
 
-pub(crate) fn router() -> axum::Router<AppState> {
-    axum::Router::new().route("/", axum::routing::get(handler))
+pub(crate) fn router() -> ::axum::Router<AppState> {
+    ::axum::Router::new().route("/", ::axum::routing::get(handler))
 }
 
-#[derive(serde::Deserialize)]
+#[derive(::serde::Deserialize)]
 struct RootQuery {
     page_token: Option<String>,
 }
 
-#[derive(askama::Template)]
+#[derive(::askama::Template)]
 #[template(path = "landing.html")]
 struct LandingTemplate<'a> {
     base: &'a str,
@@ -29,7 +29,7 @@ struct DateGroup {
     items: Vec<BookmarkItem>,
 }
 
-#[derive(askama::Template)]
+#[derive(::askama::Template)]
 #[template(path = "list.html")]
 struct BookmarksTemplate<'a> {
     base: &'a str,
@@ -39,23 +39,23 @@ struct BookmarksTemplate<'a> {
     prev_page_token: Option<String>,
 }
 
-fn render_template(html: Result<String, askama::Error>) -> axum::response::Response {
+fn render_template(html: Result<String, ::askama::Error>) -> ::axum::response::Response {
     match html {
-        Ok(html) => axum::response::IntoResponse::into_response(axum::response::Html(html)),
+        Ok(html) => ::axum::response::IntoResponse::into_response(::axum::response::Html(html)),
         Err(e) => {
-            tracing::error!("template render failed: {e}");
-            axum::response::IntoResponse::into_response(
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            ::tracing::error!("template render failed: {e}");
+            ::axum::response::IntoResponse::into_response(
+                ::axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             )
         }
     }
 }
 
 async fn handler(
-    axum::extract::State(state): axum::extract::State<AppState>,
+    ::axum::extract::State(state): ::axum::extract::State<AppState>,
     auth: Option<CurrentUserId>,
-    axum::extract::Query(query): axum::extract::Query<RootQuery>,
-) -> impl axum::response::IntoResponse {
+    ::axum::extract::Query(query): ::axum::extract::Query<RootQuery>,
+) -> impl ::axum::response::IntoResponse {
     match auth {
         Some(CurrentUserId(user_id)) => {
             let color_scheme = super::resolve_color_scheme(&state, user_id).await;
@@ -66,8 +66,8 @@ async fn handler(
                 Some(s) => match s.parse::<kernel::PageToken>() {
                     Ok(token) => Some(token),
                     Err(_) => {
-                        return axum::response::IntoResponse::into_response(
-                            axum::http::StatusCode::BAD_REQUEST,
+                        return ::axum::response::IntoResponse::into_response(
+                            ::axum::http::StatusCode::BAD_REQUEST,
                         );
                     }
                 },
@@ -108,12 +108,12 @@ async fn handler(
                         next_page_token: list.next_page_token,
                         prev_page_token: list.prev_page_token,
                     };
-                    render_template(askama::Template::render(&template))
+                    render_template(::askama::Template::render(&template))
                 }
                 Err(e) => {
-                    tracing::error!("failed to list bookmarks: {e}");
-                    axum::response::IntoResponse::into_response(
-                        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    ::tracing::error!("failed to list bookmarks: {e}");
+                    ::axum::response::IntoResponse::into_response(
+                        ::axum::http::StatusCode::INTERNAL_SERVER_ERROR,
                     )
                 }
             }
@@ -124,7 +124,7 @@ async fn handler(
                 base: &state.base_path,
                 color_scheme: &color_scheme,
             };
-            render_template(askama::Template::render(&template))
+            render_template(::askama::Template::render(&template))
         }
     }
 }
@@ -145,26 +145,26 @@ mod tests {
     use crate::test_helpers::test_app;
     use crate::test_helpers::unique_user_id;
 
-    async fn session_cookie(app: axum::Router) -> anyhow::Result<String> {
+    async fn session_cookie(app: ::axum::Router) -> ::anyhow::Result<String> {
         let signup = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/signup")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup);
         let callback = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/callback?code=test_code&state=test_state")
-                .header(axum::http::header::COOKIE, &cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let session = callback
             .headers()
-            .get_all(axum::http::header::SET_COOKIE)
+            .get_all(::axum::http::header::SET_COOKIE)
             .iter()
             .find_map(|v| {
                 let s = v.to_str().ok()?;
@@ -173,35 +173,35 @@ mod tests {
                 }
                 s.split(';').next().map(|p| p.to_string())
             })
-            .ok_or_else(|| anyhow::anyhow!("session cookie not found"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("session cookie not found"))?;
         Ok(session)
     }
 
     async fn session_cookie_with_base(
-        app: axum::Router,
+        app: ::axum::Router,
         base_path: &str,
-    ) -> anyhow::Result<String> {
+    ) -> ::anyhow::Result<String> {
         let signup = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri(format!("{base_path}/auth/signup"))
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let cookie_header = extract_cookies(&signup);
         let callback = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri(format!(
                     "{base_path}/auth/callback?code=test_code&state=test_state"
                 ))
-                .header(axum::http::header::COOKIE, &cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         callback
             .headers()
-            .get_all(axum::http::header::SET_COOKIE)
+            .get_all(::axum::http::header::SET_COOKIE)
             .iter()
             .find_map(|v| {
                 let s = v.to_str().ok()?;
@@ -210,20 +210,20 @@ mod tests {
                 }
                 s.split(';').next().map(|p| p.to_string())
             })
-            .ok_or_else(|| anyhow::anyhow!("session cookie not found"))
+            .ok_or_else(|| ::anyhow::anyhow!("session cookie not found"))
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_without_session_returns_landing_page() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_without_session_returns_landing_page() -> ::anyhow::Result<()> {
         let response = send_request(
             test_app("test_root_no_session_user")?,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains("/auth/signup"),
@@ -236,16 +236,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_with_session_contains_new_link() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_with_session_contains_new_link() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -254,13 +254,13 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains("/new"),
@@ -269,9 +269,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_with_session_returns_ok() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_with_session_returns_ok() -> ::anyhow::Result<()> {
         // Full flow: signup → callback → access root
         let sub = unique_user_id();
         let state = AppState::new(
@@ -279,7 +279,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -288,9 +288,9 @@ mod tests {
         // Step 1: Signup
         let signup_response = send_request(
             crate::router::router("").with_state(state.clone()),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/signup")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let signup_cookie_header = extract_cookies(&signup_response);
@@ -298,10 +298,10 @@ mod tests {
         // Step 2: Callback
         let callback_response = send_request(
             crate::router::router("").with_state(state.clone()),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/auth/callback?code=test_code&state=test_state")
-                .header(axum::http::header::COOKIE, &signup_cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &signup_cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let session_cookie_header = extract_cookies(&callback_response);
@@ -309,13 +309,13 @@ mod tests {
         // Step 3: Access root with session cookie
         let response = send_request(
             crate::router::router("").with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session_cookie_header)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session_cookie_header)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains("<!DOCTYPE html"),
@@ -328,16 +328,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_with_session_and_bookmarks_returns_html_list() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_with_session_and_bookmarks_returns_html_list() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -346,29 +346,29 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let created = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
                 .header(
-                    axum::http::header::CONTENT_TYPE,
+                    ::axum::http::header::CONTENT_TYPE,
                     "application/x-www-form-urlencoded",
                 )
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::from(
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
         .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains("<!DOCTYPE html"),
@@ -385,16 +385,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_with_session_no_bookmarks_returns_empty_html() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_with_session_no_bookmarks_returns_empty_html() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -403,13 +403,13 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains("<!DOCTYPE html"),
@@ -422,16 +422,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_groups_bookmarks_by_date() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_groups_bookmarks_by_date() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -440,29 +440,29 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let created = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
                 .header(
-                    axum::http::header::CONTENT_TYPE,
+                    ::axum::http::header::CONTENT_TYPE,
                     "application/x-www-form-urlencoded",
                 )
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::from(
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
         .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         let today = kernel::DateTime::now()
             .to_rfc3339()
@@ -477,16 +477,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_groups_bookmarks_by_date_in_user_utc_offset() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_groups_bookmarks_by_date_in_user_utc_offset() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -499,7 +499,7 @@ mod tests {
             .user_repository
             .find_by_google_user_id(&sub.parse::<kernel::GoogleUserId>()?)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("user not found"))?
+            .ok_or_else(|| ::anyhow::anyhow!("user not found"))?
             .id();
 
         // +09:00 を保存する。
@@ -533,13 +533,13 @@ mod tests {
 
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains("<h2 class=\"bookmark-group-name\">2024-01-16</h2>"),
@@ -552,16 +552,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_shows_share_link_when_share_url_is_set() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_shows_share_link_when_share_url_is_set() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -572,7 +572,7 @@ mod tests {
             .user_repository
             .find_by_google_user_id(&sub.parse::<kernel::GoogleUserId>()?)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("user not found"))?
+            .ok_or_else(|| ::anyhow::anyhow!("user not found"))?
             .id();
 
         state
@@ -587,27 +587,27 @@ mod tests {
 
         let created = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
                 .header(
-                    axum::http::header::CONTENT_TYPE,
+                    ::axum::http::header::CONTENT_TYPE,
                     "application/x-www-form-urlencoded",
                 )
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::from(
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
         .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
 
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -622,16 +622,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_delete_menu_links_to_delete_confirm() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_delete_menu_links_to_delete_confirm() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -640,26 +640,26 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let created = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
                 .header(
-                    axum::http::header::CONTENT_TYPE,
+                    ::axum::http::header::CONTENT_TYPE,
                     "application/x-www-form-urlencoded",
                 )
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::from(
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
         .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -670,16 +670,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_has_no_share_link_without_share_url() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_has_no_share_link_without_share_url() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -688,26 +688,26 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let created = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
                 .header(
-                    axum::http::header::CONTENT_TYPE,
+                    ::axum::http::header::CONTENT_TYPE,
                     "application/x-www-form-urlencoded",
                 )
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::from(
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=",
                 ))?,
         )
         .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -719,29 +719,29 @@ mod tests {
     }
 
     /// HTML 本文から最初の `?page_token=<不透明トークン>` の値を取り出す。
-    fn extract_page_token(body: &str) -> anyhow::Result<String> {
+    fn extract_page_token(body: &str) -> ::anyhow::Result<String> {
         let marker = "?page_token=";
         let start = body
             .find(marker)
-            .ok_or_else(|| anyhow::anyhow!("page token link not found"))?
+            .ok_or_else(|| ::anyhow::anyhow!("page token link not found"))?
             + marker.len();
         let rest = &body[start..];
         let end = rest
             .find('"')
-            .ok_or_else(|| anyhow::anyhow!("malformed page token link"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("malformed page token link"))?;
         Ok(rest[..end].to_string())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_with_page_token_returns_next_page() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_with_page_token_returns_next_page() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -752,28 +752,28 @@ mod tests {
         for i in 0..11 {
             let created = send_request(
                 app.clone(),
-                axum::http::Request::builder()
+                ::axum::http::Request::builder()
                     .method("POST")
                     .uri("/")
                     .header(
-                        axum::http::header::CONTENT_TYPE,
+                        ::axum::http::header::CONTENT_TYPE,
                         "application/x-www-form-urlencoded",
                     )
-                    .header(axum::http::header::COOKIE, &session)
-                    .body(axum::body::Body::from(format!(
+                    .header(::axum::http::header::COOKIE, &session)
+                    .body(::axum::body::Body::from(format!(
                         "url=https%3A%2F%2Fexample.com%2F{i}&title=Title-{i:02}&comment="
                     )))?,
             )
             .await?;
-            assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+            assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         }
         // 先頭ページを取得し、Next リンクの不透明トークンを取り出す
         let first = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let first_body = first.into_body_string().await?;
@@ -786,13 +786,13 @@ mod tests {
         // 2 ページ目を取得すると最古の Title-00 が現れる
         let second = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri(format!("/?page_token={token}"))
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(second.status(), axum::http::StatusCode::OK);
+        assert_eq!(second.status(), ::axum::http::StatusCode::OK);
         let second_body = second.into_body_string().await?;
         assert!(
             second_body.contains("Title-00"),
@@ -801,16 +801,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_prev_page_link_returns_to_first_page() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_prev_page_link_returns_to_first_page() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -821,28 +821,28 @@ mod tests {
         for i in 0..11 {
             let created = send_request(
                 app.clone(),
-                axum::http::Request::builder()
+                ::axum::http::Request::builder()
                     .method("POST")
                     .uri("/")
                     .header(
-                        axum::http::header::CONTENT_TYPE,
+                        ::axum::http::header::CONTENT_TYPE,
                         "application/x-www-form-urlencoded",
                     )
-                    .header(axum::http::header::COOKIE, &session)
-                    .body(axum::body::Body::from(format!(
+                    .header(::axum::http::header::COOKIE, &session)
+                    .body(::axum::body::Body::from(format!(
                         "url=https%3A%2F%2Fexample.com%2F{i}&title=Title-{i:02}&comment="
                     )))?,
             )
             .await?;
-            assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+            assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         }
         // 先頭ページ -> Next リンクの不透明トークン
         let first = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let first_body = first.into_body_string().await?;
@@ -850,10 +850,10 @@ mod tests {
         // 2 ページ目を取得。最古の Title-00 のみが表示され、Prev リンクだけが出る
         let second = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri(format!("/?page_token={next_token}"))
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let second_body = second.into_body_string().await?;
@@ -866,13 +866,13 @@ mod tests {
         // Prev リンクで先頭ページへ戻れる
         let back = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri(format!("/?page_token={prev_token}"))
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(back.status(), axum::http::StatusCode::OK);
+        assert_eq!(back.status(), ::axum::http::StatusCode::OK);
         let back_body = back.into_body_string().await?;
         assert!(
             back_body.contains("Title-10") && !back_body.contains("Title-00"),
@@ -881,16 +881,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_with_invalid_page_token_returns_bad_request() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_with_invalid_page_token_returns_bad_request() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -899,26 +899,26 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/?page_token=not-a-valid-token")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), ::axum::http::StatusCode::BAD_REQUEST);
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_with_next_page_contains_next_page_link() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_with_next_page_contains_next_page_link() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -929,30 +929,30 @@ mod tests {
         for i in 0..11 {
             let created = send_request(
                 app.clone(),
-                axum::http::Request::builder()
+                ::axum::http::Request::builder()
                     .method("POST")
                     .uri("/")
                     .header(
-                        axum::http::header::CONTENT_TYPE,
+                        ::axum::http::header::CONTENT_TYPE,
                         "application/x-www-form-urlencoded",
                     )
-                    .header(axum::http::header::COOKIE, &session)
-                    .body(axum::body::Body::from(format!(
+                    .header(::axum::http::header::COOKIE, &session)
+                    .body(::axum::body::Body::from(format!(
                         "url=https%3A%2F%2Fexample.com%2F{i}&title=Example+{i}&comment="
                     )))?,
             )
             .await?;
-            assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+            assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         }
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains("?page_token="),
@@ -961,16 +961,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn with_base_path_next_page_link_has_no_trailing_slash() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn with_base_path_next_page_link_has_no_trailing_slash() -> ::anyhow::Result<()> {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&unique_user_id())),
+            ::std::sync::Arc::new(MockOidcClient::new(&unique_user_id())),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -981,30 +981,30 @@ mod tests {
         for i in 0..11 {
             let created = send_request(
                 app.clone(),
-                axum::http::Request::builder()
+                ::axum::http::Request::builder()
                     .method("POST")
                     .uri("/app")
                     .header(
-                        axum::http::header::CONTENT_TYPE,
+                        ::axum::http::header::CONTENT_TYPE,
                         "application/x-www-form-urlencoded",
                     )
-                    .header(axum::http::header::COOKIE, &session)
-                    .body(axum::body::Body::from(format!(
+                    .header(::axum::http::header::COOKIE, &session)
+                    .body(::axum::body::Body::from(format!(
                         "url=https%3A%2F%2Fexample.com%2F{i}&title=Example+{i}&comment="
                     )))?,
             )
             .await?;
-            assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+            assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         }
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/app")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains(r#"href="/app?page_token="#),
@@ -1017,16 +1017,16 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_without_next_page_has_no_next_page_link() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_without_next_page_has_no_next_page_link() -> ::anyhow::Result<()> {
         let sub = unique_user_id();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -1035,29 +1035,29 @@ mod tests {
         let session = session_cookie(app.clone()).await?;
         let created = send_request(
             app.clone(),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .method("POST")
                 .uri("/")
                 .header(
-                    axum::http::header::CONTENT_TYPE,
+                    ::axum::http::header::CONTENT_TYPE,
                     "application/x-www-form-urlencoded",
                 )
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::from(
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::from(
                     "url=https%3A%2F%2Fexample.com&title=Example&comment=",
                 ))?,
         )
         .await?;
-        assert_eq!(created.status(), axum::http::StatusCode::SEE_OTHER);
+        assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
         let response = send_request(
             app,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .header(axum::http::header::COOKIE, &session)
-                .body(axum::body::Body::empty())?,
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             !body.contains("?page_token="),
@@ -1066,14 +1066,14 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_html_has_lang_ja_and_utf8() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_html_has_lang_ja_and_utf8() -> ::anyhow::Result<()> {
         let response = send_request(
             test_app("root_lang_charset_user")?,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -1088,14 +1088,14 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_landing_has_default_color_scheme() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_landing_has_default_color_scheme() -> ::anyhow::Result<()> {
         let response = send_request(
             test_app("root_color_scheme_user")?,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -1106,14 +1106,14 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_root_contains_css_link() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_contains_css_link() -> ::anyhow::Result<()> {
         let response = send_request(
             test_app("root_css_link_user")?,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let body = response.into_body_string().await?;
@@ -1128,28 +1128,28 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn with_base_path_root_contains_base_path_links() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn with_base_path_root_contains_base_path_links() -> ::anyhow::Result<()> {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new("base_path_links_user")),
+            ::std::sync::Arc::new(MockOidcClient::new("base_path_links_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
         );
         let response = send_request(
             crate::router::router(base_path).with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/app")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains("/app/auth/signup"),
@@ -1162,28 +1162,28 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn with_base_path_root_link_has_no_trailing_slash() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn with_base_path_root_link_has_no_trailing_slash() -> ::anyhow::Result<()> {
         let base_path = "/app";
         let state = AppState::new(
             base_path.to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            std::sync::Arc::new(MockOidcClient::new("base_path_trailing_slash_user")),
+            ::std::sync::Arc::new(MockOidcClient::new("base_path_trailing_slash_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
         );
         let response = send_request(
             crate::router::router(base_path).with_state(state),
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/app")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         let body = response.into_body_string().await?;
         assert!(
             body.contains(r#"href="/app""#),

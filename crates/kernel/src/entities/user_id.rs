@@ -1,25 +1,25 @@
 /// ユーザーを識別する ID。内部表現は UUIDv7。
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct UserId(uuid::Uuid);
+pub struct UserId(::uuid::Uuid);
 
 #[allow(clippy::new_without_default)]
 impl UserId {
     pub fn new() -> Self {
-        Self(uuid::Uuid::now_v7())
+        Self(::uuid::Uuid::now_v7())
     }
 }
 
-impl std::fmt::Display for UserId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ::std::fmt::Display for UserId {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl std::str::FromStr for UserId {
-    type Err = anyhow::Error;
+impl ::std::str::FromStr for UserId {
+    type Err = ::anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let uuid = uuid::Uuid::parse_str(s)?;
+        let uuid = ::uuid::Uuid::parse_str(s)?;
         Ok(Self(uuid))
     }
 }
@@ -38,20 +38,20 @@ mod tests {
     #[test]
     fn test_user_id_new_is_v7() {
         let id = UserId::new();
-        assert_eq!(id.0.get_version(), Some(uuid::Version::SortRand));
+        assert_eq!(id.0.get_version(), Some(::uuid::Version::SortRand));
     }
 
     #[test]
-    fn test_user_id_display_is_hyphenated_uuid() -> anyhow::Result<()> {
+    fn test_user_id_display_is_hyphenated_uuid() -> ::anyhow::Result<()> {
         let id = UserId::new();
         let s = id.to_string();
-        let parsed = s.parse::<uuid::Uuid>()?;
+        let parsed = s.parse::<::uuid::Uuid>()?;
         assert_eq!(parsed, id.0);
         Ok(())
     }
 
     #[test]
-    fn test_user_id_from_str_roundtrip() -> anyhow::Result<()> {
+    fn test_user_id_from_str_roundtrip() -> ::anyhow::Result<()> {
         let id = UserId::new();
         let s = id.to_string();
         let parsed: UserId = s.parse()?;

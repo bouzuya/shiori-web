@@ -2,17 +2,17 @@
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Title(String);
 
-impl std::fmt::Display for Title {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ::std::fmt::Display for Title {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl std::str::FromStr for Title {
-    type Err = anyhow::Error;
+impl ::std::str::FromStr for Title {
+    type Err = ::anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        anyhow::ensure!(
+        ::anyhow::ensure!(
             s.chars().count() <= 255,
             "Title must be at most 255 characters"
         );
@@ -23,9 +23,9 @@ impl std::str::FromStr for Title {
 #[cfg(test)]
 impl Title {
     pub fn for_test() -> Self {
-        let mut rng = rand::rng();
-        let len = rand::RngExt::random_range(&mut rng, 0..=255);
-        let s: String = rand::RngExt::sample_iter(rng, rand::distr::Alphanumeric)
+        let mut rng = ::rand::rng();
+        let len = ::rand::RngExt::random_range(&mut rng, 0..=255);
+        let s: String = ::rand::RngExt::sample_iter(rng, ::rand::distr::Alphanumeric)
             .take(len)
             .map(char::from)
             .collect();
@@ -38,28 +38,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_title_from_str_empty() -> anyhow::Result<()> {
+    fn test_title_from_str_empty() -> ::anyhow::Result<()> {
         let t = "".parse::<Title>()?;
         assert_eq!(t.to_string(), "");
         Ok(())
     }
 
     #[test]
-    fn test_title_from_str_non_empty() -> anyhow::Result<()> {
+    fn test_title_from_str_non_empty() -> ::anyhow::Result<()> {
         let t = "My Article".parse::<Title>()?;
         assert_eq!(t.to_string(), "My Article");
         Ok(())
     }
 
     #[test]
-    fn test_title_display() -> anyhow::Result<()> {
+    fn test_title_display() -> ::anyhow::Result<()> {
         let t = "test title".parse::<Title>()?;
         assert_eq!(format!("{t}"), "test title");
         Ok(())
     }
 
     #[test]
-    fn test_title_from_str_max_length() -> anyhow::Result<()> {
+    fn test_title_from_str_max_length() -> ::anyhow::Result<()> {
         let s = "a".repeat(255);
         let t = s.parse::<Title>()?;
         assert_eq!(t.to_string().len(), 255);
@@ -73,7 +73,7 @@ mod tests {
     }
 
     #[test]
-    fn test_title_eq() -> anyhow::Result<()> {
+    fn test_title_eq() -> ::anyhow::Result<()> {
         let t1 = "abc".parse::<Title>()?;
         let t2 = "abc".parse::<Title>()?;
         let t3 = "xyz".parse::<Title>()?;

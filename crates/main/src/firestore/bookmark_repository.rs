@@ -5,22 +5,22 @@ use crate::FirestoreCollectionExt as _;
 use kernel::BookmarkRepository;
 
 pub(crate) struct FirestoreBookmarkRepository {
-    firestore: bouzuya_firestore_client::Firestore,
+    firestore: ::bouzuya_firestore_client::Firestore,
 }
 
 impl FirestoreBookmarkRepository {
-    pub(crate) fn new(firestore: bouzuya_firestore_client::Firestore) -> Self {
+    pub(crate) fn new(firestore: ::bouzuya_firestore_client::Firestore) -> Self {
         Self { firestore }
     }
 }
 
-#[async_trait::async_trait]
+#[::async_trait::async_trait]
 impl BookmarkRepository for FirestoreBookmarkRepository {
     async fn find(
         &self,
         user_id: kernel::UserId,
         bookmark_id: kernel::BookmarkId,
-    ) -> anyhow::Result<Option<kernel::Bookmark>> {
+    ) -> ::anyhow::Result<Option<kernel::Bookmark>> {
         match BookmarksCollection::get(&self.firestore, &user_id, &bookmark_id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_bookmark(user_id)?)),
@@ -31,7 +31,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
         &self,
         updated_at: Option<kernel::DateTime>,
         bookmark: kernel::Bookmark,
-    ) -> anyhow::Result<()> {
+    ) -> ::anyhow::Result<()> {
         let user_id = bookmark.user_id();
         let bookmark_id = bookmark.id();
         let deleted_at = bookmark.deleted_at();
@@ -43,8 +43,8 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                 move |tx| {
                     let doc_ref = doc_ref.clone();
                     Box::pin(async move {
-                        let to_fs_err = |e: anyhow::Error| {
-                            bouzuya_firestore_client::Error::custom(e.to_string())
+                        let to_fs_err = |e: ::anyhow::Error| {
+                            ::bouzuya_firestore_client::Error::custom(e.to_string())
                         };
                         match updated_at {
                             None => {
@@ -53,7 +53,7 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                             Some(t) => {
                                 let stored =
                                     doc_ref.get_in_transaction(tx).await?.ok_or_else(|| {
-                                        bouzuya_firestore_client::Error::custom(
+                                        ::bouzuya_firestore_client::Error::custom(
                                             "document not found",
                                         )
                                     })?;
@@ -61,14 +61,14 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                                     kernel::DateTime::from_rfc3339(stored.updated_at())
                                         .map_err(&to_fs_err)?;
                                 if existing_updated_at != t {
-                                    return Err(bouzuya_firestore_client::Error::custom(
+                                    return Err(::bouzuya_firestore_client::Error::custom(
                                         "optimistic lock conflict",
                                     ));
                                 }
                                 if deleted_at.is_some() {
                                     doc_ref.delete(
                                         tx,
-                                        bouzuya_firestore_client::Precondition::default(),
+                                        ::bouzuya_firestore_client::Precondition::default(),
                                     )?;
                                 } else {
                                     doc_ref.set(tx, &data)?;
@@ -78,10 +78,10 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
                         Ok(())
                     })
                 },
-                bouzuya_firestore_client::TransactionOptions::default(),
+                ::bouzuya_firestore_client::TransactionOptions::default(),
             )
             .await
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| ::anyhow::anyhow!(e))?;
         Ok(())
     }
 }
@@ -90,16 +90,16 @@ impl BookmarkRepository for FirestoreBookmarkRepository {
 mod tests {
     use super::*;
 
-    fn firestore_repo() -> anyhow::Result<FirestoreBookmarkRepository> {
-        let firestore = bouzuya_firestore_client::Firestore::new(
-            bouzuya_firestore_client::FirestoreOptions::default(),
+    fn firestore_repo() -> ::anyhow::Result<FirestoreBookmarkRepository> {
+        let firestore = ::bouzuya_firestore_client::Firestore::new(
+            ::bouzuya_firestore_client::FirestoreOptions::default(),
         )?;
         Ok(FirestoreBookmarkRepository::new(firestore))
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_find_returns_none_for_unknown() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_find_returns_none_for_unknown() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
         let user_id = kernel::UserId::new();
         let bookmark_id = kernel::BookmarkId::new();
@@ -108,9 +108,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_store_new_then_find() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_store_new_then_find() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
         let user_id = kernel::UserId::new();
         let bookmark = kernel::Bookmark::create(
@@ -124,15 +124,15 @@ mod tests {
         let found = repo.find(user_id, bookmark_id).await?;
         assert!(found.is_some());
         assert_eq!(
-            found.ok_or_else(|| anyhow::anyhow!("not found"))?.id(),
+            found.ok_or_else(|| ::anyhow::anyhow!("not found"))?.id(),
             bookmark_id
         );
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_store_new_fails_if_already_exists() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_store_new_fails_if_already_exists() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
         let user_id = kernel::UserId::new();
         let bookmark = kernel::Bookmark::create(
@@ -146,9 +146,10 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_store_update_succeeds_when_updated_at_matches() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_store_update_succeeds_when_updated_at_matches() -> ::anyhow::Result<()>
+    {
         let repo = firestore_repo()?;
         let user_id = kernel::UserId::new();
         let bookmark = kernel::Bookmark::create(
@@ -175,9 +176,10 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_store_update_fails_when_updated_at_mismatches() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_store_update_fails_when_updated_at_mismatches() -> ::anyhow::Result<()>
+    {
         let repo = firestore_repo()?;
         let user_id = kernel::UserId::new();
         let bookmark = kernel::Bookmark::create(
@@ -204,9 +206,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_firestore_store_delete_removes_bookmark() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_firestore_store_delete_removes_bookmark() -> ::anyhow::Result<()> {
         let repo = firestore_repo()?;
         let user_id = kernel::UserId::new();
         let bookmark = kernel::Bookmark::create(

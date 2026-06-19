@@ -20,7 +20,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_collection_path() -> anyhow::Result<()> {
+    fn test_collection_path() -> ::anyhow::Result<()> {
         assert_eq!(
             UserSettingsCollection::collection_path(&()),
             "user_settings"
@@ -29,7 +29,7 @@ mod tests {
     }
 
     #[test]
-    fn test_document_path() -> anyhow::Result<()> {
+    fn test_document_path() -> ::anyhow::Result<()> {
         let user_id = "01234567-89ab-cdef-0123-456789abcdef".parse::<kernel::UserId>()?;
         assert_eq!(
             UserSettingsCollection::document_path(&(), &user_id),

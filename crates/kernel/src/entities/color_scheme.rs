@@ -8,8 +8,8 @@ pub enum ColorScheme {
     System,
 }
 
-impl std::fmt::Display for ColorScheme {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ::std::fmt::Display for ColorScheme {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         let s = match self {
             ColorScheme::Dark => "dark",
             ColorScheme::Light => "light",
@@ -19,15 +19,15 @@ impl std::fmt::Display for ColorScheme {
     }
 }
 
-impl std::str::FromStr for ColorScheme {
-    type Err = anyhow::Error;
+impl ::std::str::FromStr for ColorScheme {
+    type Err = ::anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "dark" => Ok(ColorScheme::Dark),
             "light" => Ok(ColorScheme::Light),
             "system" => Ok(ColorScheme::System),
-            _ => anyhow::bail!("invalid ColorScheme: {s}"),
+            _ => ::anyhow::bail!("invalid ColorScheme: {s}"),
         }
     }
 }
@@ -35,8 +35,8 @@ impl std::str::FromStr for ColorScheme {
 #[cfg(test)]
 impl ColorScheme {
     pub fn for_test() -> Self {
-        let mut rng = rand::rng();
-        *rand::seq::IndexedRandom::sample(
+        let mut rng = ::rand::rng();
+        *::rand::seq::IndexedRandom::sample(
             [ColorScheme::Dark, ColorScheme::Light, ColorScheme::System].as_slice(),
             &mut rng,
             1,
@@ -58,7 +58,7 @@ mod tests {
     }
 
     #[test]
-    fn test_color_scheme_from_str() -> anyhow::Result<()> {
+    fn test_color_scheme_from_str() -> ::anyhow::Result<()> {
         assert_eq!("dark".parse::<ColorScheme>()?, ColorScheme::Dark);
         assert_eq!("light".parse::<ColorScheme>()?, ColorScheme::Light);
         assert_eq!("system".parse::<ColorScheme>()?, ColorScheme::System);
@@ -66,7 +66,7 @@ mod tests {
     }
 
     #[test]
-    fn test_color_scheme_display_then_from_str_roundtrip() -> anyhow::Result<()> {
+    fn test_color_scheme_display_then_from_str_roundtrip() -> ::anyhow::Result<()> {
         for variant in [ColorScheme::Dark, ColorScheme::Light, ColorScheme::System] {
             assert_eq!(variant.to_string().parse::<ColorScheme>()?, variant);
         }

@@ -40,9 +40,9 @@ impl ShareUrl {
     /// テンプレートの最大長 (バイト)。
     pub const MAX_LEN: usize = 2048;
 
-    pub fn new(template: String) -> anyhow::Result<Self> {
+    pub fn new(template: String) -> ::anyhow::Result<Self> {
         if template.len() > Self::MAX_LEN {
-            anyhow::bail!(
+            ::anyhow::bail!(
                 "ShareUrl too long: {} bytes (max {})",
                 template.len(),
                 Self::MAX_LEN
@@ -52,7 +52,7 @@ impl ShareUrl {
         let share_url = Self { segments, template };
         // ダミー値で展開した結果が有効な (絶対) URL であることを検証する。
         let expanded = share_url.build("comment", "title", "https://example.com/");
-        url::Url::parse(&expanded)?;
+        ::url::Url::parse(&expanded)?;
         Ok(share_url)
     }
 
@@ -71,7 +71,7 @@ impl ShareUrl {
                     match filter {
                         Filter::Raw => out.push_str(value),
                         Filter::UrlEncode => {
-                            out.extend(url::form_urlencoded::byte_serialize(value.as_bytes()))
+                            out.extend(::url::form_urlencoded::byte_serialize(value.as_bytes()))
                         }
                     }
                 }
@@ -80,7 +80,7 @@ impl ShareUrl {
         out
     }
 
-    fn parse(template: &str) -> anyhow::Result<Vec<Segment>> {
+    fn parse(template: &str) -> ::anyhow::Result<Vec<Segment>> {
         let mut chars = template.chars().peekable();
         let mut segments = Vec::new();
         let mut literal = String::new();
@@ -89,11 +89,11 @@ impl ShareUrl {
                 '{' if chars.peek() == Some(&'{') => {
                     chars.next(); // 2つ目の `{` を消費する
                     if !literal.is_empty() {
-                        segments.push(Segment::Literal(std::mem::take(&mut literal)));
+                        segments.push(Segment::Literal(::std::mem::take(&mut literal)));
                     }
                     segments.push(Self::parse_block(&mut chars)?);
                 }
-                '{' | '}' => anyhow::bail!("invalid ShareUrl: unexpected brace"),
+                '{' | '}' => ::anyhow::bail!("invalid ShareUrl: unexpected brace"),
                 _ => literal.push(c),
             }
         }
@@ -105,8 +105,8 @@ impl ShareUrl {
 
     /// `{{` の直後から1ブロックをパースする (閉じ `}}` まで消費する)。
     fn parse_block(
-        chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
-    ) -> anyhow::Result<Segment> {
+        chars: &mut ::std::iter::Peekable<::std::str::Chars<'_>>,
+    ) -> ::anyhow::Result<Segment> {
         Self::skip_spaces(chars);
         if chars.peek() == Some(&'"') {
             // 文字列リテラル: 次の `"` までをそのまま出力する。
@@ -116,7 +116,7 @@ impl ShareUrl {
                 match chars.next() {
                     Some('"') => break,
                     Some(c) => literal.push(c),
-                    None => anyhow::bail!("invalid ShareUrl: unterminated string literal"),
+                    None => ::anyhow::bail!("invalid ShareUrl: unterminated string literal"),
                 }
             }
             Self::skip_spaces(chars);
@@ -134,7 +134,7 @@ impl ShareUrl {
             match filter_name.as_str() {
                 "raw" => Filter::Raw,
                 "urlencode" => Filter::UrlEncode,
-                _ => anyhow::bail!("invalid ShareUrl: unknown filter `{filter_name}`"),
+                _ => ::anyhow::bail!("invalid ShareUrl: unknown filter `{filter_name}`"),
             }
         } else {
             Filter::UrlEncode
@@ -144,19 +144,19 @@ impl ShareUrl {
             "comment" => Variable::Comment,
             "title" => Variable::Title,
             "url" => Variable::Url,
-            _ => anyhow::bail!("invalid ShareUrl: unknown variable `{name}`"),
+            _ => ::anyhow::bail!("invalid ShareUrl: unknown variable `{name}`"),
         };
         Ok(Segment::Variable { filter, name })
     }
 
     /// 半角空白 (`' '`) のみを読み飛ばす (タブや全角空白などは許容しない)。
-    fn skip_spaces(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    fn skip_spaces(chars: &mut ::std::iter::Peekable<::std::str::Chars<'_>>) {
         while chars.peek() == Some(&' ') {
             chars.next();
         }
     }
 
-    fn take_ident(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> String {
+    fn take_ident(chars: &mut ::std::iter::Peekable<::std::str::Chars<'_>>) -> String {
         let mut ident = String::new();
         while let Some(&c) = chars.peek() {
             if c.is_ascii_alphanumeric() || c == '_' {
@@ -170,23 +170,25 @@ impl ShareUrl {
     }
 
     /// 閉じ `}}` を消費する。無ければエラー。
-    fn expect_close(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> anyhow::Result<()> {
+    fn expect_close(
+        chars: &mut ::std::iter::Peekable<::std::str::Chars<'_>>,
+    ) -> ::anyhow::Result<()> {
         if chars.next() == Some('}') && chars.next() == Some('}') {
             Ok(())
         } else {
-            anyhow::bail!("invalid ShareUrl: expected `}}}}`");
+            ::anyhow::bail!("invalid ShareUrl: expected `}}}}`");
         }
     }
 }
 
-impl std::fmt::Display for ShareUrl {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ::std::fmt::Display for ShareUrl {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         write!(f, "{}", self.template)
     }
 }
 
-impl std::str::FromStr for ShareUrl {
-    type Err = anyhow::Error;
+impl ::std::str::FromStr for ShareUrl {
+    type Err = ::anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::new(s.to_string())
@@ -207,7 +209,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new_accepts_template_with_placeholders() -> anyhow::Result<()> {
+    fn test_new_accepts_template_with_placeholders() -> ::anyhow::Result<()> {
         let s = "https://example.com/intent/tweet?url={{url}}&text={{title}}";
         assert_eq!(s.parse::<ShareUrl>()?.to_string(), s);
         Ok(())
@@ -243,7 +245,7 @@ mod tests {
     }
 
     #[test]
-    fn test_build_encodes_by_default_and_with_urlencode_filter() -> anyhow::Result<()> {
+    fn test_build_encodes_by_default_and_with_urlencode_filter() -> ::anyhow::Result<()> {
         let share_url = "https://example.com/s?u={{url}}&t={{ title | urlencode }}&c={{comment}}"
             .parse::<ShareUrl>()?;
         let built = share_url.build("a & b", "Hello World", "https://example.com/?x=1");
@@ -255,7 +257,7 @@ mod tests {
     }
 
     #[test]
-    fn test_build_raw_filter_is_not_encoded() -> anyhow::Result<()> {
+    fn test_build_raw_filter_is_not_encoded() -> ::anyhow::Result<()> {
         // 生 URL をパスへ置くパターン (アーカイブ系サービス等) を表現できる。
         let share_url = "https://example.com/newest/{{url|raw}}".parse::<ShareUrl>()?;
         let built = share_url.build("c", "t", "https://example.com/?x=1");
@@ -264,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn test_build_outputs_literal_braces() -> anyhow::Result<()> {
+    fn test_build_outputs_literal_braces() -> ::anyhow::Result<()> {
         let share_url = r#"https://example.com/?a={{ "{" }}&b={{"}"}}&c={{ "{{" }}&d={{ "}}" }}"#
             .parse::<ShareUrl>()?;
         let built = share_url.build("c", "t", "u");
@@ -281,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn test_build_tolerates_whitespace_in_block() -> anyhow::Result<()> {
+    fn test_build_tolerates_whitespace_in_block() -> ::anyhow::Result<()> {
         let spaced = "https://example.com/?u={{ url }}".parse::<ShareUrl>()?;
         let tight = "https://example.com/?u={{url}}".parse::<ShareUrl>()?;
         let args = ("c", "t", "https://example.com/");
@@ -293,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_accepts_template_at_max_len() -> anyhow::Result<()> {
+    fn test_new_accepts_template_at_max_len() -> ::anyhow::Result<()> {
         let prefix = "https://example.com/?q=";
         let template = format!("{prefix}{}", "a".repeat(ShareUrl::MAX_LEN - prefix.len()));
         assert_eq!(template.len(), ShareUrl::MAX_LEN);
@@ -309,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn test_display_then_from_str_roundtrip() -> anyhow::Result<()> {
+    fn test_display_then_from_str_roundtrip() -> ::anyhow::Result<()> {
         let share_url = ShareUrl::for_test();
         assert_eq!(share_url.to_string().parse::<ShareUrl>()?, share_url);
         Ok(())

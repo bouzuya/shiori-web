@@ -109,7 +109,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_bookmark_create_generates_id() -> anyhow::Result<()> {
+    fn test_bookmark_create_generates_id() -> ::anyhow::Result<()> {
         let user_id = UserId::new();
         let b = Bookmark::create(
             user_id,
@@ -122,7 +122,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_create_unique_ids() -> anyhow::Result<()> {
+    fn test_bookmark_create_unique_ids() -> ::anyhow::Result<()> {
         let user_id = UserId::new();
         let b1 = Bookmark::create(
             user_id,
@@ -141,7 +141,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_create_stores_fields() -> anyhow::Result<()> {
+    fn test_bookmark_create_stores_fields() -> ::anyhow::Result<()> {
         let user_id = UserId::new();
         let b = Bookmark::create(
             user_id,
@@ -157,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_create_has_created_at() -> anyhow::Result<()> {
+    fn test_bookmark_create_has_created_at() -> ::anyhow::Result<()> {
         let before = DateTime::now();
         let user_id = UserId::new();
         let b = Bookmark::create(
@@ -173,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_create_updated_at_equals_created_at() -> anyhow::Result<()> {
+    fn test_bookmark_create_updated_at_equals_created_at() -> ::anyhow::Result<()> {
         let user_id = UserId::new();
         let b = Bookmark::create(
             user_id,
@@ -186,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_new_roundtrip() -> anyhow::Result<()> {
+    fn test_bookmark_new_roundtrip() -> ::anyhow::Result<()> {
         let id = BookmarkId::new();
         let user_id = UserId::new();
         let created_at = DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?;
@@ -210,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_new_with_deleted_at() -> anyhow::Result<()> {
+    fn test_bookmark_new_with_deleted_at() -> ::anyhow::Result<()> {
         let deleted_at = DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?;
         let b = Bookmark::new(
             Comment::for_test(),
@@ -227,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_create_deleted_at_is_none() -> anyhow::Result<()> {
+    fn test_bookmark_create_deleted_at_is_none() -> ::anyhow::Result<()> {
         let user_id = UserId::new();
         let b = Bookmark::create(
             user_id,

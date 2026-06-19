@@ -2,13 +2,16 @@ use crate::AppState;
 
 const INDEX_CSS: &str = include_str!("../../assets/index.min.css");
 
-pub(crate) fn router() -> axum::Router<AppState> {
-    axum::Router::new().route("/index.css", axum::routing::get(handler))
+pub(crate) fn router() -> ::axum::Router<AppState> {
+    ::axum::Router::new().route("/index.css", ::axum::routing::get(handler))
 }
 
-async fn handler() -> impl axum::response::IntoResponse {
+async fn handler() -> impl ::axum::response::IntoResponse {
     (
-        [(axum::http::header::CONTENT_TYPE, "text/css; charset=utf-8")],
+        [(
+            ::axum::http::header::CONTENT_TYPE,
+            "text/css; charset=utf-8",
+        )],
         INDEX_CSS,
     )
 }
@@ -18,33 +21,33 @@ mod tests {
     use crate::test_helpers::send_request;
     use crate::test_helpers::test_app;
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_index_css_returns_ok() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_index_css_returns_ok() -> ::anyhow::Result<()> {
         let response = send_request(
             test_app("index_css_user")?,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/index.css")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_index_css_returns_text_css_content_type() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_index_css_returns_text_css_content_type() -> ::anyhow::Result<()> {
         let response = send_request(
             test_app("index_css_ct_user")?,
-            axum::http::Request::builder()
+            ::axum::http::Request::builder()
                 .uri("/index.css")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         let content_type = response
             .headers()
-            .get(axum::http::header::CONTENT_TYPE)
+            .get(::axum::http::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
         assert!(

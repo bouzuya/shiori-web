@@ -12,7 +12,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_bookmark_list_empty() -> anyhow::Result<()> {
+    fn test_bookmark_list_empty() -> ::anyhow::Result<()> {
         let list = BookmarkList {
             items: vec![],
             next_page_token: None,
@@ -24,7 +24,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_list_with_items_and_token() -> anyhow::Result<()> {
+    fn test_bookmark_list_with_items_and_token() -> ::anyhow::Result<()> {
         let view = BookmarkView::for_test();
         let list = BookmarkList {
             items: vec![view.clone()],
@@ -38,7 +38,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_list_with_prev_page_token() -> anyhow::Result<()> {
+    fn test_bookmark_list_with_prev_page_token() -> ::anyhow::Result<()> {
         let list = BookmarkList {
             items: vec![],
             next_page_token: None,
@@ -49,7 +49,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_list_clone_eq() -> anyhow::Result<()> {
+    fn test_bookmark_list_clone_eq() -> ::anyhow::Result<()> {
         let list = BookmarkList {
             items: vec![],
             next_page_token: Some("t".to_string()),

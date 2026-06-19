@@ -1,20 +1,20 @@
 use crate::AppState;
 use crate::CookieJar;
 
-pub(crate) fn router() -> axum::Router<AppState> {
-    axum::Router::new().route("/auth/signup", axum::routing::get(handler))
+pub(crate) fn router() -> ::axum::Router<AppState> {
+    ::axum::Router::new().route("/auth/signup", ::axum::routing::get(handler))
 }
 
 async fn handler(
-    axum::extract::State(state): axum::extract::State<AppState>,
+    ::axum::extract::State(state): ::axum::extract::State<AppState>,
     cookie_jar: CookieJar,
-) -> impl axum::response::IntoResponse {
-    tracing::info!("auth signup: generating authentication request");
+) -> impl ::axum::response::IntoResponse {
+    ::tracing::info!("auth signup: generating authentication request");
     let auth_request = state.oidc_client.build_authentication_request();
-    tracing::debug!(url = %auth_request.url, "auth signup: redirecting to OIDC provider");
+    ::tracing::debug!(url = %auth_request.url, "auth signup: redirecting to OIDC provider");
     (
         cookie_jar.with_signup_cookies(&auth_request),
-        axum::response::Redirect::temporary(&auth_request.url),
+        ::axum::response::Redirect::temporary(&auth_request.url),
     )
 }
 
@@ -23,24 +23,24 @@ mod tests {
     use crate::test_helpers::send_request;
     use crate::test_helpers::test_app;
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn get_auth_signup_redirects_to_oidc_provider() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_auth_signup_redirects_to_oidc_provider() -> ::anyhow::Result<()> {
         let response = send_request(
             test_app("test_signup_redirect_user")?,
-            axum::http::Request::builder()
-                .method(axum::http::Method::GET)
+            ::axum::http::Request::builder()
+                .method(::axum::http::Method::GET)
                 .uri("/auth/signup")
-                .body(axum::body::Body::empty())?,
+                .body(::axum::body::Body::empty())?,
         )
         .await?;
         assert_eq!(
             response.status(),
-            axum::http::StatusCode::TEMPORARY_REDIRECT
+            ::axum::http::StatusCode::TEMPORARY_REDIRECT
         );
         let location = response
             .headers()
-            .get(axum::http::header::LOCATION)
+            .get(::axum::http::header::LOCATION)
             .expect("Expected location header")
             .to_str()?;
         assert!(
@@ -49,7 +49,7 @@ mod tests {
         );
         let set_cookies: Vec<_> = response
             .headers()
-            .get_all(axum::http::header::SET_COOKIE)
+            .get_all(::axum::http::header::SET_COOKIE)
             .iter()
             .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
             .collect();

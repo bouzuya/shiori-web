@@ -10,23 +10,23 @@ pub(crate) struct RealOidcClientOptions {
 }
 
 pub(crate) struct RealOidcClient {
-    client: openidconnect::core::CoreClient,
+    client: ::openidconnect::core::CoreClient,
 }
 
 impl RealOidcClient {
-    pub(crate) async fn new(options: RealOidcClientOptions) -> anyhow::Result<Self> {
-        let client_id = openidconnect::ClientId::new(options.client_id);
-        let client_secret = openidconnect::ClientSecret::new(options.client_secret);
-        let issuer_url = openidconnect::IssuerUrl::new(options.issuer_url)?;
-        let redirect_url = openidconnect::RedirectUrl::new(options.redirect_uri)?;
+    pub(crate) async fn new(options: RealOidcClientOptions) -> ::anyhow::Result<Self> {
+        let client_id = ::openidconnect::ClientId::new(options.client_id);
+        let client_secret = ::openidconnect::ClientSecret::new(options.client_secret);
+        let issuer_url = ::openidconnect::IssuerUrl::new(options.issuer_url)?;
+        let redirect_url = ::openidconnect::RedirectUrl::new(options.redirect_uri)?;
 
-        let provider_metadata = openidconnect::core::CoreProviderMetadata::discover_async(
+        let provider_metadata = ::openidconnect::core::CoreProviderMetadata::discover_async(
             issuer_url,
-            openidconnect::reqwest::async_http_client,
+            ::openidconnect::reqwest::async_http_client,
         )
         .await?;
 
-        let client = openidconnect::core::CoreClient::from_provider_metadata(
+        let client = ::openidconnect::core::CoreClient::from_provider_metadata(
             provider_metadata,
             client_id,
             Some(client_secret),
@@ -37,17 +37,17 @@ impl RealOidcClient {
     }
 }
 
-#[async_trait::async_trait]
+#[::async_trait::async_trait]
 impl OidcClient for RealOidcClient {
     fn build_authentication_request(&self) -> AuthenticationRequest {
         let (auth_url, csrf_state, nonce) = self
             .client
             .authorize_url(
-                openidconnect::AuthenticationFlow:: <openidconnect::core::CoreResponseType> ::AuthorizationCode,
-                openidconnect::CsrfToken::new_random,
-                openidconnect::Nonce::new_random,
+                ::openidconnect::AuthenticationFlow:: <::openidconnect::core::CoreResponseType> ::AuthorizationCode,
+                ::openidconnect::CsrfToken::new_random,
+                ::openidconnect::Nonce::new_random,
             )
-            .add_scope(openidconnect::Scope::new("openid".to_string()))
+            .add_scope(::openidconnect::Scope::new("openid".to_string()))
             .url();
 
         AuthenticationRequest {
@@ -57,17 +57,17 @@ impl OidcClient for RealOidcClient {
         }
     }
 
-    async fn exchange_code(&self, code: &str, nonce: &str) -> anyhow::Result<OidcClaims> {
+    async fn exchange_code(&self, code: &str, nonce: &str) -> ::anyhow::Result<OidcClaims> {
         let token_response = self
             .client
-            .exchange_code(openidconnect::AuthorizationCode::new(code.to_string()))
-            .request_async(openidconnect::reqwest::async_http_client)
+            .exchange_code(::openidconnect::AuthorizationCode::new(code.to_string()))
+            .request_async(::openidconnect::reqwest::async_http_client)
             .await?;
 
-        let id_token = openidconnect::TokenResponse::id_token(&token_response)
-            .ok_or_else(|| anyhow::anyhow!("No ID token in response"))?;
+        let id_token = ::openidconnect::TokenResponse::id_token(&token_response)
+            .ok_or_else(|| ::anyhow::anyhow!("No ID token in response"))?;
 
-        let nonce = openidconnect::Nonce::new(nonce.to_string());
+        let nonce = ::openidconnect::Nonce::new(nonce.to_string());
         let claims = id_token.claims(&self.client.id_token_verifier(), &nonce)?;
 
         Ok(OidcClaims {
@@ -80,14 +80,14 @@ impl OidcClient for RealOidcClient {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[::tokio::test]
     #[ignore]
-    async fn new_builds_client() -> anyhow::Result<()> {
+    async fn new_builds_client() -> ::anyhow::Result<()> {
         let options = RealOidcClientOptions {
-            client_id: std::env::var("OIDC_CLIENT_ID")?,
-            client_secret: std::env::var("OIDC_CLIENT_SECRET")?,
-            issuer_url: std::env::var("OIDC_ISSUER_URL")?,
-            redirect_uri: std::env::var("OIDC_REDIRECT_URI")?,
+            client_id: ::std::env::var("OIDC_CLIENT_ID")?,
+            client_secret: ::std::env::var("OIDC_CLIENT_SECRET")?,
+            issuer_url: ::std::env::var("OIDC_ISSUER_URL")?,
+            redirect_uri: ::std::env::var("OIDC_REDIRECT_URI")?,
         };
         RealOidcClient::new(options).await?;
         Ok(())

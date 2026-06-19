@@ -97,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_stores_fields() -> anyhow::Result<()> {
+    fn test_new_stores_fields() -> ::anyhow::Result<()> {
         let user_id = UserId::new();
         let share_url = ShareUrl::for_test();
         let settings = UserSettings::new(
@@ -132,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    fn test_with_utc_offset_changes_offset_and_keeps_user_id() -> anyhow::Result<()> {
+    fn test_with_utc_offset_changes_offset_and_keeps_user_id() -> ::anyhow::Result<()> {
         let settings = UserSettings::for_test();
         let user_id = settings.user_id();
         let changed = settings.with_utc_offset(UtcOffset::new(-300)?);

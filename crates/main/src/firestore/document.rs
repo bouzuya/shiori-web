@@ -24,53 +24,53 @@ use crate::FirestoreCollection;
 /// (特にトランザクション内の書き込み) で使えば良い。
 #[derive(Clone)]
 pub(crate) struct DocumentRef<C> {
-    inner: bouzuya_firestore_client::DocumentReference,
-    _marker: std::marker::PhantomData<C>,
+    inner: ::bouzuya_firestore_client::DocumentReference,
+    _marker: ::std::marker::PhantomData<C>,
 }
 
 impl<C: FirestoreCollection> DocumentRef<C> {
     pub(crate) fn new(
-        firestore: &bouzuya_firestore_client::Firestore,
+        firestore: &::bouzuya_firestore_client::Firestore,
         parent: &C::ParentDocumentId,
         id: &C::DocumentId,
-    ) -> anyhow::Result<Self> {
+    ) -> ::anyhow::Result<Self> {
         let inner = firestore
             .doc(C::document_path(parent, id))
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| ::anyhow::anyhow!(e))?;
         Ok(Self {
             inner,
-            _marker: std::marker::PhantomData,
+            _marker: ::std::marker::PhantomData,
         })
     }
 
     pub(crate) fn create(
         &self,
-        transaction: &mut bouzuya_firestore_client::Transaction,
+        transaction: &mut ::bouzuya_firestore_client::Transaction,
         data: &C::Schema,
-    ) -> Result<(), bouzuya_firestore_client::Error> {
+    ) -> Result<(), ::bouzuya_firestore_client::Error> {
         transaction.create(&self.inner, data)
     }
 
     pub(crate) fn delete(
         &self,
-        transaction: &mut bouzuya_firestore_client::Transaction,
-        precondition: bouzuya_firestore_client::Precondition,
-    ) -> Result<(), bouzuya_firestore_client::Error> {
+        transaction: &mut ::bouzuya_firestore_client::Transaction,
+        precondition: ::bouzuya_firestore_client::Precondition,
+    ) -> Result<(), ::bouzuya_firestore_client::Error> {
         transaction.delete(&self.inner, precondition)
     }
 
-    pub(crate) async fn get(&self) -> anyhow::Result<Option<C::Schema>> {
-        let snapshot = self.inner.get().await.map_err(|e| anyhow::anyhow!(e))?;
+    pub(crate) async fn get(&self) -> ::anyhow::Result<Option<C::Schema>> {
+        let snapshot = self.inner.get().await.map_err(|e| ::anyhow::anyhow!(e))?;
         match snapshot.data::<C::Schema>() {
             None => Ok(None),
-            Some(result) => Ok(Some(result.map_err(|e| anyhow::anyhow!(e))?)),
+            Some(result) => Ok(Some(result.map_err(|e| ::anyhow::anyhow!(e))?)),
         }
     }
 
     pub(crate) async fn get_in_transaction(
         &self,
-        transaction: &mut bouzuya_firestore_client::Transaction,
-    ) -> Result<Option<C::Schema>, bouzuya_firestore_client::Error> {
+        transaction: &mut ::bouzuya_firestore_client::Transaction,
+    ) -> Result<Option<C::Schema>, ::bouzuya_firestore_client::Error> {
         let snapshot = transaction.get(&self.inner).await?;
         match snapshot.data::<C::Schema>() {
             None => Ok(None),
@@ -80,9 +80,9 @@ impl<C: FirestoreCollection> DocumentRef<C> {
 
     pub(crate) fn set(
         &self,
-        transaction: &mut bouzuya_firestore_client::Transaction,
+        transaction: &mut ::bouzuya_firestore_client::Transaction,
         data: &C::Schema,
-    ) -> Result<(), bouzuya_firestore_client::Error> {
+    ) -> Result<(), ::bouzuya_firestore_client::Error> {
         transaction.set(&self.inner, data)
     }
 }
@@ -92,18 +92,18 @@ pub(crate) trait FirestoreCollectionExt: FirestoreCollection {
     /// `FirestoreCollection` `Self` のドキュメントを 1 件取得する一発読み取りの薄い wrapper 。
     /// トランザクション外の単発の読み取りに使う。
     async fn get(
-        firestore: &bouzuya_firestore_client::Firestore,
+        firestore: &::bouzuya_firestore_client::Firestore,
         parent: &Self::ParentDocumentId,
         id: &Self::DocumentId,
-    ) -> anyhow::Result<Option<Self::Schema>>;
+    ) -> ::anyhow::Result<Option<Self::Schema>>;
 }
 
 impl<C: FirestoreCollection> FirestoreCollectionExt for C {
     async fn get(
-        firestore: &bouzuya_firestore_client::Firestore,
+        firestore: &::bouzuya_firestore_client::Firestore,
         parent: &Self::ParentDocumentId,
         id: &Self::DocumentId,
-    ) -> anyhow::Result<Option<Self::Schema>> {
+    ) -> ::anyhow::Result<Option<Self::Schema>> {
         DocumentRef::<C>::new(firestore, parent, id)?.get().await
     }
 }

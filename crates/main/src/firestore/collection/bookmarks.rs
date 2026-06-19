@@ -23,7 +23,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_collection_path() -> anyhow::Result<()> {
+    fn test_collection_path() -> ::anyhow::Result<()> {
         let user_id = "01234567-89ab-cdef-0123-456789abcdef".parse::<kernel::UserId>()?;
         assert_eq!(
             BookmarksCollection::collection_path(&user_id),
@@ -33,7 +33,7 @@ mod tests {
     }
 
     #[test]
-    fn test_document_path() -> anyhow::Result<()> {
+    fn test_document_path() -> ::anyhow::Result<()> {
         let user_id = "01234567-89ab-cdef-0123-456789abcdef".parse::<kernel::UserId>()?;
         let bookmark_id = "fedcba98-7654-3210-fedc-ba9876543210".parse::<kernel::BookmarkId>()?;
         assert_eq!(

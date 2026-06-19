@@ -36,7 +36,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_bookmark_view_fields() -> anyhow::Result<()> {
+    fn test_bookmark_view_fields() -> ::anyhow::Result<()> {
         let view = BookmarkView {
             comment: "memo".to_string(),
             created_at: "2024-01-01T00:00:00.000Z".to_string(),
@@ -57,7 +57,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bookmark_view_clone_eq() -> anyhow::Result<()> {
+    fn test_bookmark_view_clone_eq() -> ::anyhow::Result<()> {
         let view = BookmarkView {
             comment: "c".to_string(),
             created_at: "2024-01-01T00:00:00.000Z".to_string(),

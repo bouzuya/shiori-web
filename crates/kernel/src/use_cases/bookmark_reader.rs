@@ -2,7 +2,7 @@ use crate::BookmarkList;
 use crate::PageToken;
 use crate::UserId;
 
-#[async_trait::async_trait]
+#[::async_trait::async_trait]
 pub trait BookmarkReader: Send + Sync {
     /// ユーザーのブックマークを `created_at` 降順で最大 10 件返す。
     ///
@@ -14,7 +14,7 @@ pub trait BookmarkReader: Send + Sync {
         &self,
         user_id: UserId,
         page_token: Option<PageToken>,
-    ) -> anyhow::Result<BookmarkList>;
+    ) -> ::anyhow::Result<BookmarkList>;
 }
 
 #[cfg(test)]
@@ -26,33 +26,33 @@ mod tests {
     const PAGE_SIZE: usize = 10;
 
     struct InMemoryBookmarkReader {
-        store: std::sync::Mutex<Vec<(UserId, BookmarkView)>>,
+        store: ::std::sync::Mutex<Vec<(UserId, BookmarkView)>>,
     }
 
     impl InMemoryBookmarkReader {
         fn new() -> Self {
             Self {
-                store: std::sync::Mutex::new(vec![]),
+                store: ::std::sync::Mutex::new(vec![]),
             }
         }
 
-        fn insert(&self, user_id: UserId, view: BookmarkView) -> anyhow::Result<()> {
+        fn insert(&self, user_id: UserId, view: BookmarkView) -> ::anyhow::Result<()> {
             self.store
                 .lock()
-                .map_err(|e| anyhow::anyhow!("{e}"))?
+                .map_err(|e| ::anyhow::anyhow!("{e}"))?
                 .push((user_id, view));
             Ok(())
         }
     }
 
-    #[async_trait::async_trait]
+    #[::async_trait::async_trait]
     impl BookmarkReader for InMemoryBookmarkReader {
         async fn list(
             &self,
             user_id: UserId,
             page_token: Option<PageToken>,
-        ) -> anyhow::Result<BookmarkList> {
-            let store = self.store.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
+        ) -> ::anyhow::Result<BookmarkList> {
+            let store = self.store.lock().map_err(|e| ::anyhow::anyhow!("{e}"))?;
             let mut items: Vec<BookmarkView> = store
                 .iter()
                 .filter(|(uid, _)| *uid == user_id)
@@ -104,8 +104,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_list_empty_returns_empty() -> anyhow::Result<()> {
+    #[::tokio::test]
+    async fn test_list_empty_returns_empty() -> ::anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
         let user_id = UserId::new();
         let result = reader.list(user_id, None).await?;
@@ -114,8 +114,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_list_less_than_page_size_returns_all_without_token() -> anyhow::Result<()> {
+    #[::tokio::test]
+    async fn test_list_less_than_page_size_returns_all_without_token() -> ::anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
         let user_id = UserId::new();
         for i in 0..5 {
@@ -137,8 +137,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_list_more_than_page_size_returns_page_and_token() -> anyhow::Result<()> {
+    #[::tokio::test]
+    async fn test_list_more_than_page_size_returns_page_and_token() -> ::anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
         let user_id = UserId::new();
         for i in 0..15 {
@@ -160,8 +160,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_list_with_page_token_returns_next_page() -> anyhow::Result<()> {
+    #[::tokio::test]
+    async fn test_list_with_page_token_returns_next_page() -> ::anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
         let user_id = UserId::new();
         for i in 0..15 {
@@ -177,7 +177,7 @@ mod tests {
         let first = reader.list(user_id, None).await?;
         let token = first
             .next_page_token
-            .ok_or_else(|| anyhow::anyhow!("expected next_page_token"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("expected next_page_token"))?;
         let second = reader
             .list(user_id, Some(token.parse::<PageToken>()?))
             .await?;
@@ -188,8 +188,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_list_filters_by_user_id() -> anyhow::Result<()> {
+    #[::tokio::test]
+    async fn test_list_filters_by_user_id() -> ::anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
         let user_a = UserId::new();
         let user_b = UserId::new();
@@ -215,7 +215,7 @@ mod tests {
         Ok(())
     }
 
-    fn insert_15(reader: &InMemoryBookmarkReader, user_id: UserId) -> anyhow::Result<()> {
+    fn insert_15(reader: &InMemoryBookmarkReader, user_id: UserId) -> ::anyhow::Result<()> {
         for i in 0..15 {
             reader.insert(
                 user_id,
@@ -229,8 +229,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_list_first_page_has_no_prev_page_token() -> anyhow::Result<()> {
+    #[::tokio::test]
+    async fn test_list_first_page_has_no_prev_page_token() -> ::anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
         let user_id = UserId::new();
         insert_15(&reader, user_id)?;
@@ -239,15 +239,15 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_list_next_page_has_prev_page_token() -> anyhow::Result<()> {
+    #[::tokio::test]
+    async fn test_list_next_page_has_prev_page_token() -> ::anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
         let user_id = UserId::new();
         insert_15(&reader, user_id)?;
         let first = reader.list(user_id, None).await?;
         let next = first
             .next_page_token
-            .ok_or_else(|| anyhow::anyhow!("expected next_page_token"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("expected next_page_token"))?;
         let second = reader
             .list(user_id, Some(next.parse::<PageToken>()?))
             .await?;
@@ -255,8 +255,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_list_prev_page_token_returns_previous_page() -> anyhow::Result<()> {
+    #[::tokio::test]
+    async fn test_list_prev_page_token_returns_previous_page() -> ::anyhow::Result<()> {
         let reader = InMemoryBookmarkReader::new();
         let user_id = UserId::new();
         insert_15(&reader, user_id)?;
@@ -264,14 +264,14 @@ mod tests {
         let next = first
             .next_page_token
             .clone()
-            .ok_or_else(|| anyhow::anyhow!("expected next_page_token"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("expected next_page_token"))?;
         let second = reader
             .list(user_id, Some(next.parse::<PageToken>()?))
             .await?;
         let prev = second
             .prev_page_token
             .clone()
-            .ok_or_else(|| anyhow::anyhow!("expected prev_page_token"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("expected prev_page_token"))?;
         let back = reader
             .list(user_id, Some(prev.parse::<PageToken>()?))
             .await?;

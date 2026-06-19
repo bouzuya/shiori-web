@@ -3,10 +3,10 @@ use lightningcss::stylesheet::ParserOptions;
 use lightningcss::stylesheet::PrinterOptions;
 use lightningcss::stylesheet::StyleSheet;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn ::std::error::Error>> {
     println!("cargo:rerun-if-changed=assets/index.css");
 
-    let source = std::fs::read_to_string("assets/index.css")?;
+    let source = ::std::fs::read_to_string("assets/index.css")?;
     let mut stylesheet =
         StyleSheet::parse(&source, ParserOptions::default()).map_err(|e| e.to_string())?;
     stylesheet
@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         })
         .map_err(|e| e.to_string())?;
-    std::fs::write("assets/index.min.css", minified.code)?;
+    ::std::fs::write("assets/index.min.css", minified.code)?;
 
     Ok(())
 }

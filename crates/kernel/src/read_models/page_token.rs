@@ -10,8 +10,8 @@ pub enum PageToken {
     Prev(String),
 }
 
-impl std::fmt::Display for PageToken {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ::std::fmt::Display for PageToken {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         let (prefix, created_at) = match self {
             Self::Next(created_at) => (b'n', created_at),
             Self::Prev(created_at) => (b'p', created_at),
@@ -24,21 +24,21 @@ impl std::fmt::Display for PageToken {
     }
 }
 
-impl std::str::FromStr for PageToken {
-    type Err = anyhow::Error;
+impl ::std::str::FromStr for PageToken {
+    type Err = ::anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        fn hex_value(byte: u8) -> anyhow::Result<u8> {
+        fn hex_value(byte: u8) -> ::anyhow::Result<u8> {
             match byte {
                 b'0'..=b'9' => Ok(byte - b'0'),
                 b'a'..=b'f' => Ok(byte - b'a' + 10),
                 b'A'..=b'F' => Ok(byte - b'A' + 10),
-                _ => anyhow::bail!("invalid hex digit"),
+                _ => ::anyhow::bail!("invalid hex digit"),
             }
         }
 
         let bytes = s.as_bytes();
-        anyhow::ensure!(
+        ::anyhow::ensure!(
             bytes.len().is_multiple_of(2),
             "page token must have even length"
         );
@@ -50,12 +50,12 @@ impl std::str::FromStr for PageToken {
         let mut chars = payload.chars();
         let direction = chars
             .next()
-            .ok_or_else(|| anyhow::anyhow!("page token is empty"))?;
+            .ok_or_else(|| ::anyhow::anyhow!("page token is empty"))?;
         let created_at = chars.as_str().to_string();
         match direction {
             'n' => Ok(Self::Next(created_at)),
             'p' => Ok(Self::Prev(created_at)),
-            _ => anyhow::bail!("invalid page token direction"),
+            _ => ::anyhow::bail!("invalid page token direction"),
         }
     }
 }
@@ -63,10 +63,10 @@ impl std::str::FromStr for PageToken {
 #[cfg(test)]
 impl PageToken {
     pub fn for_test() -> Self {
-        let mut rng = rand::rng();
-        let after = rand::RngExt::random_range(&mut rng, 0..2) == 0;
-        let len = rand::RngExt::random_range(&mut rng, 1..=20);
-        let created_at: String = rand::RngExt::sample_iter(rng, rand::distr::Alphanumeric)
+        let mut rng = ::rand::rng();
+        let after = ::rand::RngExt::random_range(&mut rng, 0..2) == 0;
+        let len = ::rand::RngExt::random_range(&mut rng, 1..=20);
+        let created_at: String = ::rand::RngExt::sample_iter(rng, ::rand::distr::Alphanumeric)
             .take(len)
             .map(char::from)
             .collect();
@@ -83,7 +83,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_next_roundtrip() -> anyhow::Result<()> {
+    fn test_next_roundtrip() -> ::anyhow::Result<()> {
         let token = PageToken::Next("2024-01-15T20:00:00.000Z".to_string());
         let encoded = token.to_string();
         assert_eq!(encoded.parse::<PageToken>()?, token);
@@ -91,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn test_prev_roundtrip() -> anyhow::Result<()> {
+    fn test_prev_roundtrip() -> ::anyhow::Result<()> {
         let token = PageToken::Prev("2024-01-15T20:00:00.000Z".to_string());
         let encoded = token.to_string();
         assert_eq!(encoded.parse::<PageToken>()?, token);
@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn test_for_test_roundtrip() -> anyhow::Result<()> {
+    fn test_for_test_roundtrip() -> ::anyhow::Result<()> {
         let token = PageToken::for_test();
         let encoded = token.to_string();
         assert_eq!(encoded.parse::<PageToken>()?, token);
@@ -107,7 +107,7 @@ mod tests {
     }
 
     #[test]
-    fn test_display_is_opaque() -> anyhow::Result<()> {
+    fn test_display_is_opaque() -> ::anyhow::Result<()> {
         let token = PageToken::Next("2024-01-15T20:00:00.000Z".to_string());
         let encoded = token.to_string();
         // 生の created_at (コロンを含む RFC3339) が露出しないこと
@@ -132,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_str_unknown_direction_is_err() -> anyhow::Result<()> {
+    fn test_from_str_unknown_direction_is_err() -> ::anyhow::Result<()> {
         let valid = PageToken::Next("foo".to_string()).to_string();
         // 先頭の方向接頭辞 'n' (0x6e -> "6e") を 'x' (0x78 -> "78") に差し替える
         let bad = format!("78{}", &valid[2..]);

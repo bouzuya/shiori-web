@@ -1,24 +1,24 @@
 /// ブックマークの URL。http または https スキームのみ許可。
 /// 非 ASCII は percent-encode / punycode 変換後に最大 2048 文字。
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Url(url::Url);
+pub struct Url(::url::Url);
 
-impl std::fmt::Display for Url {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ::std::fmt::Display for Url {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl std::str::FromStr for Url {
-    type Err = anyhow::Error;
+impl ::std::str::FromStr for Url {
+    type Err = ::anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parsed = url::Url::parse(s)?;
-        anyhow::ensure!(
+        let parsed = ::url::Url::parse(s)?;
+        ::anyhow::ensure!(
             matches!(parsed.scheme(), "http" | "https"),
             "URL scheme must be http or https"
         );
-        anyhow::ensure!(
+        ::anyhow::ensure!(
             parsed.as_str().len() <= 2048,
             "URL must be at most 2048 characters"
         );
@@ -29,11 +29,11 @@ impl std::str::FromStr for Url {
 #[cfg(test)]
 impl Url {
     pub fn for_test() -> Self {
-        let mut rng = rand::rng();
+        let mut rng = ::rand::rng();
         let base = "https://example.com/";
         let max_path_len = 2048 - base.len();
-        let path_len = rand::RngExt::random_range(&mut rng, 0..=max_path_len);
-        let path: String = rand::RngExt::sample_iter(rng, rand::distr::Alphanumeric)
+        let path_len = ::rand::RngExt::random_range(&mut rng, 0..=max_path_len);
+        let path: String = ::rand::RngExt::sample_iter(rng, ::rand::distr::Alphanumeric)
             .take(path_len)
             .map(char::from)
             .collect();
@@ -48,21 +48,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_url_from_str_http() -> anyhow::Result<()> {
+    fn test_url_from_str_http() -> ::anyhow::Result<()> {
         let u = "http://example.com".parse::<Url>()?;
         assert_eq!(u.to_string(), "http://example.com/");
         Ok(())
     }
 
     #[test]
-    fn test_url_from_str_https() -> anyhow::Result<()> {
+    fn test_url_from_str_https() -> ::anyhow::Result<()> {
         let u = "https://example.com/path?q=1".parse::<Url>()?;
         assert_eq!(u.to_string(), "https://example.com/path?q=1");
         Ok(())
     }
 
     #[test]
-    fn test_url_from_str_non_ascii_host_is_punycoded() -> anyhow::Result<()> {
+    fn test_url_from_str_non_ascii_host_is_punycoded() -> ::anyhow::Result<()> {
         // 非 ASCII ホストは punycode に変換される
         let u = "https://例え.jp".parse::<Url>()?;
         assert_eq!(u.to_string(), "https://xn--r8jz45g.jp/");
@@ -70,7 +70,7 @@ mod tests {
     }
 
     #[test]
-    fn test_url_from_str_non_ascii_path_is_percent_encoded() -> anyhow::Result<()> {
+    fn test_url_from_str_non_ascii_path_is_percent_encoded() -> ::anyhow::Result<()> {
         // 非 ASCII パスは percent-encode される
         let u = "https://example.com/日本語".parse::<Url>()?;
         assert_eq!(
@@ -91,14 +91,14 @@ mod tests {
     }
 
     #[test]
-    fn test_url_display() -> anyhow::Result<()> {
+    fn test_url_display() -> ::anyhow::Result<()> {
         let u = "https://example.com".parse::<Url>()?;
         assert_eq!(format!("{u}"), "https://example.com/");
         Ok(())
     }
 
     #[test]
-    fn test_url_from_str_max_length() -> anyhow::Result<()> {
+    fn test_url_from_str_max_length() -> ::anyhow::Result<()> {
         let path = "a".repeat(2048 - "https://e.com/".len());
         let s = format!("https://e.com/{path}");
         assert_eq!(s.len(), 2048);
@@ -116,7 +116,7 @@ mod tests {
     }
 
     #[test]
-    fn test_url_eq() -> anyhow::Result<()> {
+    fn test_url_eq() -> ::anyhow::Result<()> {
         let u1 = "https://example.com".parse::<Url>()?;
         let u2 = "https://example.com".parse::<Url>()?;
         let u3 = "https://other.com".parse::<Url>()?;

@@ -3,21 +3,21 @@ use crate::UserSettingsCollection;
 use kernel::UserSettingsReader;
 
 pub(crate) struct FirestoreUserSettingsReader {
-    firestore: bouzuya_firestore_client::Firestore,
+    firestore: ::bouzuya_firestore_client::Firestore,
 }
 
 impl FirestoreUserSettingsReader {
-    pub(crate) fn new(firestore: bouzuya_firestore_client::Firestore) -> Self {
+    pub(crate) fn new(firestore: ::bouzuya_firestore_client::Firestore) -> Self {
         Self { firestore }
     }
 }
 
-#[async_trait::async_trait]
+#[::async_trait::async_trait]
 impl UserSettingsReader for FirestoreUserSettingsReader {
     async fn get(
         &self,
         user_id: kernel::UserId,
-    ) -> anyhow::Result<Option<kernel::UserSettingsView>> {
+    ) -> ::anyhow::Result<Option<kernel::UserSettingsView>> {
         match UserSettingsCollection::get(&self.firestore, &(), &user_id).await? {
             None => Ok(None),
             Some(data) => Ok(Some(data.into_user_settings_view(user_id)?)),
@@ -31,21 +31,21 @@ mod tests {
 
     use super::*;
 
-    fn firestore() -> anyhow::Result<bouzuya_firestore_client::Firestore> {
-        Ok(bouzuya_firestore_client::Firestore::new(
-            bouzuya_firestore_client::FirestoreOptions::default(),
+    fn firestore() -> ::anyhow::Result<::bouzuya_firestore_client::Firestore> {
+        Ok(::bouzuya_firestore_client::Firestore::new(
+            ::bouzuya_firestore_client::FirestoreOptions::default(),
         )?)
     }
 
     /// `store` メソッドが無いため、テストのセットアップ用にローカルの serde 形で
     /// `user_settings/{user_id}` ドキュメントを直接書き込む。
     async fn seed_settings(
-        firestore: &bouzuya_firestore_client::Firestore,
+        firestore: &::bouzuya_firestore_client::Firestore,
         user_id: kernel::UserId,
         color_scheme: &'static str,
         utc_offset: &'static str,
-    ) -> anyhow::Result<()> {
-        #[derive(serde::Serialize)]
+    ) -> ::anyhow::Result<()> {
+        #[derive(::serde::Serialize)]
         struct Seed {
             color_scheme: &'static str,
             utc_offset: &'static str,
@@ -53,7 +53,7 @@ mod tests {
 
         let doc_ref = firestore
             .doc(UserSettingsCollection::document_path(&(), &user_id))
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| ::anyhow::anyhow!(e))?;
         firestore
             .run_transaction(
                 move |tx| {
@@ -69,25 +69,25 @@ mod tests {
                         Ok(())
                     })
                 },
-                bouzuya_firestore_client::TransactionOptions::default(),
+                ::bouzuya_firestore_client::TransactionOptions::default(),
             )
             .await
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| ::anyhow::anyhow!(e))?;
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_get_returns_none_for_unknown() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_get_returns_none_for_unknown() -> ::anyhow::Result<()> {
         let reader = FirestoreUserSettingsReader::new(firestore()?);
         let user_id = kernel::UserId::new();
         assert!(reader.get(user_id).await?.is_none());
         Ok(())
     }
 
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_get_returns_stored_settings() -> anyhow::Result<()> {
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_get_returns_stored_settings() -> ::anyhow::Result<()> {
         let firestore = firestore()?;
         let user_id = kernel::UserId::new();
         seed_settings(&firestore, user_id, "dark", "+09:00").await?;
