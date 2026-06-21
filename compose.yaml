@@ -11,5 +11,6 @@ services:
     image: debian:trixie
     volumes:
       - .:/workspaces/shiori-web:cached
+      - ~/.agents:/home/vscode/.agents
       - ~/.claude:/home/vscode/.claude
       - ~/.copilot:/home/vscode/.copilot
