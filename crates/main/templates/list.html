@@ -14,46 +14,47 @@
             <div class="site-title"><a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">shiori</a></div>
         </header>
         <main>
-            <h1>Bookmark List</h1>
-            <div class="new-bookmark-link">
-                <a href="{{ base }}/new">New</a>
-            </div>
+            <div class="main-scroll">
+                <h1>Bookmark List</h1>
+                <div class="new-bookmark-link">
+                    <a href="{{ base }}/new">New</a>
+                </div>
 
-            {% if groups.is_empty() %}
-            <div class="no-bookmarks">
-                No bookmarks
-            </div>
-            {% else %}
-            {% for group in groups %}
-            <div class="bookmark-group">
-                <h2 class="bookmark-group-name">{{ group.date }}</h2>
-                <ul>
-                    {% for item in group.items %}
-                    <li>
-                        <div class="bookmark-item">
-                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
-                            <div>
-                                <button class="detail" popovertarget="menu-{{ item.id }}">...</button>
-                                <div class="popover" id="menu-{{ item.id }}" popover="auto">
-                                    <ul>
-                                        {% if let Some(share_url) = item.share_url %}
-                                        <li><a href="{{ share_url }}" rel="noopener noreferrer"
-                                                target="_blank">Share</a></li>
-                                        {% endif %}
-                                        <li><a href="{{ base }}/{{ item.id }}">Edit</a></li>
-                                        <li><a href="{{ base }}/{{ item.id }}/delete">Delete</a></li>
-                                    </ul>
+                {% if groups.is_empty() %}
+                <div class="no-bookmarks">
+                    No bookmarks
+                </div>
+                {% else %}
+                {% for group in groups %}
+                <div class="bookmark-group">
+                    <h2 class="bookmark-group-name">{{ group.date }}</h2>
+                    <ul>
+                        {% for item in group.items %}
+                        <li>
+                            <div class="bookmark-item">
+                                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+                                <div>
+                                    <button class="detail" popovertarget="menu-{{ item.id }}">...</button>
+                                    <div class="popover" id="menu-{{ item.id }}" popover="auto">
+                                        <ul>
+                                            {% if let Some(share_url) = item.share_url %}
+                                            <li><a href="{{ share_url }}" rel="noopener noreferrer"
+                                                    target="_blank">Share</a></li>
+                                            {% endif %}
+                                            <li><a href="{{ base }}/{{ item.id }}">Edit</a></li>
+                                            <li><a href="{{ base }}/{{ item.id }}/delete">Delete</a></li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </li>
-                    {% endfor %}
-                </ul>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+                {% endif %}
             </div>
-            {% endfor %}
-            {% endif %}
-        </main>
-        <footer class="page-footer">
+
             {% if prev_page_token.is_some() || next_page_token.is_some() %}
             <div class="pagination">
                 <div class="pagination-item">
@@ -70,6 +71,8 @@
                 </div>
             </div>
             {% endif %}
+        </main>
+        <footer class="page-footer">
             <div>
                 <a href="{{ base }}/settings">Settings</a>
             </div>

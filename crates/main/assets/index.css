@@ -97,8 +97,18 @@ body {
     }
 }
 
-/* 本文 (main) のみをスクロールさせ、header / footer を固定する */
+/* main は縦 flex のコンテナ。スクロールは内側の .main-scroll が担い、
+ * その兄弟 (list-page の .pagination 等) を main 下部に固定する。
+ * header / footer は .page 直下で固定される。 */
 main {
+    display: flex;
+    flex: 1;
+    flex-flow: column nowrap;
+    min-height: 0;
+}
+
+/* 本文をスクロールさせる領域 (全ページ共通)。main の一部であり main 全体ではない。 */
+.main-scroll {
     flex: 1;
     min-height: 0;
     overflow: auto;
@@ -118,24 +128,6 @@ main {
         &:hover {
             background-color: var(--hover-background-color);
         }
-    }
-
-    /* pagination は list-page でのみ footer 内に描画される (Prev/Next を下部固定するため) */
-    .pagination {
-        display: flex;
-        gap: 8px;
-    }
-
-    .pagination-item {
-        flex: 1;
-    }
-
-    .pagination-item:first-child a {
-        text-align: left;
-    }
-
-    .pagination-item:last-child a {
-        text-align: right;
     }
 }
 
@@ -213,7 +205,8 @@ main {
     }
 
     /* nav links (shared style) */
-    .new-bookmark-link a {
+    .new-bookmark-link a,
+    .pagination a {
         display: block;
         overflow: hidden;
         padding: 8px;
@@ -223,6 +216,25 @@ main {
         &:hover {
             background-color: var(--hover-background-color);
         }
+    }
+
+    /* pagination は .main-scroll の兄弟として main 下部に固定する */
+    .pagination {
+        display: flex;
+        flex: none;
+        gap: 8px;
+    }
+
+    .pagination-item {
+        flex: 1;
+    }
+
+    .pagination-item:first-child a {
+        text-align: left;
+    }
+
+    .pagination-item:last-child a {
+        text-align: right;
     }
 
     .no-bookmarks {

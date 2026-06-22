@@ -49,7 +49,7 @@
   - 例: `.list-page main { .bookmark-item { ... } }`
 - 全ページ共通として残すのは次のものだけ:
   - `:root` / `html` / `body` などのルート要素
-  - shell (`.page` / `.page-header` / `main` / `.page-footer`)
+  - shell (`.page` / `.page-header` / `main` / `.main-scroll` / `.page-footer`)。`.main-scroll` は `<main>` 内で本文をスクロールさせる全ページ共通の領域
 - `.xxx-page` はラッパーに付くため、セレクタ上は shell (`.page-header` / `.page-footer` / `.page` 自身) にも到達できる。しかしページ固有スタイルは必ず `.xxx-page main ...` の形で `<main>` 内に限定し、shell をページごとに上書きしないこと
   - これは構造ではなく規約で担保する。`.xxx-page .page-footer { ... }` のような shell 越境は書かない
 - 複数ページで見た目が同じスタイル (フォーム・ナビリンク・要素リセット等) も、共有せず各ページへ複製する
