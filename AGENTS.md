@@ -43,12 +43,15 @@
 
 `crates/main/assets/index.css` は「ページ単位で完結させる」方針で構成すること。
 
-- 各ページのテンプレートは `<main>` にページを表す class を付与する (`landing-page` / `list-page` / `show-page` / `new-page`)
-- CSS はその class をネストの親にし、ページ固有のスタイルはすべてその中に閉じ込める
-  - 例: `.list-page { .bookmark-item { ... } }`
+- 各ページのテンプレートは、ページ全体を包むラッパー要素 `.page` に、そのページを表す class (`.landing-page` / `.list-page` / `.show-page` / `.new-page` / `.delete-page` / `.settings-page`) を併記する
+  - 例: `<div class="page list-page">`。`.page` は全ページ共通の枠、併記する `.xxx-page` がそのページの識別子
+- ページ固有のスタイルは `.xxx-page main { ... }` を基本セレクタにし、すべて `<main>` の中に閉じ込める
+  - 例: `.list-page main { .bookmark-item { ... } }`
 - 全ページ共通として残すのは次のものだけ:
   - `:root` / `html` / `body` などのルート要素
-  - `.xxx-page` より上位 (祖先) や兄弟に位置する shell (`.page-container` / `.page-header` / `main` / `.page-footer`)
+  - shell (`.page` / `.page-header` / `main` / `.page-footer`)
+- `.xxx-page` はラッパーに付くため、セレクタ上は shell (`.page-header` / `.page-footer` / `.page` 自身) にも到達できる。しかしページ固有スタイルは必ず `.xxx-page main ...` の形で `<main>` 内に限定し、shell をページごとに上書きしないこと
+  - これは構造ではなく規約で担保する。`.xxx-page .page-footer { ... }` のような shell 越境は書かない
 - 複数ページで見た目が同じスタイル (フォーム・ナビリンク・要素リセット等) も、共有せず各ページへ複製する
   - **重複は許容する**。1ページの変更時に他ページへの影響を考えなくてよい局所性を優先するため
   - トレードオフとして横断的な一括変更はしづらくなる
