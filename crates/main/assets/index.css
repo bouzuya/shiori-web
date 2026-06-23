@@ -82,9 +82,11 @@ body {
     flex: none;
 
     .site-title a {
+        align-items: center;
         color: var(--text-color);
-        display: block;
+        display: flex;
         font-weight: bold;
+        gap: 4px;
         overflow: hidden;
         padding: 8px;
         text-decoration: none;
@@ -94,6 +96,12 @@ body {
         &:hover {
             background-color: var(--hover-background-color);
         }
+    }
+
+    .site-title svg {
+        flex: none;
+        height: 24px;
+        width: 24px;
     }
 }
 

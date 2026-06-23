@@ -11,7 +11,12 @@
 <body>
     <div class="page delete-page">
         <header class="page-header">
-            <div class="site-title"><a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">shiori</a></div>
+            <div class="site-title">
+                <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">
+                    {% include "shiori_icon.svg" %}
+                    shiori
+                </a>
+            </div>
         </header>
         <main>
             <div class="main-scroll">

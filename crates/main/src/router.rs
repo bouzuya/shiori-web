@@ -3,7 +3,6 @@ mod bookmark;
 mod index_css;
 mod root;
 mod settings;
-mod shiori_svg;
 
 use crate::AppState;
 use kernel::ColorScheme;
@@ -17,8 +16,7 @@ pub(crate) fn router(base_path: &str) -> ::axum::Router<AppState> {
         .merge(bookmark::router())
         .merge(index_css::router())
         .merge(root::router())
-        .merge(settings::router())
-        .merge(shiori_svg::router());
+        .merge(settings::router());
     if base_path.is_empty() {
         inner
     } else {
