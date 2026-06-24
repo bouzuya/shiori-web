@@ -30,6 +30,7 @@ struct NewBookmarkTemplate<'a> {
     comment: String,
     title: String,
     url: String,
+    version: &'a str,
 }
 
 #[derive(::serde::Deserialize)]
@@ -51,6 +52,7 @@ async fn get_new(
         comment: query.comment.unwrap_or_default(),
         title: query.title.unwrap_or_default(),
         url: query.url.unwrap_or_default(),
+        version: env!("CARGO_PKG_VERSION"),
     };
     match ::askama::Template::render(&template) {
         Ok(html) => ::axum::response::IntoResponse::into_response(::axum::response::Html(html)),
@@ -73,6 +75,7 @@ struct ShowBookmarkTemplate<'a> {
     title: String,
     updated_at: String,
     url: String,
+    version: &'a str,
 }
 
 async fn get_show(
@@ -111,6 +114,7 @@ async fn get_show(
         title: bookmark.title().to_string(),
         updated_at: bookmark.updated_at().to_rfc3339(),
         url: bookmark.url().to_string(),
+        version: env!("CARGO_PKG_VERSION"),
     };
     match ::askama::Template::render(&template) {
         Ok(html) => ::axum::response::IntoResponse::into_response(::axum::response::Html(html)),
@@ -132,6 +136,7 @@ struct DeleteBookmarkTemplate<'a> {
     comment: String,
     title: String,
     url: String,
+    version: &'a str,
 }
 
 async fn get_delete(
@@ -169,6 +174,7 @@ async fn get_delete(
         comment: bookmark.comment().to_string(),
         title: bookmark.title().to_string(),
         url: bookmark.url().to_string(),
+        version: env!("CARGO_PKG_VERSION"),
     };
     match ::askama::Template::render(&template) {
         Ok(html) => ::axum::response::IntoResponse::into_response(::axum::response::Html(html)),

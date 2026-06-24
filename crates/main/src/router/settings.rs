@@ -20,6 +20,7 @@ struct SettingsTemplate<'a> {
     color_scheme: &'a str,
     share_url: &'a str,
     utc_offset: &'a str,
+    version: &'a str,
 }
 
 async fn get_settings(
@@ -37,6 +38,7 @@ async fn get_settings(
         color_scheme: &color_scheme,
         share_url: &share_url,
         utc_offset: &utc_offset,
+        version: env!("CARGO_PKG_VERSION"),
     };
     match ::askama::Template::render(&template) {
         Ok(html) => ::axum::response::IntoResponse::into_response(::axum::response::Html(html)),

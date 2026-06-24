@@ -18,6 +18,7 @@ struct RootQuery {
 struct LandingTemplate<'a> {
     base: &'a str,
     color_scheme: &'a str,
+    version: &'a str,
 }
 
 struct BookmarkItem {
@@ -40,6 +41,7 @@ struct BookmarksTemplate<'a> {
     groups: Vec<DateGroup>,
     next_page_token: Option<String>,
     prev_page_token: Option<String>,
+    version: &'a str,
 }
 
 fn render_template(html: Result<String, ::askama::Error>) -> ::axum::response::Response {
@@ -110,6 +112,7 @@ async fn handler(
                         groups,
                         next_page_token: list.next_page_token,
                         prev_page_token: list.prev_page_token,
+                        version: env!("CARGO_PKG_VERSION"),
                     };
                     render_template(::askama::Template::render(&template))
                 }
@@ -126,6 +129,7 @@ async fn handler(
             let template = LandingTemplate {
                 base: &state.base_path,
                 color_scheme: &color_scheme,
+                version: env!("CARGO_PKG_VERSION"),
             };
             render_template(::askama::Template::render(&template))
         }
