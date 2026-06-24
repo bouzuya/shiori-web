@@ -10,15 +10,7 @@
 
 <body>
     <div class="page list-page">
-        <header class="page-header">
-            <div class="site-title">
-                <a href="{% if base == "" %}/{% else %}{{ base }}{% endif %}">
-                    {% include "shiori_icon.svg" %}
-                    shiori
-                </a>
-            </div>
-            {% include "header_menu.html" %}
-        </header>
+        {% include "_page_header.html" %}
         <main>
             <div class="main-scroll">
                 <h1>Bookmark List</h1>
