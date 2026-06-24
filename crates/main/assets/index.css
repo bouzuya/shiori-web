@@ -161,7 +161,7 @@ body {
 
 /* main は縦 flex のコンテナ。スクロールは内側の .main-scroll が担い、
  * その兄弟 (list-page の .pagination 等) を main 下部に固定する。
- * header / footer は .page 直下で固定される。 */
+ * header は .page 直下で固定される。 */
 main {
     display: flex;
     flex: 1;
@@ -174,23 +174,6 @@ main {
     flex: 1;
     min-height: 0;
     overflow: auto;
-}
-
-.page-footer {
-    flex: none;
-
-    a {
-        color: var(--link-text-color);
-        display: block;
-        overflow: hidden;
-        padding: 8px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-
-        &:hover {
-            background-color: var(--hover-background-color);
-        }
-    }
 }
 
 /* ============================================================
