@@ -156,6 +156,45 @@ body {
                 background-color: var(--hover-background-color);
             }
         }
+
+        /* user 群 (上の menu rows) と app/about 群の境界 */
+        & .about {
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-color);
+            display: flex;
+            flex-flow: row nowrap;
+            gap: 8px;
+            padding: 8px;
+        }
+
+        & .about svg {
+            flex: none;
+            height: 64px;
+            width: 64px;
+        }
+
+        & .about .about-text {
+            display: flex;
+            flex-flow: column nowrap;
+            gap: 0;
+        }
+
+        & .about .brand {
+            font-weight: bold;
+        }
+
+        & .about .version {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        & .about a {
+            color: var(--link-text-color);
+            font-size: 0.85rem;
+            text-decoration: underline;
+            white-space: nowrap;
+        }
     }
 }
 
