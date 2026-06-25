@@ -547,6 +547,10 @@ mod tests {
             body.contains("/index.css"),
             "Expected /index.css href in /new page, got: {body}"
         );
+        assert!(
+            body.contains("/favicon.svg"),
+            "Expected /favicon.svg href in /new page, got: {body}"
+        );
         Ok(())
     }
 
