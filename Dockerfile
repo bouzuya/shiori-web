@@ -25,4 +25,4 @@ WORKDIR /app
 COPY --from=builder /app/target/release/main /app/shiori-web
 ENV PORT=3000
 EXPOSE 3000
-CMD ["/app/shiori-web"]
+CMD ["/app/shiori-web", "serve"]

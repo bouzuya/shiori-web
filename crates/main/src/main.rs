@@ -1,6 +1,5 @@
 mod cli;
 mod cookie_jar;
-mod env;
 mod extractor;
 mod firestore;
 mod router;
@@ -27,20 +26,23 @@ pub(crate) use self::firestore::UserSettingsDocumentData;
 pub(crate) use self::firestore::UsersCollection;
 pub(crate) use self::state::AppState;
 
+use crate::cli::Cli;
+use crate::cli::ServeArgs;
+use crate::cli::Subcommand;
 use crate::extractor::real_oidc_client;
 
-async fn build_state(env: &env::Env) -> ::anyhow::Result<AppState> {
+async fn build_state(args: &ServeArgs) -> ::anyhow::Result<AppState> {
     let options = real_oidc_client::RealOidcClientOptions {
-        client_id: env.oidc_client_id.clone(),
-        client_secret: env.oidc_client_secret.clone(),
-        issuer_url: env.oidc_issuer_url.clone(),
-        redirect_uri: env.oidc_redirect_uri.clone(),
+        client_id: args.oidc_client_id.clone(),
+        client_secret: args.oidc_client_secret.clone(),
+        issuer_url: args.oidc_issuer_url.clone(),
+        redirect_uri: args.oidc_redirect_uri.clone(),
     };
     let oidc_client = real_oidc_client::RealOidcClient::new(options).await?;
     let firestore =
         ::bouzuya_firestore_client::Firestore::new(::bouzuya_firestore_client::FirestoreOptions {
-            database_id: Some(env.database_id.clone()),
-            project_id: Some(env.project_id.clone()),
+            database_id: Some(args.database_id.clone()),
+            project_id: Some(args.project_id.clone()),
         })?;
     let bookmark_reader = ::std::sync::Arc::new(FirestoreBookmarkReader::new(firestore.clone()));
     let bookmark_repository =
@@ -51,10 +53,10 @@ async fn build_state(env: &env::Env) -> ::anyhow::Result<AppState> {
         ::std::sync::Arc::new(FirestoreUserSettingsRepository::new(firestore.clone()));
     let user_repository = ::std::sync::Arc::new(FirestoreUserRepository::new(firestore));
     Ok(AppState::new(
-        env.base_path.clone(),
+        args.base_path.clone(),
         bookmark_reader,
         bookmark_repository,
-        &env.cookie_signing_secret,
+        &args.cookie_signing_secret,
         ::std::sync::Arc::new(oidc_client),
         user_repository,
         user_settings_reader,
@@ -67,7 +69,7 @@ fn generate_secret() -> String {
     key.master().iter().map(|b| format!("{b:02x}")).collect()
 }
 
-async fn run_server() -> ::anyhow::Result<()> {
+async fn run_server(args: ServeArgs) -> ::anyhow::Result<()> {
     ::tracing_subscriber::fmt()
         .with_env_filter(
             ::tracing_subscriber::EnvFilter::try_from_default_env()
@@ -75,22 +77,22 @@ async fn run_server() -> ::anyhow::Result<()> {
         )
         .init();
 
-    let env = env::Env::from_env()?;
-    let state = build_state(&env).await?;
-    let listener = ::tokio::net::TcpListener::bind(format!("0.0.0.0:{}", env.port)).await?;
-    ::tracing::info!("listening on 0.0.0.0:{}", env.port);
-    ::axum::serve(listener, router::router(&env.base_path).with_state(state)).await?;
+    let state = build_state(&args).await?;
+    let listener = ::tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.port)).await?;
+    ::tracing::info!("listening on 0.0.0.0:{}", args.port);
+    ::axum::serve(listener, router::router(&args.base_path).with_state(state)).await?;
     Ok(())
 }
 
 #[::tokio::main]
 async fn main() -> ::anyhow::Result<()> {
-    let args: Vec<String> = ::std::env::args().collect();
-    if args.get(1).map(|s| s.as_str()) == Some("generate-secret") {
-        println!("{}", generate_secret());
-        return Ok(());
+    match <Cli as ::clap::Parser>::parse().subcommand {
+        Subcommand::GenerateSecret => {
+            println!("{}", generate_secret());
+            Ok(())
+        }
+        Subcommand::Serve(args) => run_server(args).await,
     }
-    run_server().await
 }
 
 #[cfg(test)]

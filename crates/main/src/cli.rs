@@ -1,6 +1,3 @@
-// R1a の段階では `main` から未使用のため dead_code を許可する。R1b で配線後に削除する。
-#![allow(dead_code)]
-
 #[derive(::clap::Parser)]
 pub(crate) struct Cli {
     #[command(subcommand)]
