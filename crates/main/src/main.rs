@@ -1,3 +1,4 @@
+mod cli;
 mod cookie_jar;
 mod env;
 mod extractor;
