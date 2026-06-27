@@ -22,6 +22,7 @@ struct LandingTemplate<'a> {
 }
 
 struct BookmarkItem {
+    comment: String,
     id: String,
     share_url: Option<String>,
     title: String,
@@ -87,6 +88,7 @@ async fn handler(
                             Err(_) => b.created_at.chars().take(10).collect::<String>(),
                         };
                         let item = BookmarkItem {
+                            comment: b.comment.clone(),
                             id: b.id.clone(),
                             share_url: share_url
                                 .as_ref()
@@ -399,6 +401,55 @@ mod tests {
         assert!(
             body.contains("Example Title"),
             "Expected bookmark title, got: {body}"
+        );
+        Ok(())
+    }
+
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_root_shows_bookmark_comment() -> ::anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+        let app = crate::router::router("").with_state(state);
+        let session = session_cookie(app.clone()).await?;
+        let created = send_request(
+            app.clone(),
+            ::axum::http::Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(
+                    ::axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::from(
+                    "url=https%3A%2F%2Fexample.com&title=Example+Title&comment=My+memo",
+                ))?,
+        )
+        .await?;
+        assert_eq!(created.status(), ::axum::http::StatusCode::SEE_OTHER);
+        let response = send_request(
+            app,
+            ::axum::http::Request::builder()
+                .uri("/")
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert!(
+            body.contains("My memo"),
+            "Expected bookmark comment in list, got: {body}"
         );
         Ok(())
     }

@@ -31,7 +31,12 @@
                         {% for item in group.items %}
                         <li>
                             <div class="bookmark-item">
-                                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+                                <a href="{{ item.url }}" rel="noopener noreferrer" target="_blank">
+                                    <span class="bookmark-item-title">{{ item.title }}</span>
+                                    {% if !item.comment.is_empty() %}
+                                    <span class="bookmark-item-comment">{{ item.comment }}</span>
+                                    {% endif %}
+                                </a>
                                 <div>
                                     <button class="detail" popovertarget="menu-{{ item.id }}">...</button>
                                     <div class="popover" id="menu-{{ item.id }}" popover="auto">

@@ -332,9 +332,11 @@ main {
     }
 
     .bookmark-item {
+        align-items: stretch;
         display: flex;
         flex-flow: row nowrap;
         gap: 4px;
+        height: 64px;
     }
 
     .bookmark-item a {
@@ -350,6 +352,36 @@ main {
         }
     }
 
+    /* カードリンク本体: タイトルとコメントを縦に積む (popover 内の a には及ばさない)。
+     * 縦の余白は各行 (title/comment) が持つ。下線は title 行だけに付ける。 */
+    .bookmark-item>a {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: 4px;
+        min-width: 0;
+        padding: 8px;
+        text-decoration: none;
+    }
+
+    /* タイトル行: 高さを 40px に決めうちして ... ボタン (40px) と揃える。
+     * 折り返さず、長い場合は省略記号で切る。 */
+    .bookmark-item-title {
+        line-height: 24px;
+        overflow: hidden;
+        text-decoration: underline;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* コメント行: 折り返さず省略。下線なし・控えめ。 */
+    .bookmark-item-comment {
+        color: var(--text-color);
+        font-size: 0.75rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .bookmark-item .detail {
         background-color: transparent;
         border: none;
@@ -357,7 +389,7 @@ main {
         cursor: pointer;
         display: block;
         flex: none;
-        height: 40px;
+        height: 100%;
         text-decoration: none;
         width: 40px;
 
