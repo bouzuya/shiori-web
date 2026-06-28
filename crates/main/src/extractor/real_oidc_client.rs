@@ -40,6 +40,8 @@ impl RealOidcClient {
 #[::async_trait::async_trait]
 impl OidcClient for RealOidcClient {
     fn build_authentication_request(&self) -> AuthenticationRequest {
+        let (pkce_challenge, pkce_verifier) =
+            ::openidconnect::PkceCodeChallenge::new_random_sha256();
         let (auth_url, csrf_state, nonce) = self
             .client
             .authorize_url(
@@ -48,19 +50,29 @@ impl OidcClient for RealOidcClient {
                 ::openidconnect::Nonce::new_random,
             )
             .add_scope(::openidconnect::Scope::new("openid".to_string()))
+            .set_pkce_challenge(pkce_challenge)
             .url();
 
         AuthenticationRequest {
             nonce: nonce.secret().to_string(),
+            pkce_verifier: pkce_verifier.secret().to_string(),
             state: csrf_state.secret().to_string(),
             url: auth_url.to_string(),
         }
     }
 
-    async fn exchange_code(&self, code: &str, nonce: &str) -> ::anyhow::Result<OidcClaims> {
+    async fn exchange_code(
+        &self,
+        code: &str,
+        nonce: &str,
+        pkce_verifier: &str,
+    ) -> ::anyhow::Result<OidcClaims> {
         let token_response = self
             .client
             .exchange_code(::openidconnect::AuthorizationCode::new(code.to_string()))
+            .set_pkce_verifier(::openidconnect::PkceCodeVerifier::new(
+                pkce_verifier.to_string(),
+            ))
             .request_async(::openidconnect::reqwest::async_http_client)
             .await?;
 

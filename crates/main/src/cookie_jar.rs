@@ -9,6 +9,7 @@ pub(crate) struct CookieJar {
 impl CookieJar {
     const FLOW_COOKIE_NAME: &str = "auth_flow";
     const NONCE_COOKIE_NAME: &str = "oidc_nonce";
+    const PKCE_VERIFIER_COOKIE_NAME: &str = "oidc_pkce_verifier";
     const SESSION_COOKIE_NAME: &str = "session";
     const STATE_COOKIE_NAME: &str = "oidc_state";
 
@@ -31,6 +32,12 @@ impl CookieJar {
     pub(crate) fn get_nonce(&self) -> Option<String> {
         self.jar
             .get(Self::NONCE_COOKIE_NAME)
+            .map(|c| c.value().to_string())
+    }
+
+    pub(crate) fn get_pkce_verifier(&self) -> Option<String> {
+        self.jar
+            .get(Self::PKCE_VERIFIER_COOKIE_NAME)
             .map(|c| c.value().to_string())
     }
 
@@ -63,6 +70,10 @@ impl CookieJar {
             )
             .remove(
                 ::axum_extra::extract::cookie::Cookie::build((Self::NONCE_COOKIE_NAME, ""))
+                    .path(cp.clone()),
+            )
+            .remove(
+                ::axum_extra::extract::cookie::Cookie::build((Self::PKCE_VERIFIER_COOKIE_NAME, ""))
                     .path(cp.clone()),
             )
             .add(
@@ -108,6 +119,13 @@ impl CookieJar {
             )
             .add(
                 ::axum_extra::extract::cookie::Cookie::build((
+                    Self::PKCE_VERIFIER_COOKIE_NAME,
+                    auth_request.pkce_verifier.clone(),
+                ))
+                .path(cp.clone()),
+            )
+            .add(
+                ::axum_extra::extract::cookie::Cookie::build((
                     Self::STATE_COOKIE_NAME,
                     auth_request.state.clone(),
                 ))
@@ -132,6 +150,13 @@ impl CookieJar {
                 ::axum_extra::extract::cookie::Cookie::build((
                     Self::NONCE_COOKIE_NAME,
                     auth_request.nonce.clone(),
+                ))
+                .path(cp.clone()),
+            )
+            .add(
+                ::axum_extra::extract::cookie::Cookie::build((
+                    Self::PKCE_VERIFIER_COOKIE_NAME,
+                    auth_request.pkce_verifier.clone(),
                 ))
                 .path(cp.clone()),
             )
@@ -210,6 +235,7 @@ mod tests {
     fn make_auth_request() -> AuthenticationRequest {
         AuthenticationRequest {
             nonce: "test_nonce".to_string(),
+            pkce_verifier: "test_pkce_verifier".to_string(),
             state: "test_state".to_string(),
             url: "https://example.com/auth".to_string(),
         }
@@ -225,6 +251,12 @@ mod tests {
     fn test_get_nonce_returns_none_when_empty() {
         let jar = make_empty_jar();
         assert_eq!(jar.get_nonce(), None);
+    }
+
+    #[test]
+    fn test_get_pkce_verifier_returns_none_when_empty() {
+        let jar = make_empty_jar();
+        assert_eq!(jar.get_pkce_verifier(), None);
     }
 
     #[test]
@@ -252,6 +284,15 @@ mod tests {
     }
 
     #[test]
+    fn test_with_signin_cookies_sets_pkce_verifier() {
+        let jar = make_empty_jar().with_signin_cookies(&make_auth_request());
+        assert_eq!(
+            jar.get_pkce_verifier(),
+            Some("test_pkce_verifier".to_string())
+        );
+    }
+
+    #[test]
     fn test_with_signin_cookies_sets_state() {
         let jar = make_empty_jar().with_signin_cookies(&make_auth_request());
         assert_eq!(jar.get_state(), Some("test_state".to_string()));
@@ -267,6 +308,15 @@ mod tests {
     fn test_with_signup_cookies_sets_nonce() {
         let jar = make_empty_jar().with_signup_cookies(&make_auth_request());
         assert_eq!(jar.get_nonce(), Some("test_nonce".to_string()));
+    }
+
+    #[test]
+    fn test_with_signup_cookies_sets_pkce_verifier() {
+        let jar = make_empty_jar().with_signup_cookies(&make_auth_request());
+        assert_eq!(
+            jar.get_pkce_verifier(),
+            Some("test_pkce_verifier".to_string())
+        );
     }
 
     #[test]
@@ -299,6 +349,7 @@ mod tests {
             .with_session_cookies(make_session());
         assert_eq!(jar.get_flow(), None);
         assert_eq!(jar.get_nonce(), None);
+        assert_eq!(jar.get_pkce_verifier(), None);
         assert_eq!(jar.get_state(), None);
     }
 

@@ -40,9 +40,14 @@ async fn handler(
         ::axum::http::StatusCode::BAD_REQUEST
     })?;
 
+    let pkce_verifier = jar.get_pkce_verifier().ok_or_else(|| {
+        ::tracing::warn!("auth callback: oidc_pkce_verifier cookie not found, returning 400");
+        ::axum::http::StatusCode::BAD_REQUEST
+    })?;
+
     let oidc_claims = app_state
         .oidc_client
-        .exchange_code(&params.code, &nonce)
+        .exchange_code(&params.code, &nonce, &pkce_verifier)
         .await
         .map_err(|e| {
             ::tracing::error!("auth callback: failed to exchange code: {e:?}");
@@ -261,6 +266,51 @@ mod tests {
         )
         .await?;
         assert_eq!(response.status(), ::axum::http::StatusCode::FORBIDDEN);
+        Ok(())
+    }
+
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn callback_without_pkce_verifier_cookie_returns_error() -> ::anyhow::Result<()> {
+        let sub = unique_user_id();
+        let state = AppState::new(
+            "".to_string(),
+            firestore_bookmark_reader()?,
+            firestore_bookmark_repo()?,
+            TEST_COOKIE_SIGNING_SECRET,
+            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
+            firestore_user_repo()?,
+            firestore_user_settings_reader()?,
+            firestore_user_settings_repository()?,
+        );
+
+        // Step 1: Signup to get cookies
+        let signup_response = send_request(
+            crate::router::router("").with_state(state.clone()),
+            ::axum::http::Request::builder()
+                .uri("/auth/signup")
+                .body(::axum::body::Body::empty())?,
+        )
+        .await?;
+        let cookie_header = extract_cookies(&signup_response);
+
+        // Step 2: Drop the pkce_verifier cookie before calling back
+        let cookie_header = cookie_header
+            .split("; ")
+            .filter(|segment| !segment.starts_with("oidc_pkce_verifier="))
+            .collect::<Vec<_>>()
+            .join("; ");
+
+        // Step 3: Callback — should fail because pkce_verifier is missing
+        let response = send_request(
+            crate::router::router("").with_state(state),
+            ::axum::http::Request::builder()
+                .uri("/auth/callback?code=test_code&state=test_state")
+                .header(::axum::http::header::COOKIE, &cookie_header)
+                .body(::axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), ::axum::http::StatusCode::BAD_REQUEST);
         Ok(())
     }
 

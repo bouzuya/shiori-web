@@ -28,6 +28,7 @@ impl crate::extractor::OidcClient for MockOidcClient {
     fn build_authentication_request(&self) -> crate::extractor::AuthenticationRequest {
         crate::extractor::AuthenticationRequest {
             nonce: "test_nonce".to_string(),
+            pkce_verifier: "test_pkce_verifier".to_string(),
             state: "test_state".to_string(),
             url: "https://provider.example.com/authorize?client_id=test".to_string(),
         }
@@ -37,7 +38,12 @@ impl crate::extractor::OidcClient for MockOidcClient {
         &self,
         _code: &str,
         _nonce: &str,
+        pkce_verifier: &str,
     ) -> ::anyhow::Result<crate::extractor::OidcClaims> {
+        ::anyhow::ensure!(
+            pkce_verifier == "test_pkce_verifier",
+            "unexpected pkce_verifier: {pkce_verifier}"
+        );
         Ok(crate::extractor::OidcClaims {
             sub: self.sub.clone(),
         })
