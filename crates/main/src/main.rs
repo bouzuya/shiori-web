@@ -27,6 +27,7 @@ pub(crate) use self::firestore::UserSettingsDocumentData;
 pub(crate) use self::firestore::UsersCollection;
 pub(crate) use self::oidc::AuthenticationRequest;
 pub(crate) use self::oidc::AuthorizationCodeClient;
+pub(crate) use self::oidc::IdTokenVerifier;
 pub(crate) use self::oidc::OidcClaims;
 pub(crate) use self::oidc::RealAuthorizationCodeClient;
 pub(crate) use self::oidc::RealAuthorizationCodeClientOptions;
