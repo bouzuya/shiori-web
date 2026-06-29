@@ -1,11 +1,3 @@
-mod client;
-pub(crate) mod real_oidc_client;
-
-pub(crate) use client::AuthenticationRequest;
-#[cfg(test)]
-pub(crate) use client::OidcClaims;
-pub(crate) use client::OidcClient;
-
 use kernel::UserId;
 
 use crate::CookieJar;

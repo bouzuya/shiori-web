@@ -2,6 +2,7 @@ mod cli;
 mod cookie_jar;
 mod extractor;
 mod firestore;
+mod oidc;
 mod router;
 mod state;
 #[cfg(test)]
@@ -24,21 +25,25 @@ pub(crate) use self::firestore::UserDocumentData;
 pub(crate) use self::firestore::UserSettingsCollection;
 pub(crate) use self::firestore::UserSettingsDocumentData;
 pub(crate) use self::firestore::UsersCollection;
+pub(crate) use self::oidc::AuthenticationRequest;
+pub(crate) use self::oidc::AuthorizationCodeClient;
+pub(crate) use self::oidc::OidcClaims;
+pub(crate) use self::oidc::RealAuthorizationCodeClient;
+pub(crate) use self::oidc::RealAuthorizationCodeClientOptions;
 pub(crate) use self::state::AppState;
 
 use crate::cli::Cli;
 use crate::cli::ServeArgs;
 use crate::cli::Subcommand;
-use crate::extractor::real_oidc_client;
 
 async fn build_state(args: &ServeArgs) -> ::anyhow::Result<AppState> {
-    let options = real_oidc_client::RealOidcClientOptions {
+    let options = RealAuthorizationCodeClientOptions {
         client_id: args.oidc_client_id.clone(),
         client_secret: args.oidc_client_secret.clone(),
         issuer_url: args.oidc_issuer_url.clone(),
         redirect_uri: args.oidc_redirect_uri.clone(),
     };
-    let oidc_client = real_oidc_client::RealOidcClient::new(options).await?;
+    let oidc_client = RealAuthorizationCodeClient::new(options).await?;
     let firestore =
         ::bouzuya_firestore_client::Firestore::new(::bouzuya_firestore_client::FirestoreOptions {
             database_id: Some(args.database_id.clone()),

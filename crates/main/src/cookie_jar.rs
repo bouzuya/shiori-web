@@ -1,4 +1,4 @@
-use crate::extractor::AuthenticationRequest;
+use crate::AuthenticationRequest;
 use crate::state::BasePath;
 
 pub(crate) struct CookieJar {
@@ -220,7 +220,7 @@ impl ::axum::response::IntoResponse for CookieJar {
 mod tests {
     use kernel::UserId;
 
-    use crate::extractor::AuthenticationRequest;
+    use crate::AuthenticationRequest;
 
     use super::CookieJar;
 

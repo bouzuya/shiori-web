@@ -68,7 +68,7 @@ pub(crate) async fn resolve_utc_offset(state: &AppState, user_id: UserId) -> Utc
 #[cfg(test)]
 mod tests {
     use crate::AppState;
-    use crate::test_helpers::MockOidcClient;
+    use crate::test_helpers::MockAuthorizationCodeClient;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
     use crate::test_helpers::firestore_bookmark_reader;
     use crate::test_helpers::firestore_bookmark_repo;
@@ -86,7 +86,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            ::std::sync::Arc::new(MockOidcClient::new("base_path_route_user")),
+            ::std::sync::Arc::new(MockAuthorizationCodeClient::new("base_path_route_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,

@@ -13,20 +13,20 @@ use crate::FirestoreUserRepository;
 use crate::FirestoreUserSettingsReader;
 use crate::FirestoreUserSettingsRepository;
 
-pub(crate) struct MockOidcClient {
+pub(crate) struct MockAuthorizationCodeClient {
     sub: String,
 }
 
-impl MockOidcClient {
+impl MockAuthorizationCodeClient {
     pub(crate) fn new(sub: impl Into<String>) -> Self {
         Self { sub: sub.into() }
     }
 }
 
 #[::async_trait::async_trait]
-impl crate::extractor::OidcClient for MockOidcClient {
-    fn build_authentication_request(&self) -> crate::extractor::AuthenticationRequest {
-        crate::extractor::AuthenticationRequest {
+impl crate::AuthorizationCodeClient for MockAuthorizationCodeClient {
+    fn build_authentication_request(&self) -> crate::AuthenticationRequest {
+        crate::AuthenticationRequest {
             nonce: "test_nonce".to_string(),
             pkce_verifier: "test_pkce_verifier".to_string(),
             state: "test_state".to_string(),
@@ -39,12 +39,12 @@ impl crate::extractor::OidcClient for MockOidcClient {
         _code: &str,
         _nonce: &str,
         pkce_verifier: &str,
-    ) -> ::anyhow::Result<crate::extractor::OidcClaims> {
+    ) -> ::anyhow::Result<crate::OidcClaims> {
         ::anyhow::ensure!(
             pkce_verifier == "test_pkce_verifier",
             "unexpected pkce_verifier: {pkce_verifier}"
         );
-        Ok(crate::extractor::OidcClaims {
+        Ok(crate::OidcClaims {
             sub: self.sub.clone(),
         })
     }
@@ -142,7 +142,7 @@ pub(crate) fn test_app(sub: impl Into<String>) -> ::anyhow::Result<::axum::Route
         firestore_bookmark_reader()?,
         firestore_bookmark_repo()?,
         TEST_COOKIE_SIGNING_SECRET,
-        ::std::sync::Arc::new(MockOidcClient::new(sub)),
+        ::std::sync::Arc::new(MockAuthorizationCodeClient::new(sub)),
         firestore_user_repo()?,
         firestore_user_settings_reader()?,
         firestore_user_settings_repository()?,
@@ -158,7 +158,7 @@ pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> ::anyhow::Resul
         firestore_bookmark_reader()?,
         bookmark_repository,
         TEST_COOKIE_SIGNING_SECRET,
-        ::std::sync::Arc::new(MockOidcClient::new(sub)),
+        ::std::sync::Arc::new(MockAuthorizationCodeClient::new(sub)),
         ::std::sync::Arc::new(MockUserRepository::new()),
         firestore_user_settings_reader()?,
         firestore_user_settings_repository()?,

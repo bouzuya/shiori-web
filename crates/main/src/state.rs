@@ -1,4 +1,4 @@
-use crate::extractor::OidcClient;
+use crate::AuthorizationCodeClient;
 use kernel::BookmarkReader;
 use kernel::BookmarkRepository;
 use kernel::UserRepository;
@@ -16,7 +16,7 @@ pub(crate) struct AppState {
     pub bookmark_reader: ::std::sync::Arc<dyn BookmarkReader>,
     pub bookmark_repository: ::std::sync::Arc<dyn BookmarkRepository>,
     pub cookie_key: ::axum_extra::extract::cookie::Key,
-    pub oidc_client: ::std::sync::Arc<dyn OidcClient>,
+    pub oidc_client: ::std::sync::Arc<dyn AuthorizationCodeClient>,
     pub user_repository: ::std::sync::Arc<dyn UserRepository>,
     pub user_settings_reader: ::std::sync::Arc<dyn UserSettingsReader>,
     pub user_settings_repository: ::std::sync::Arc<dyn UserSettingsRepository>,
@@ -30,7 +30,7 @@ impl AppState {
         bookmark_reader: ::std::sync::Arc<dyn BookmarkReader>,
         bookmark_repository: ::std::sync::Arc<dyn BookmarkRepository>,
         cookie_signing_secret: &str,
-        oidc_client: ::std::sync::Arc<dyn OidcClient>,
+        oidc_client: ::std::sync::Arc<dyn AuthorizationCodeClient>,
         user_repository: ::std::sync::Arc<dyn UserRepository>,
         user_settings_reader: ::std::sync::Arc<dyn UserSettingsReader>,
         user_settings_repository: ::std::sync::Arc<dyn UserSettingsRepository>,

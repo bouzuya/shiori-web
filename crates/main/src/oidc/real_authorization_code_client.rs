@@ -1,20 +1,20 @@
-use super::client::AuthenticationRequest;
-use super::client::OidcClaims;
-use super::client::OidcClient;
+use crate::AuthenticationRequest;
+use crate::AuthorizationCodeClient;
+use crate::OidcClaims;
 
-pub(crate) struct RealOidcClientOptions {
+pub(crate) struct RealAuthorizationCodeClientOptions {
     pub client_id: String,
     pub client_secret: String,
     pub issuer_url: String,
     pub redirect_uri: String,
 }
 
-pub(crate) struct RealOidcClient {
+pub(crate) struct RealAuthorizationCodeClient {
     client: ::openidconnect::core::CoreClient,
 }
 
-impl RealOidcClient {
-    pub(crate) async fn new(options: RealOidcClientOptions) -> ::anyhow::Result<Self> {
+impl RealAuthorizationCodeClient {
+    pub(crate) async fn new(options: RealAuthorizationCodeClientOptions) -> ::anyhow::Result<Self> {
         let client_id = ::openidconnect::ClientId::new(options.client_id);
         let client_secret = ::openidconnect::ClientSecret::new(options.client_secret);
         let issuer_url = ::openidconnect::IssuerUrl::new(options.issuer_url)?;
@@ -38,7 +38,7 @@ impl RealOidcClient {
 }
 
 #[::async_trait::async_trait]
-impl OidcClient for RealOidcClient {
+impl AuthorizationCodeClient for RealAuthorizationCodeClient {
     fn build_authentication_request(&self) -> AuthenticationRequest {
         let (pkce_challenge, pkce_verifier) =
             ::openidconnect::PkceCodeChallenge::new_random_sha256();
@@ -95,13 +95,13 @@ mod tests {
     #[::tokio::test]
     #[ignore]
     async fn new_builds_client() -> ::anyhow::Result<()> {
-        let options = RealOidcClientOptions {
+        let options = RealAuthorizationCodeClientOptions {
             client_id: ::std::env::var("OIDC_CLIENT_ID")?,
             client_secret: ::std::env::var("OIDC_CLIENT_SECRET")?,
             issuer_url: ::std::env::var("OIDC_ISSUER_URL")?,
             redirect_uri: ::std::env::var("OIDC_REDIRECT_URI")?,
         };
-        RealOidcClient::new(options).await?;
+        RealAuthorizationCodeClient::new(options).await?;
         Ok(())
     }
 }

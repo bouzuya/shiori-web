@@ -118,7 +118,7 @@ mod tests {
     use kernel::User;
 
     use crate::AppState;
-    use crate::test_helpers::MockOidcClient;
+    use crate::test_helpers::MockAuthorizationCodeClient;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
     use crate::test_helpers::extract_cookies;
     use crate::test_helpers::firestore_bookmark_reader;
@@ -138,7 +138,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -199,7 +199,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
             user_repo,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -240,7 +240,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -278,7 +278,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -324,7 +324,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,
@@ -372,7 +372,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
-            ::std::sync::Arc::new(MockOidcClient::new(&sub)),
+            ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,
             firestore_user_settings_repository()?,

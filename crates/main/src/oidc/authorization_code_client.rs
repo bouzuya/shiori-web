@@ -11,7 +11,7 @@ pub(crate) struct AuthenticationRequest {
 }
 
 #[::async_trait::async_trait]
-pub(crate) trait OidcClient: Send + Sync {
+pub(crate) trait AuthorizationCodeClient: Send + Sync {
     fn build_authentication_request(&self) -> AuthenticationRequest;
     async fn exchange_code(
         &self,
