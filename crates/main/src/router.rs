@@ -1,5 +1,6 @@
 mod auth;
 mod bookmark;
+mod export;
 mod favicon;
 mod index_css;
 mod root;
@@ -15,6 +16,7 @@ pub(crate) fn router(base_path: &str) -> ::axum::Router<AppState> {
     let inner = ::axum::Router::new()
         .merge(auth::router())
         .merge(bookmark::router())
+        .merge(export::router())
         .merge(favicon::router())
         .merge(index_css::router())
         .merge(root::router())

@@ -7,8 +7,6 @@ pub(crate) struct RealIdTokenVerifierOptions {
 }
 
 pub(crate) struct RealIdTokenVerifier {
-    // verify が呼ばれるまで未読 (step 4 で解消)。
-    #[allow(dead_code)]
     client: ::openidconnect::core::CoreClient,
 }
 

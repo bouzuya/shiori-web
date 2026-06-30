@@ -17,8 +17,6 @@ pub(crate) struct AppState {
     pub bookmark_reader: ::std::sync::Arc<dyn BookmarkReader>,
     pub bookmark_repository: ::std::sync::Arc<dyn BookmarkRepository>,
     pub cookie_key: ::axum_extra::extract::cookie::Key,
-    // BearerUserId 経由でのみ読まれる。step 4 で /export が extractor を使うまで lib ビルドでは未読。
-    #[allow(dead_code)]
     pub id_token_verifier: ::std::sync::Arc<dyn IdTokenVerifier>,
     pub oidc_client: ::std::sync::Arc<dyn AuthorizationCodeClient>,
     pub user_repository: ::std::sync::Arc<dyn UserRepository>,

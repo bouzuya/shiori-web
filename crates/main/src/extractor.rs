@@ -64,8 +64,6 @@ where
     }
 }
 
-// step 4 で /export ハンドラが extractor として消費するまで lib ビルドでは未使用。
-#[allow(dead_code)]
 pub(crate) struct BearerUserId(pub UserId);
 
 impl<S> ::axum::extract::FromRequestParts<S> for BearerUserId

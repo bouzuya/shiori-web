@@ -1,7 +1,5 @@
 use crate::OidcClaims;
 
-// verify は step 4 で /export 経由 (BearerUserId) から呼ばれるまで lib ビルドでは未使用。
-#[allow(dead_code)]
 #[::async_trait::async_trait]
 pub(crate) trait IdTokenVerifier: Send + Sync {
     async fn verify(&self, id_token: &str) -> ::anyhow::Result<OidcClaims>;
