@@ -1,3 +1,5 @@
+mod token_store;
+
 #[derive(::clap::Parser)]
 struct Cli {
     #[command(subcommand)]
