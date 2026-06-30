@@ -1,4 +1,5 @@
 use crate::BookmarkList;
+use crate::BookmarkView;
 use crate::PageToken;
 use crate::UserId;
 
@@ -15,6 +16,10 @@ pub trait BookmarkReader: Send + Sync {
         user_id: UserId,
         page_token: Option<PageToken>,
     ) -> ::anyhow::Result<BookmarkList>;
+
+    /// ユーザーの全ブックマークを `created_at` 降順で返す (ページネーションなし)。
+    /// 削除は物理削除のため、生存しているブックマークのみが対象。
+    async fn list_all(&self, user_id: UserId) -> ::anyhow::Result<Vec<BookmarkView>>;
 }
 
 #[cfg(test)]
@@ -101,6 +106,17 @@ mod tests {
                 next_page_token,
                 prev_page_token,
             })
+        }
+
+        async fn list_all(&self, user_id: UserId) -> ::anyhow::Result<Vec<BookmarkView>> {
+            let store = self.store.lock().map_err(|e| ::anyhow::anyhow!("{e}"))?;
+            let mut items: Vec<BookmarkView> = store
+                .iter()
+                .filter(|(uid, _)| *uid == user_id)
+                .map(|(_, v)| v.clone())
+                .collect();
+            items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+            Ok(items)
         }
     }
 
@@ -278,6 +294,45 @@ mod tests {
         let first_ids: Vec<_> = first.items.iter().map(|v| v.id.clone()).collect();
         let back_ids: Vec<_> = back.items.iter().map(|v| v.id.clone()).collect();
         assert_eq!(back_ids, first_ids);
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn test_list_all_returns_all_sorted_by_created_at_desc() -> ::anyhow::Result<()> {
+        let reader = InMemoryBookmarkReader::new();
+        let user_id = UserId::new();
+        insert_15(&reader, user_id)?;
+        let all = reader.list_all(user_id).await?;
+        assert_eq!(all.len(), 15);
+        assert_eq!(all[0].id, "id14");
+        assert_eq!(all[14].id, "id00");
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn test_list_all_filters_by_user_id() -> ::anyhow::Result<()> {
+        let reader = InMemoryBookmarkReader::new();
+        let user_a = UserId::new();
+        let user_b = UserId::new();
+        reader.insert(
+            user_a,
+            BookmarkView {
+                id: "a1".to_string(),
+                created_at: "2024-01-01T00:00:00.000Z".to_string(),
+                ..BookmarkView::for_test()
+            },
+        )?;
+        reader.insert(
+            user_b,
+            BookmarkView {
+                id: "b1".to_string(),
+                created_at: "2024-01-02T00:00:00.000Z".to_string(),
+                ..BookmarkView::for_test()
+            },
+        )?;
+        let all = reader.list_all(user_a).await?;
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, "a1");
         Ok(())
     }
 }

@@ -86,6 +86,25 @@ impl BookmarkReader for FirestoreBookmarkReader {
             prev_page_token,
         })
     }
+
+    async fn list_all(&self, user_id: UserId) -> ::anyhow::Result<Vec<BookmarkView>> {
+        let collection_ref = self
+            .firestore
+            .collection(BookmarksCollection::collection_path(&user_id))
+            .map_err(|e| ::anyhow::anyhow!(e))?;
+        let query = collection_ref
+            .order_by("created_at", "desc")
+            .map_err(|e| ::anyhow::anyhow!(e))?;
+        let snapshot = query.get().await.map_err(|e| ::anyhow::anyhow!(e))?;
+        let mut views: Vec<BookmarkView> = Vec::new();
+        for doc in snapshot {
+            let data = doc
+                .data::<BookmarkDocumentData>()
+                .map_err(|e| ::anyhow::anyhow!(e))?;
+            views.push(data.into_bookmark_view(user_id));
+        }
+        Ok(views)
+    }
 }
 
 #[cfg(test)]
@@ -257,6 +276,21 @@ mod tests {
         let first_ids: Vec<_> = first.items.iter().map(|v| v.id.clone()).collect();
         let back_ids: Vec<_> = back.items.iter().map(|v| v.id.clone()).collect();
         assert_eq!(back_ids, first_ids);
+        Ok(())
+    }
+
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_all_returns_all_without_pagination_sorted_desc() -> ::anyhow::Result<()> {
+        let (reader, repo) = firestore_reader_and_repo()?;
+        let user_id = UserId::new();
+        insert_n(&repo, user_id, 15).await?;
+        let all = reader.list_all(user_id).await?;
+        assert_eq!(all.len(), 15);
+        assert!(
+            all.windows(2).all(|w| w[0].created_at >= w[1].created_at),
+            "expected created_at descending order"
+        );
         Ok(())
     }
 }
