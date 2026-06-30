@@ -12,6 +12,7 @@ use crate::FirestoreBookmarkRepository;
 use crate::FirestoreUserRepository;
 use crate::FirestoreUserSettingsReader;
 use crate::FirestoreUserSettingsRepository;
+use crate::IdTokenVerifier;
 
 pub(crate) struct MockAuthorizationCodeClient {
     sub: String,
@@ -48,6 +49,30 @@ impl crate::AuthorizationCodeClient for MockAuthorizationCodeClient {
             sub: self.sub.clone(),
         })
     }
+}
+
+pub(crate) struct MockIdTokenVerifier {
+    sub: String,
+}
+
+impl MockIdTokenVerifier {
+    pub(crate) fn new(sub: impl Into<String>) -> Self {
+        Self { sub: sub.into() }
+    }
+}
+
+#[::async_trait::async_trait]
+impl IdTokenVerifier for MockIdTokenVerifier {
+    async fn verify(&self, id_token: &str) -> ::anyhow::Result<crate::OidcClaims> {
+        ::anyhow::ensure!(!id_token.is_empty(), "empty id_token");
+        Ok(crate::OidcClaims {
+            sub: self.sub.clone(),
+        })
+    }
+}
+
+pub(crate) fn mock_id_token_verifier() -> ::std::sync::Arc<dyn IdTokenVerifier> {
+    ::std::sync::Arc::new(MockIdTokenVerifier::new("mock_sub"))
 }
 
 pub(crate) struct MockUserRepository {
@@ -142,6 +167,7 @@ pub(crate) fn test_app(sub: impl Into<String>) -> ::anyhow::Result<::axum::Route
         firestore_bookmark_reader()?,
         firestore_bookmark_repo()?,
         TEST_COOKIE_SIGNING_SECRET,
+        crate::test_helpers::mock_id_token_verifier(),
         ::std::sync::Arc::new(MockAuthorizationCodeClient::new(sub)),
         firestore_user_repo()?,
         firestore_user_settings_reader()?,
@@ -158,6 +184,7 @@ pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> ::anyhow::Resul
         firestore_bookmark_reader()?,
         bookmark_repository,
         TEST_COOKIE_SIGNING_SECRET,
+        crate::test_helpers::mock_id_token_verifier(),
         ::std::sync::Arc::new(MockAuthorizationCodeClient::new(sub)),
         ::std::sync::Arc::new(MockUserRepository::new()),
         firestore_user_settings_reader()?,

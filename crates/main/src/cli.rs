@@ -4,6 +4,9 @@ pub(crate) struct Cli {
     pub subcommand: Subcommand,
 }
 
+// ServeArgs が大きく large_enum_variant が出るが、clap derive は Box<ServeArgs> を
+// 受け付けないため enum 単位で allow する。
+#[allow(clippy::large_enum_variant)]
 #[derive(::clap::Subcommand)]
 pub(crate) enum Subcommand {
     GenerateSecret,
@@ -18,6 +21,8 @@ pub(crate) struct ServeArgs {
     pub cookie_signing_secret: String,
     #[arg(env = "DATABASE_ID", long)]
     pub database_id: String,
+    #[arg(env = "OIDC_CLI_CLIENT_ID", long)]
+    pub oidc_cli_client_id: String,
     #[arg(env = "OIDC_CLIENT_ID", long)]
     pub oidc_client_id: String,
     #[arg(env = "OIDC_CLIENT_SECRET", long)]
@@ -36,7 +41,7 @@ pub(crate) struct ServeArgs {
 mod tests {
     use super::*;
 
-    fn all_vars() -> [(&'static str, Option<&'static str>); 9] {
+    fn all_vars() -> [(&'static str, Option<&'static str>); 10] {
         [
             ("BASE_PATH", Some("/app")),
             (
@@ -44,6 +49,7 @@ mod tests {
                 Some("test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"),
             ),
             ("DATABASE_ID", Some("test_database_id")),
+            ("OIDC_CLI_CLIENT_ID", Some("test_cli_client_id")),
             ("OIDC_CLIENT_ID", Some("test_client_id")),
             ("OIDC_CLIENT_SECRET", Some("test_client_secret")),
             ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
@@ -69,6 +75,7 @@ mod tests {
                 "test_cookie_signing_secret_that_is_at_least_64_bytes_long_padding"
             );
             assert_eq!(args.database_id, "test_database_id");
+            assert_eq!(args.oidc_cli_client_id, "test_cli_client_id");
             assert_eq!(args.oidc_client_id, "test_client_id");
             assert_eq!(args.oidc_client_secret, "test_client_secret");
             assert_eq!(args.oidc_issuer_url, "https://issuer.example.com");

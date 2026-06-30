@@ -1,6 +1,6 @@
 use crate::OidcClaims;
 
-// step 3 で Bearer extractor が消費するまで未使用。消費者追加時にこの allow を外す。
+// verify は step 4 で /export 経由 (BearerUserId) から呼ばれるまで lib ビルドでは未使用。
 #[allow(dead_code)]
 #[::async_trait::async_trait]
 pub(crate) trait IdTokenVerifier: Send + Sync {

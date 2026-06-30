@@ -1,20 +1,18 @@
 use crate::IdTokenVerifier;
 use crate::OidcClaims;
 
-// step 3 / step 4 で main が構築するまで未使用。構築側追加時にこれらの allow を外す。
-#[allow(dead_code)]
 pub(crate) struct RealIdTokenVerifierOptions {
     pub client_id: String,
     pub issuer_url: String,
 }
 
-#[allow(dead_code)]
 pub(crate) struct RealIdTokenVerifier {
+    // verify が呼ばれるまで未読 (step 4 で解消)。
+    #[allow(dead_code)]
     client: ::openidconnect::core::CoreClient,
 }
 
 impl RealIdTokenVerifier {
-    #[allow(dead_code)]
     pub(crate) async fn new(options: RealIdTokenVerifierOptions) -> ::anyhow::Result<Self> {
         let client_id = ::openidconnect::ClientId::new(options.client_id);
         let issuer_url = ::openidconnect::IssuerUrl::new(options.issuer_url)?;

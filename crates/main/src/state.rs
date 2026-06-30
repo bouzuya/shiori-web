@@ -1,4 +1,5 @@
 use crate::AuthorizationCodeClient;
+use crate::IdTokenVerifier;
 use kernel::BookmarkReader;
 use kernel::BookmarkRepository;
 use kernel::UserRepository;
@@ -16,6 +17,9 @@ pub(crate) struct AppState {
     pub bookmark_reader: ::std::sync::Arc<dyn BookmarkReader>,
     pub bookmark_repository: ::std::sync::Arc<dyn BookmarkRepository>,
     pub cookie_key: ::axum_extra::extract::cookie::Key,
+    // BearerUserId 経由でのみ読まれる。step 4 で /export が extractor を使うまで lib ビルドでは未読。
+    #[allow(dead_code)]
+    pub id_token_verifier: ::std::sync::Arc<dyn IdTokenVerifier>,
     pub oidc_client: ::std::sync::Arc<dyn AuthorizationCodeClient>,
     pub user_repository: ::std::sync::Arc<dyn UserRepository>,
     pub user_settings_reader: ::std::sync::Arc<dyn UserSettingsReader>,
@@ -30,6 +34,7 @@ impl AppState {
         bookmark_reader: ::std::sync::Arc<dyn BookmarkReader>,
         bookmark_repository: ::std::sync::Arc<dyn BookmarkRepository>,
         cookie_signing_secret: &str,
+        id_token_verifier: ::std::sync::Arc<dyn IdTokenVerifier>,
         oidc_client: ::std::sync::Arc<dyn AuthorizationCodeClient>,
         user_repository: ::std::sync::Arc<dyn UserRepository>,
         user_settings_reader: ::std::sync::Arc<dyn UserSettingsReader>,
@@ -40,6 +45,7 @@ impl AppState {
             bookmark_reader,
             bookmark_repository,
             cookie_key: ::axum_extra::extract::cookie::Key::from(cookie_signing_secret.as_bytes()),
+            id_token_verifier,
             oidc_client,
             user_repository,
             user_settings_reader,

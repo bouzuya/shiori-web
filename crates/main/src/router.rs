@@ -86,6 +86,7 @@ mod tests {
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
             TEST_COOKIE_SIGNING_SECRET,
+            crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new("base_path_route_user")),
             firestore_user_repo()?,
             firestore_user_settings_reader()?,

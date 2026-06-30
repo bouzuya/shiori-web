@@ -31,6 +31,8 @@ pub(crate) use self::oidc::IdTokenVerifier;
 pub(crate) use self::oidc::OidcClaims;
 pub(crate) use self::oidc::RealAuthorizationCodeClient;
 pub(crate) use self::oidc::RealAuthorizationCodeClientOptions;
+pub(crate) use self::oidc::RealIdTokenVerifier;
+pub(crate) use self::oidc::RealIdTokenVerifierOptions;
 pub(crate) use self::state::AppState;
 
 use crate::cli::Cli;
@@ -45,6 +47,11 @@ async fn build_state(args: &ServeArgs) -> ::anyhow::Result<AppState> {
         redirect_uri: args.oidc_redirect_uri.clone(),
     };
     let oidc_client = RealAuthorizationCodeClient::new(options).await?;
+    let id_token_verifier = RealIdTokenVerifier::new(RealIdTokenVerifierOptions {
+        client_id: args.oidc_cli_client_id.clone(),
+        issuer_url: args.oidc_issuer_url.clone(),
+    })
+    .await?;
     let firestore =
         ::bouzuya_firestore_client::Firestore::new(::bouzuya_firestore_client::FirestoreOptions {
             database_id: Some(args.database_id.clone()),
@@ -63,6 +70,7 @@ async fn build_state(args: &ServeArgs) -> ::anyhow::Result<AppState> {
         bookmark_reader,
         bookmark_repository,
         &args.cookie_signing_secret,
+        ::std::sync::Arc::new(id_token_verifier),
         ::std::sync::Arc::new(oidc_client),
         user_repository,
         user_settings_reader,

@@ -9,3 +9,5 @@ pub(crate) use self::authorization_code_client::OidcClaims;
 pub(crate) use self::id_token_verifier::IdTokenVerifier;
 pub(crate) use self::real_authorization_code_client::RealAuthorizationCodeClient;
 pub(crate) use self::real_authorization_code_client::RealAuthorizationCodeClientOptions;
+pub(crate) use self::real_id_token_verifier::RealIdTokenVerifier;
+pub(crate) use self::real_id_token_verifier::RealIdTokenVerifierOptions;
