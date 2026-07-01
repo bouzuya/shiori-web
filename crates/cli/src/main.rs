@@ -1,3 +1,4 @@
+mod oidc;
 mod token_store;
 
 #[derive(::clap::Parser)]

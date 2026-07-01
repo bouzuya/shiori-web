@@ -502,10 +502,12 @@ version = "2.2.1"
 dependencies = [
  "anyhow",
  "clap",
+ "openidconnect",
  "serde",
  "serde_json",
  "tempfile",
  "tokio",
+ "url",
 ]
 
 [[package]]
