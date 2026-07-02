@@ -76,6 +76,24 @@ impl TokenExchange<'_> {
     }
 }
 
+/// 認可コードをトークンエンドポイントで交換し、`TokenResponse` を得る。
+pub(crate) async fn exchange_code(
+    token_endpoint: &str,
+    exchange: &TokenExchange<'_>,
+) -> ::anyhow::Result<TokenResponse> {
+    let response = ::reqwest::Client::new()
+        .post(token_endpoint)
+        .form(&exchange.to_form())
+        .send()
+        .await?;
+    let status = response.status();
+    let body = response.text().await?;
+    if !status.is_success() {
+        ::anyhow::bail!("token endpoint returned {status}: {body}");
+    }
+    Ok(::serde_json::from_str(&body)?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,5 +196,79 @@ mod tests {
         assert!(form.contains(&("code_verifier", "the-verifier".to_string())));
         assert!(form.contains(&("grant_type", "authorization_code".to_string())));
         assert!(form.contains(&("redirect_uri", "http://127.0.0.1/cb".to_string())));
+    }
+
+    /// 1接続を受けて (リクエストを読み切ってから) 固定の HTTP 応答を返すモック。
+    async fn spawn_token_endpoint(
+        status_line: &'static str,
+        body: String,
+    ) -> ::anyhow::Result<(String, ::tokio::task::JoinHandle<::anyhow::Result<()>>)> {
+        let listener = ::tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
+        let url = format!("http://{}/token", listener.local_addr()?);
+        let handle = ::tokio::spawn(async move {
+            let (mut stream, _peer) = listener.accept().await?;
+            let (read_half, mut write_half) = stream.split();
+            let mut reader = ::tokio::io::BufReader::new(read_half);
+
+            let mut content_length: usize = 0;
+            loop {
+                let mut line = String::new();
+                let read = ::tokio::io::AsyncBufReadExt::read_line(&mut reader, &mut line).await?;
+                if read == 0 || line.trim_end().is_empty() {
+                    break;
+                }
+                if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                    content_length = value.trim().parse().unwrap_or(0);
+                }
+            }
+            let mut request_body = vec![0u8; content_length];
+            ::tokio::io::AsyncReadExt::read_exact(&mut reader, &mut request_body).await?;
+
+            let response = format!(
+                "HTTP/1.1 {status_line}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            ::tokio::io::AsyncWriteExt::write_all(&mut write_half, response.as_bytes()).await?;
+            ::tokio::io::AsyncWriteExt::flush(&mut write_half).await?;
+            Ok(())
+        });
+        Ok((url, handle))
+    }
+
+    fn sample_exchange() -> TokenExchange<'static> {
+        TokenExchange {
+            client_id: "cid",
+            client_secret: "sec",
+            code: "the-code",
+            pkce_verifier: "the-verifier",
+            redirect_uri: "http://127.0.0.1/cb",
+        }
+    }
+
+    #[::tokio::test]
+    async fn exchange_code_posts_form_and_parses_token_response() -> ::anyhow::Result<()> {
+        let (url, server) = spawn_token_endpoint(
+            "200 OK",
+            r#"{"id_token":"idt","refresh_token":"rt","token_type":"Bearer"}"#.to_string(),
+        )
+        .await?;
+        let token = exchange_code(&url, &sample_exchange()).await?;
+        server.await??;
+        assert_eq!(token.id_token, "idt");
+        assert_eq!(token.refresh_token.as_deref(), Some("rt"));
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn exchange_code_errors_on_non_success_status() -> ::anyhow::Result<()> {
+        let (url, server) = spawn_token_endpoint(
+            "400 Bad Request",
+            r#"{"error":"invalid_grant"}"#.to_string(),
+        )
+        .await?;
+        let result = exchange_code(&url, &sample_exchange()).await;
+        server.await??;
+        assert!(result.is_err());
+        Ok(())
     }
 }
