@@ -49,30 +49,19 @@ pub(crate) struct TokenResponse {
     pub refresh_token: Option<String>,
 }
 
-/// 認可コードを refresh_token / id_token へ交換するためのパラメータ。
+/// トークンエンドポイントへ送る `application/x-www-form-urlencoded` のリクエスト表現。
 ///
 /// Google のデスクトップ型クライアントはトークン交換に client_secret を要求するが、
 /// これは「秘密として扱わない」見せかけの secret で、実際の保護は PKCE の code_verifier が担う。
+#[derive(::serde::Serialize)]
 pub(crate) struct TokenExchange<'a> {
     pub client_id: &'a str,
     pub client_secret: &'a str,
     pub code: &'a str,
+    pub grant_type: &'a str,
+    #[serde(rename = "code_verifier")]
     pub pkce_verifier: &'a str,
     pub redirect_uri: &'a str,
-}
-
-impl TokenExchange<'_> {
-    /// トークンエンドポイントへ送る `application/x-www-form-urlencoded` の form パラメータ。
-    pub(crate) fn to_form(&self) -> Vec<(&'static str, String)> {
-        vec![
-            ("client_id", self.client_id.to_string()),
-            ("client_secret", self.client_secret.to_string()),
-            ("code", self.code.to_string()),
-            ("code_verifier", self.pkce_verifier.to_string()),
-            ("grant_type", "authorization_code".to_string()),
-            ("redirect_uri", self.redirect_uri.to_string()),
-        ]
-    }
 }
 
 /// 認可コードをトークンエンドポイントで交換し、`TokenResponse` を得る。
@@ -82,7 +71,7 @@ pub(crate) async fn exchange_code(
 ) -> ::anyhow::Result<TokenResponse> {
     let response = ::reqwest::Client::new()
         .post(token_endpoint)
-        .form(&exchange.to_form())
+        .form(exchange)
         .send()
         .await?;
     let status = response.status();
@@ -180,21 +169,40 @@ mod tests {
     }
 
     #[test]
-    fn token_exchange_to_form_has_required_pairs() {
-        let form = TokenExchange {
+    fn token_exchange_serializes_with_renamed_code_verifier() -> ::anyhow::Result<()> {
+        let encoded = ::serde_urlencoded::to_string(TokenExchange {
             client_id: "cid",
             client_secret: "csecret",
             code: "the-code",
+            grant_type: "authorization_code",
             pkce_verifier: "the-verifier",
             redirect_uri: "http://127.0.0.1/cb",
-        }
-        .to_form();
-        assert!(form.contains(&("client_id", "cid".to_string())));
-        assert!(form.contains(&("client_secret", "csecret".to_string())));
-        assert!(form.contains(&("code", "the-code".to_string())));
-        assert!(form.contains(&("code_verifier", "the-verifier".to_string())));
-        assert!(form.contains(&("grant_type", "authorization_code".to_string())));
-        assert!(form.contains(&("redirect_uri", "http://127.0.0.1/cb".to_string())));
+        })?;
+        let params: ::std::collections::HashMap<String, String> =
+            ::url::form_urlencoded::parse(encoded.as_bytes())
+                .into_owned()
+                .collect();
+        assert_eq!(params.get("client_id").map(String::as_str), Some("cid"));
+        assert_eq!(
+            params.get("client_secret").map(String::as_str),
+            Some("csecret")
+        );
+        assert_eq!(params.get("code").map(String::as_str), Some("the-code"));
+        assert_eq!(
+            params.get("grant_type").map(String::as_str),
+            Some("authorization_code")
+        );
+        // pkce_verifier は code_verifier という名前で送られる
+        assert_eq!(
+            params.get("code_verifier").map(String::as_str),
+            Some("the-verifier")
+        );
+        assert!(!params.contains_key("pkce_verifier"));
+        assert_eq!(
+            params.get("redirect_uri").map(String::as_str),
+            Some("http://127.0.0.1/cb")
+        );
+        Ok(())
     }
 
     /// 1接続を受けて (リクエストを読み切ってから) 固定の HTTP 応答を返すモック。
@@ -239,6 +247,7 @@ mod tests {
             client_id: "cid",
             client_secret: "sec",
             code: "the-code",
+            grant_type: "authorization_code",
             pkce_verifier: "the-verifier",
             redirect_uri: "http://127.0.0.1/cb",
         }
