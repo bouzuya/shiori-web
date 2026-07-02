@@ -46,7 +46,7 @@ pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
     );
 
     let callback = receive_callback(listener).await?;
-    if callback.state != authorization.csrf_state {
+    if callback.state != authorization.state {
         ::anyhow::bail!("CSRF state mismatch");
     }
 

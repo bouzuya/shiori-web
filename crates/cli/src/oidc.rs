@@ -2,11 +2,11 @@
 ///
 /// `authorization_url` をブラウザで開き、コールバックで受け取った認可コードを
 /// `code_verifier` と共にトークンエンドポイントへ送って交換する。
-/// `csrf_state` はコールバックの `state` と突き合わせて改ざんを検査する。
+/// `state` はコールバックの `state` と突き合わせて改ざん (CSRF) を検査する。
 pub(crate) struct AuthorizationRequest {
     pub authorization_url: String,
     pub code_verifier: String,
-    pub csrf_state: String,
+    pub state: String,
 }
 
 /// Google の認可エンドポイント向けに、PKCE 付きの認可リクエストを組み立てる。
@@ -36,7 +36,7 @@ pub(crate) fn build_authorization_request(
     Ok(AuthorizationRequest {
         authorization_url: url.to_string(),
         code_verifier: pkce_verifier.secret().to_string(),
-        csrf_state: csrf_state.secret().to_string(),
+        state: csrf_state.secret().to_string(),
     })
 }
 
@@ -129,10 +129,10 @@ mod tests {
                 .is_some_and(|s| s.contains("openid") && s.contains("email"))
         );
         assert!(params.get("code_challenge").is_some_and(|s| !s.is_empty()));
-        // state は返り値の csrf_state と一致する
+        // 認可 URL の state は返り値の state と一致する
         assert_eq!(
             params.get("state").map(String::as_str),
-            Some(request.csrf_state.as_str())
+            Some(request.state.as_str())
         );
         assert!(!request.code_verifier.is_empty());
         Ok(())
@@ -145,7 +145,7 @@ mod tests {
         let b =
             build_authorization_request("https://e.example/auth", "c", "http://127.0.0.1:1/cb")?;
         assert_ne!(a.code_verifier, b.code_verifier);
-        assert_ne!(a.csrf_state, b.csrf_state);
+        assert_ne!(a.state, b.state);
         Ok(())
     }
 
