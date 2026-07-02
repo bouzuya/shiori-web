@@ -56,8 +56,8 @@ pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
             client_id: &config.client_id,
             client_secret: &config.client_secret,
             code: &callback.code,
+            code_verifier: &authorization.pkce_verifier,
             grant_type: "authorization_code",
-            pkce_verifier: &authorization.pkce_verifier,
             redirect_uri: &redirect_uri,
         },
     )

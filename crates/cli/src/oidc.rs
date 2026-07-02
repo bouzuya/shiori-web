@@ -58,9 +58,8 @@ pub(crate) struct TokenExchange<'a> {
     pub client_id: &'a str,
     pub client_secret: &'a str,
     pub code: &'a str,
+    pub code_verifier: &'a str,
     pub grant_type: &'a str,
-    #[serde(rename = "code_verifier")]
-    pub pkce_verifier: &'a str,
     pub redirect_uri: &'a str,
 }
 
@@ -169,13 +168,13 @@ mod tests {
     }
 
     #[test]
-    fn token_exchange_serializes_with_renamed_code_verifier() -> ::anyhow::Result<()> {
+    fn token_exchange_serializes_to_expected_form_pairs() -> ::anyhow::Result<()> {
         let encoded = ::serde_urlencoded::to_string(TokenExchange {
             client_id: "cid",
             client_secret: "csecret",
             code: "the-code",
+            code_verifier: "the-verifier",
             grant_type: "authorization_code",
-            pkce_verifier: "the-verifier",
             redirect_uri: "http://127.0.0.1/cb",
         })?;
         let params: ::std::collections::HashMap<String, String> =
@@ -189,15 +188,13 @@ mod tests {
         );
         assert_eq!(params.get("code").map(String::as_str), Some("the-code"));
         assert_eq!(
-            params.get("grant_type").map(String::as_str),
-            Some("authorization_code")
-        );
-        // pkce_verifier は code_verifier という名前で送られる
-        assert_eq!(
             params.get("code_verifier").map(String::as_str),
             Some("the-verifier")
         );
-        assert!(!params.contains_key("pkce_verifier"));
+        assert_eq!(
+            params.get("grant_type").map(String::as_str),
+            Some("authorization_code")
+        );
         assert_eq!(
             params.get("redirect_uri").map(String::as_str),
             Some("http://127.0.0.1/cb")
@@ -247,8 +244,8 @@ mod tests {
             client_id: "cid",
             client_secret: "sec",
             code: "the-code",
+            code_verifier: "the-verifier",
             grant_type: "authorization_code",
-            pkce_verifier: "the-verifier",
             redirect_uri: "http://127.0.0.1/cb",
         }
     }
