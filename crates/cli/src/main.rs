@@ -1,3 +1,4 @@
+mod login;
 mod loopback;
 mod oidc;
 mod token_store;
