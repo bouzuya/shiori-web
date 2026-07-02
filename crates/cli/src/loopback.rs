@@ -55,10 +55,10 @@ pub(crate) async fn receive_callback(
 
     let body = match &params {
         Ok(_) => {
-            "<!doctype html><meta charset=\"utf-8\"><p>ログインが完了しました。このタブは閉じてかまいません。</p>"
+            "<!doctype html><meta charset=\"utf-8\"><p>Login complete. You can close this tab.</p>"
         }
         Err(_) => {
-            "<!doctype html><meta charset=\"utf-8\"><p>ログインに失敗しました。ターミナルの出力を確認してください。</p>"
+            "<!doctype html><meta charset=\"utf-8\"><p>Login failed. Check the terminal output.</p>"
         }
     };
     let response = format!(

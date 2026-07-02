@@ -41,7 +41,7 @@ pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
 
     // devcontainer 等ブラウザを自動起動できない環境も想定し、URL を表示する。
     eprintln!(
-        "次の URL をブラウザで開いて認可してください:\n\n{}\n",
+        "Open the following URL in your browser to authorize:\n\n{}\n",
         authorization.authorization_url
     );
 
@@ -67,7 +67,7 @@ pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
         .ok_or_else(|| ::anyhow::anyhow!("token endpoint did not return a refresh_token"))?;
     TokenStore::from_env()?.save(&StoredToken { refresh_token })?;
 
-    eprintln!("ログインが完了しました。トークンを保存しました。");
+    eprintln!("Login complete. Token saved.");
     Ok(())
 }
 
