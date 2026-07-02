@@ -1,6 +1,3 @@
-// login が消費するまで bin ビルドでは未使用。消費側 (次の単位) を追加したら外す。
-#![allow(dead_code)]
-
 /// 認可コードフロー (loopback + PKCE) の認可リクエスト。
 ///
 /// `authorization_url` をブラウザで開き、コールバックで受け取った認可コードを
@@ -46,6 +43,8 @@ pub(crate) fn build_authorization_request(
 /// トークンエンドポイントの応答 (必要なフィールドのみ。未知フィールドは無視)。
 #[derive(Clone, Debug, Eq, PartialEq, ::serde::Deserialize)]
 pub(crate) struct TokenResponse {
+    // 5d の export が refresh 後に Bearer として使うまで、login では未読。
+    #[allow(dead_code)]
     pub id_token: String,
     pub refresh_token: Option<String>,
 }

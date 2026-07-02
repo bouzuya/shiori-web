@@ -1,5 +1,9 @@
-// login の orchestration (次の単位) が消費するまで bin ビルドでは未使用。消費側を追加したら外す。
-#![allow(dead_code)]
+use crate::StoredToken;
+use crate::TokenExchange;
+use crate::TokenStore;
+use crate::build_authorization_request;
+use crate::exchange_code;
+use crate::receive_callback;
 
 /// login フローの設定。OIDC エンドポイントと public client の資格情報、loopback ポートを持つ。
 pub(crate) struct LoginConfig {
@@ -26,6 +30,45 @@ impl LoginConfig {
     pub(crate) fn redirect_uri(&self) -> String {
         format!("http://127.0.0.1:{}/callback", self.port)
     }
+}
+
+/// loopback + PKCE でログインし、取得した refresh_token を `TokenStore` へ保存する。
+pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
+    let listener = ::tokio::net::TcpListener::bind(("127.0.0.1", config.port)).await?;
+    let redirect_uri = config.redirect_uri();
+    let authorization =
+        build_authorization_request(&config.auth_endpoint, &config.client_id, &redirect_uri)?;
+
+    // devcontainer 等ブラウザを自動起動できない環境も想定し、URL を表示する。
+    eprintln!(
+        "次の URL をブラウザで開いて認可してください:\n\n{}\n",
+        authorization.authorization_url
+    );
+
+    let callback = receive_callback(listener).await?;
+    if callback.state != authorization.csrf_state {
+        ::anyhow::bail!("CSRF state mismatch");
+    }
+
+    let token = exchange_code(
+        &config.token_endpoint,
+        &TokenExchange {
+            client_id: &config.client_id,
+            client_secret: &config.client_secret,
+            code: &callback.code,
+            pkce_verifier: &authorization.pkce_verifier,
+            redirect_uri: &redirect_uri,
+        },
+    )
+    .await?;
+
+    let refresh_token = token
+        .refresh_token
+        .ok_or_else(|| ::anyhow::anyhow!("token endpoint did not return a refresh_token"))?;
+    TokenStore::from_env()?.save(&StoredToken { refresh_token })?;
+
+    eprintln!("ログインが完了しました。トークンを保存しました。");
+    Ok(())
 }
 
 #[cfg(test)]

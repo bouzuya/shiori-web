@@ -1,6 +1,3 @@
-// login / export が消費するまで bin ビルドでは未使用。消費側 (次の単位) を追加したら外す。
-#![allow(dead_code)]
-
 const APP_DIR: &str = "shiori";
 const TOKEN_FILE: &str = "token.json";
 
@@ -43,6 +40,8 @@ impl TokenStore {
         Ok(Self::new(state_dir))
     }
 
+    // 5d の export が消費するまで bin では未使用。
+    #[allow(dead_code)]
     pub(crate) fn load(&self) -> ::anyhow::Result<Option<StoredToken>> {
         match ::std::fs::read_to_string(&self.path) {
             Ok(contents) => Ok(Some(::serde_json::from_str(&contents)?)),

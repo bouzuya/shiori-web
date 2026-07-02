@@ -1,6 +1,3 @@
-// login が消費するまで bin ビルドでは未使用。消費側 (次の単位) を追加したら外す。
-#![allow(dead_code)]
-
 /// loopback コールバックで受け取った認可コードと state。
 pub(crate) struct CallbackParams {
     pub code: String,
