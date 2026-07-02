@@ -1,12 +1,12 @@
 /// 認可コードフロー (loopback + PKCE) の認可リクエスト。
 ///
 /// `authorization_url` をブラウザで開き、コールバックで受け取った認可コードを
-/// `pkce_verifier` と共にトークンエンドポイントへ送って交換する。
+/// `code_verifier` と共にトークンエンドポイントへ送って交換する。
 /// `csrf_state` はコールバックの `state` と突き合わせて改ざんを検査する。
 pub(crate) struct AuthorizationRequest {
     pub authorization_url: String,
+    pub code_verifier: String,
     pub csrf_state: String,
-    pub pkce_verifier: String,
 }
 
 /// Google の認可エンドポイント向けに、PKCE 付きの認可リクエストを組み立てる。
@@ -35,8 +35,8 @@ pub(crate) fn build_authorization_request(
 
     Ok(AuthorizationRequest {
         authorization_url: url.to_string(),
+        code_verifier: pkce_verifier.secret().to_string(),
         csrf_state: csrf_state.secret().to_string(),
-        pkce_verifier: pkce_verifier.secret().to_string(),
     })
 }
 
@@ -134,17 +134,17 @@ mod tests {
             params.get("state").map(String::as_str),
             Some(request.csrf_state.as_str())
         );
-        assert!(!request.pkce_verifier.is_empty());
+        assert!(!request.code_verifier.is_empty());
         Ok(())
     }
 
     #[test]
-    fn generates_distinct_pkce_verifier_and_state_per_call() -> ::anyhow::Result<()> {
+    fn generates_distinct_code_verifier_and_state_per_call() -> ::anyhow::Result<()> {
         let a =
             build_authorization_request("https://e.example/auth", "c", "http://127.0.0.1:1/cb")?;
         let b =
             build_authorization_request("https://e.example/auth", "c", "http://127.0.0.1:1/cb")?;
-        assert_ne!(a.pkce_verifier, b.pkce_verifier);
+        assert_ne!(a.code_verifier, b.code_verifier);
         assert_ne!(a.csrf_state, b.csrf_state);
         Ok(())
     }
