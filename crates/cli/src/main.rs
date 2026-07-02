@@ -28,10 +28,6 @@ enum Subcommand {
 
 #[derive(::clap::Args)]
 struct LoginArgs {
-    #[arg(env = "OIDC_CLI_CLIENT_ID", long)]
-    client_id: String,
-    #[arg(env = "OIDC_CLI_CLIENT_SECRET", long)]
-    client_secret: String,
     #[arg(default_value_t = 9787, env = "SHIORI_LOOPBACK_PORT", long)]
     port: u16,
 }
@@ -40,14 +36,7 @@ struct LoginArgs {
 async fn main() -> ::anyhow::Result<()> {
     match <Cli as ::clap::Parser>::parse().subcommand {
         Subcommand::Export => ::anyhow::bail!("export is not yet implemented"),
-        Subcommand::Login(args) => {
-            run(LoginConfig::google(
-                args.client_id,
-                args.client_secret,
-                args.port,
-            ))
-            .await
-        }
+        Subcommand::Login(args) => run(LoginConfig::google_embedded(args.port)?).await,
     }
 }
 
@@ -56,21 +45,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_login_subcommand_with_credentials() -> ::anyhow::Result<()> {
-        let cli = <Cli as ::clap::Parser>::try_parse_from([
-            "shiori",
-            "login",
-            "--client-id",
-            "cid",
-            "--client-secret",
-            "sec",
-        ])?;
+    fn parses_login_subcommand_with_default_port() -> ::anyhow::Result<()> {
+        let cli = <Cli as ::clap::Parser>::try_parse_from(["shiori", "login"])?;
         let Subcommand::Login(args) = cli.subcommand else {
             return Err(::anyhow::anyhow!("expected login subcommand"));
         };
-        assert_eq!(args.client_id, "cid");
-        assert_eq!(args.client_secret, "sec");
         assert_eq!(args.port, 9787);
+        Ok(())
+    }
+
+    #[test]
+    fn parses_login_subcommand_port_override() -> ::anyhow::Result<()> {
+        let cli = <Cli as ::clap::Parser>::try_parse_from(["shiori", "login", "--port", "5555"])?;
+        let Subcommand::Login(args) = cli.subcommand else {
+            return Err(::anyhow::anyhow!("expected login subcommand"));
+        };
+        assert_eq!(args.port, 5555);
         Ok(())
     }
 

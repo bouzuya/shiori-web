@@ -5,6 +5,12 @@ use crate::build_authorization_request;
 use crate::exchange_code;
 use crate::receive_callback;
 
+// 公開リポジトリのため直書きせず、ビルド時に環境変数から焼き込む。
+// デスクトップ型 client_secret は非機密でバイナリからは抽出可能だが、
+// ソースにコミットしないことで secret スキャナによるクライアント自動無効化を避ける。
+const EMBEDDED_CLIENT_ID: Option<&str> = option_env!("SHIORI_OIDC_CLIENT_ID");
+const EMBEDDED_CLIENT_SECRET: Option<&str> = option_env!("SHIORI_OIDC_CLIENT_SECRET");
+
 /// login フローの設定。OIDC エンドポイントと public client の資格情報、loopback ポートを持つ。
 pub(crate) struct LoginConfig {
     pub auth_endpoint: String,
@@ -24,6 +30,22 @@ impl LoginConfig {
             port,
             token_endpoint: "https://oauth2.googleapis.com/token".to_string(),
         }
+    }
+
+    /// ビルド時に焼き込まれた資格情報を用いて Google 設定を作る。
+    /// 資格情報なしでビルドされていた場合はエラーにする。
+    pub(crate) fn google_embedded(port: u16) -> ::anyhow::Result<Self> {
+        let client_id = EMBEDDED_CLIENT_ID.ok_or_else(|| {
+            ::anyhow::anyhow!("this binary was built without SHIORI_OIDC_CLIENT_ID")
+        })?;
+        let client_secret = EMBEDDED_CLIENT_SECRET.ok_or_else(|| {
+            ::anyhow::anyhow!("this binary was built without SHIORI_OIDC_CLIENT_SECRET")
+        })?;
+        Ok(Self::google(
+            client_id.to_string(),
+            client_secret.to_string(),
+            port,
+        ))
     }
 
     /// loopback の redirect_uri (`http://127.0.0.1:<port>/callback`)。
