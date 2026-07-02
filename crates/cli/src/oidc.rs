@@ -43,6 +43,39 @@ pub(crate) fn build_authorization_request(
     })
 }
 
+/// トークンエンドポイントの応答 (必要なフィールドのみ。未知フィールドは無視)。
+#[derive(Clone, Debug, Eq, PartialEq, ::serde::Deserialize)]
+pub(crate) struct TokenResponse {
+    pub id_token: String,
+    pub refresh_token: Option<String>,
+}
+
+/// 認可コードを refresh_token / id_token へ交換するためのパラメータ。
+///
+/// Google のデスクトップ型クライアントはトークン交換に client_secret を要求するが、
+/// これは「秘密として扱わない」見せかけの secret で、実際の保護は PKCE の code_verifier が担う。
+pub(crate) struct TokenExchange<'a> {
+    pub client_id: &'a str,
+    pub client_secret: &'a str,
+    pub code: &'a str,
+    pub pkce_verifier: &'a str,
+    pub redirect_uri: &'a str,
+}
+
+impl TokenExchange<'_> {
+    /// トークンエンドポイントへ送る `application/x-www-form-urlencoded` の form パラメータ。
+    pub(crate) fn to_form(&self) -> Vec<(&'static str, String)> {
+        vec![
+            ("client_id", self.client_id.to_string()),
+            ("client_secret", self.client_secret.to_string()),
+            ("code", self.code.to_string()),
+            ("code_verifier", self.pkce_verifier.to_string()),
+            ("grant_type", "authorization_code".to_string()),
+            ("redirect_uri", self.redirect_uri.to_string()),
+        ]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,5 +142,41 @@ mod tests {
         assert_ne!(a.pkce_verifier, b.pkce_verifier);
         assert_ne!(a.csrf_state, b.csrf_state);
         Ok(())
+    }
+
+    #[test]
+    fn deserializes_token_response_with_refresh_token() -> ::anyhow::Result<()> {
+        let json = r#"{"access_token":"at","expires_in":3599,"refresh_token":"rt","scope":"openid email","token_type":"Bearer","id_token":"idt"}"#;
+        let response: TokenResponse = ::serde_json::from_str(json)?;
+        assert_eq!(response.id_token, "idt");
+        assert_eq!(response.refresh_token.as_deref(), Some("rt"));
+        Ok(())
+    }
+
+    #[test]
+    fn deserializes_token_response_without_refresh_token() -> ::anyhow::Result<()> {
+        let json = r#"{"id_token":"idt","token_type":"Bearer"}"#;
+        let response: TokenResponse = ::serde_json::from_str(json)?;
+        assert_eq!(response.id_token, "idt");
+        assert_eq!(response.refresh_token, None);
+        Ok(())
+    }
+
+    #[test]
+    fn token_exchange_to_form_has_required_pairs() {
+        let form = TokenExchange {
+            client_id: "cid",
+            client_secret: "csecret",
+            code: "the-code",
+            pkce_verifier: "the-verifier",
+            redirect_uri: "http://127.0.0.1/cb",
+        }
+        .to_form();
+        assert!(form.contains(&("client_id", "cid".to_string())));
+        assert!(form.contains(&("client_secret", "csecret".to_string())));
+        assert!(form.contains(&("code", "the-code".to_string())));
+        assert!(form.contains(&("code_verifier", "the-verifier".to_string())));
+        assert!(form.contains(&("grant_type", "authorization_code".to_string())));
+        assert!(form.contains(&("redirect_uri", "http://127.0.0.1/cb".to_string())));
     }
 }
