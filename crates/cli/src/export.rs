@@ -50,11 +50,18 @@ pub(crate) async fn run(config: ExportConfig) -> ::anyhow::Result<()> {
     let status = response.status();
     let body = response.text().await?;
     if !status.is_success() {
-        ::anyhow::bail!("export request failed with {status}: {body}");
+        return export_error_message(status, &body);
     }
 
     print!("{body}");
     Ok(())
+}
+
+fn export_error_message(status: ::reqwest::StatusCode, body: &str) -> ::anyhow::Result<()> {
+    if status == ::reqwest::StatusCode::UNAUTHORIZED {
+        ::anyhow::bail!("export request failed with {status}. run `shiori login` and retry");
+    }
+    ::anyhow::bail!("export request failed with {status}: {body}");
 }
 
 async fn refresh_id_token(config: &ExportConfig, refresh_token: &str) -> ::anyhow::Result<String> {
@@ -154,6 +161,15 @@ mod tests {
 
         let message = error.to_string();
         assert!(message.contains("run `shiori login` again"));
+        Ok(())
+    }
+
+    #[test]
+    fn export_unauthorized_error_prompts_relogin() -> ::anyhow::Result<()> {
+        let error = export_error_message(::reqwest::StatusCode::UNAUTHORIZED, "")
+            .err()
+            .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
+        assert!(error.to_string().contains("run `shiori login`"));
         Ok(())
     }
 }
