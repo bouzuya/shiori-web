@@ -1,8 +1,11 @@
+mod export;
 mod login;
 mod loopback;
 mod oidc;
 mod token_store;
 
+pub(crate) use self::export::ExportConfig;
+pub(crate) use self::export::run as run_export;
 pub(crate) use self::login::LoginConfig;
 pub(crate) use self::login::run;
 pub(crate) use self::loopback::receive_callback;
@@ -35,7 +38,7 @@ struct LoginArgs {
 #[::tokio::main]
 async fn main() -> ::anyhow::Result<()> {
     match <Cli as ::clap::Parser>::parse().subcommand {
-        Subcommand::Export => ::anyhow::bail!("export is not yet implemented"),
+        Subcommand::Export => run_export(ExportConfig::default()?).await,
         Subcommand::Login(args) => run(LoginConfig::google_embedded(args.port)?).await,
     }
 }
