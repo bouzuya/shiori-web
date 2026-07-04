@@ -24,9 +24,15 @@ struct Cli {
 #[derive(::clap::Subcommand)]
 enum Subcommand {
     /// 保存済みトークンでブックマークを NDJSON としてエクスポートし stdout へ出す。
-    Export,
+    Export(ExportArgs),
     /// Google OIDC (loopback + PKCE) でログインし、トークンをローカルに保存する。
     Login(LoginArgs),
+}
+
+#[derive(::clap::Args)]
+struct ExportArgs {
+    #[arg(env = "SHIORI_EXPORT_URL", long)]
+    url: Option<String>,
 }
 
 #[derive(::clap::Args)]
@@ -38,7 +44,7 @@ struct LoginArgs {
 #[::tokio::main]
 async fn main() -> ::anyhow::Result<()> {
     match <Cli as ::clap::Parser>::parse().subcommand {
-        Subcommand::Export => run_export(ExportConfig::default()?).await,
+        Subcommand::Export(args) => run_export(ExportConfig::default_with(args.url)?).await,
         Subcommand::Login(args) => run(LoginConfig::google_embedded(args.port)?).await,
     }
 }
@@ -69,9 +75,75 @@ mod tests {
 
     #[test]
     fn parses_export_subcommand() -> ::anyhow::Result<()> {
-        let cli = <Cli as ::clap::Parser>::try_parse_from(["shiori", "export"])?;
-        assert!(matches!(cli.subcommand, Subcommand::Export));
+        ::temp_env::with_var("SHIORI_EXPORT_URL", None::<&str>, || {
+            let cli = <Cli as ::clap::Parser>::try_parse_from(["shiori", "export"])?;
+            let Subcommand::Export(args) = cli.subcommand else {
+                return Err(::anyhow::anyhow!("expected export subcommand"));
+            };
+            assert_eq!(args.url, None);
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn parses_export_subcommand_url_override() -> ::anyhow::Result<()> {
+        let cli = <Cli as ::clap::Parser>::try_parse_from([
+            "shiori",
+            "export",
+            "--url",
+            "http://localhost:3000/base/export",
+        ])?;
+        let Subcommand::Export(args) = cli.subcommand else {
+            return Err(::anyhow::anyhow!("expected export subcommand"));
+        };
+        assert_eq!(
+            args.url,
+            Some("http://localhost:3000/base/export".to_string())
+        );
         Ok(())
+    }
+
+    #[test]
+    fn parses_export_subcommand_url_from_env() -> ::anyhow::Result<()> {
+        ::temp_env::with_var(
+            "SHIORI_EXPORT_URL",
+            Some("http://127.0.0.1:3000/custom/export"),
+            || {
+                let cli = <Cli as ::clap::Parser>::try_parse_from(["shiori", "export"])?;
+                let Subcommand::Export(args) = cli.subcommand else {
+                    return Err(::anyhow::anyhow!("expected export subcommand"));
+                };
+                assert_eq!(
+                    args.url,
+                    Some("http://127.0.0.1:3000/custom/export".to_string())
+                );
+                Ok(())
+            },
+        )
+    }
+
+    #[test]
+    fn export_flag_overrides_env_url() -> ::anyhow::Result<()> {
+        ::temp_env::with_var(
+            "SHIORI_EXPORT_URL",
+            Some("http://127.0.0.1:3000/from-env/export"),
+            || {
+                let cli = <Cli as ::clap::Parser>::try_parse_from([
+                    "shiori",
+                    "export",
+                    "--url",
+                    "http://127.0.0.1:3000/from-flag/export",
+                ])?;
+                let Subcommand::Export(args) = cli.subcommand else {
+                    return Err(::anyhow::anyhow!("expected export subcommand"));
+                };
+                assert_eq!(
+                    args.url,
+                    Some("http://127.0.0.1:3000/from-flag/export".to_string())
+                );
+                Ok(())
+            },
+        )
     }
 
     #[test]

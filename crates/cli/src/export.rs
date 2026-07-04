@@ -11,12 +11,12 @@ pub(crate) struct ExportConfig {
 }
 
 impl ExportConfig {
-    pub(crate) fn default() -> ::anyhow::Result<Self> {
+    pub(crate) fn default_with(export_url: Option<String>) -> ::anyhow::Result<Self> {
         let login_config = LoginConfig::google_embedded(0)?;
         Ok(Self {
             client_id: login_config.client_id,
             client_secret: login_config.client_secret,
-            export_url: DEFAULT_EXPORT_URL.to_string(),
+            export_url: export_url.unwrap_or_else(|| DEFAULT_EXPORT_URL.to_string()),
             token_endpoint: login_config.token_endpoint,
         })
     }
