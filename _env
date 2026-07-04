@@ -1,0 +1,20 @@
+# Server settings (main)
+BASE_PATH=
+COOKIE_SIGNING_SECRET=replace_with_64bytes_or_more_hex
+DATABASE_ID=(default)
+OIDC_CLI_CLIENT_ID=replace_with_cli_oauth_client_id.apps.googleusercontent.com
+OIDC_CLIENT_ID=replace_with_web_oauth_client_id.apps.googleusercontent.com
+OIDC_CLIENT_SECRET=replace_with_web_oauth_client_secret
+OIDC_ISSUER_URL=https://accounts.google.com
+OIDC_REDIRECT_URI=http://localhost:3000/auth/callback
+PORT=3000
+PROJECT_ID=replace_with_gcp_project_id
+
+# CLI build-time settings (shiori)
+# These are embedded at compile time via option_env!.
+SHIORI_OIDC_CLIENT_ID=replace_with_cli_oauth_client_id.apps.googleusercontent.com
+SHIORI_OIDC_CLIENT_SECRET=replace_with_cli_oauth_client_secret
+
+# CLI runtime overrides
+# SHIORI_EXPORT_URL=http://127.0.0.1:3000/export
+# SHIORI_LOOPBACK_PORT=9787
