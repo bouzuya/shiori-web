@@ -62,18 +62,24 @@ pub(crate) async fn run(config: ExportConfig) -> ::anyhow::Result<()> {
     let status = response.status();
     let body = response.text().await?;
     if !status.is_success() {
-        return export_error_message(status, &body);
+        return export_error_message(status, &config.export_url, &body);
     }
 
     print!("{body}");
     Ok(())
 }
 
-fn export_error_message(status: ::reqwest::StatusCode, body: &str) -> ::anyhow::Result<()> {
+fn export_error_message(
+    status: ::reqwest::StatusCode,
+    url: &str,
+    body: &str,
+) -> ::anyhow::Result<()> {
     if status == ::reqwest::StatusCode::UNAUTHORIZED || status == ::reqwest::StatusCode::FORBIDDEN {
-        ::anyhow::bail!("export request failed with {status}. run `shiori login` and retry");
+        ::anyhow::bail!(
+            "export request to {url} failed with {status}. run `shiori login` and retry"
+        );
     }
-    ::anyhow::bail!("export request failed with {status}: {body}");
+    ::anyhow::bail!("export request to {url} failed with {status}: {body}");
 }
 
 fn export_transport_error_message(url: &str, detail: &str) -> ::anyhow::Error {
@@ -184,19 +190,29 @@ mod tests {
 
     #[test]
     fn export_unauthorized_error_prompts_relogin() -> ::anyhow::Result<()> {
-        let error = export_error_message(::reqwest::StatusCode::UNAUTHORIZED, "")
-            .err()
-            .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
+        let error = export_error_message(
+            ::reqwest::StatusCode::UNAUTHORIZED,
+            "http://127.0.0.1:3000/export",
+            "",
+        )
+        .err()
+        .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
         assert!(error.to_string().contains("run `shiori login`"));
+        assert!(error.to_string().contains("http://127.0.0.1:3000/export"));
         Ok(())
     }
 
     #[test]
     fn export_forbidden_error_prompts_relogin() -> ::anyhow::Result<()> {
-        let error = export_error_message(::reqwest::StatusCode::FORBIDDEN, "")
-            .err()
-            .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
+        let error = export_error_message(
+            ::reqwest::StatusCode::FORBIDDEN,
+            "http://127.0.0.1:3000/export",
+            "",
+        )
+        .err()
+        .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
         assert!(error.to_string().contains("run `shiori login`"));
+        assert!(error.to_string().contains("http://127.0.0.1:3000/export"));
         Ok(())
     }
 
