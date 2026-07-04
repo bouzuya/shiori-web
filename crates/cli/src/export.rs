@@ -46,7 +46,8 @@ pub(crate) async fn run(config: ExportConfig) -> ::anyhow::Result<()> {
         .get(&config.export_url)
         .bearer_auth(id_token)
         .send()
-        .await?;
+        .await
+        .map_err(|e| export_transport_error_message(&config.export_url, &e.to_string()))?;
     let status = response.status();
     let body = response.text().await?;
     if !status.is_success() {
@@ -58,10 +59,16 @@ pub(crate) async fn run(config: ExportConfig) -> ::anyhow::Result<()> {
 }
 
 fn export_error_message(status: ::reqwest::StatusCode, body: &str) -> ::anyhow::Result<()> {
-    if status == ::reqwest::StatusCode::UNAUTHORIZED {
+    if status == ::reqwest::StatusCode::UNAUTHORIZED || status == ::reqwest::StatusCode::FORBIDDEN {
         ::anyhow::bail!("export request failed with {status}. run `shiori login` and retry");
     }
     ::anyhow::bail!("export request failed with {status}: {body}");
+}
+
+fn export_transport_error_message(url: &str, detail: &str) -> ::anyhow::Error {
+    ::anyhow::anyhow!(
+        "failed to call export endpoint {url}: {detail}; is the server running and URL correct?"
+    )
 }
 
 async fn refresh_id_token(config: &ExportConfig, refresh_token: &str) -> ::anyhow::Result<String> {
@@ -171,5 +178,22 @@ mod tests {
             .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
         assert!(error.to_string().contains("run `shiori login`"));
         Ok(())
+    }
+
+    #[test]
+    fn export_forbidden_error_prompts_relogin() -> ::anyhow::Result<()> {
+        let error = export_error_message(::reqwest::StatusCode::FORBIDDEN, "")
+            .err()
+            .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
+        assert!(error.to_string().contains("run `shiori login`"));
+        Ok(())
+    }
+
+    #[test]
+    fn export_transport_error_mentions_endpoint_and_hint() {
+        let error = export_transport_error_message("http://127.0.0.1:3000/export", "boom");
+        let message = error.to_string();
+        assert!(message.contains("http://127.0.0.1:3000/export"));
+        assert!(message.contains("is the server running"));
     }
 }
