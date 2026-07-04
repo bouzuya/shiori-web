@@ -13,13 +13,24 @@ pub(crate) struct ExportConfig {
 impl ExportConfig {
     pub(crate) fn default_with(export_url: Option<String>) -> ::anyhow::Result<Self> {
         let login_config = LoginConfig::google_embedded(0)?;
+        let export_url =
+            validate_export_url(&export_url.unwrap_or_else(|| DEFAULT_EXPORT_URL.to_string()))?;
         Ok(Self {
             client_id: login_config.client_id,
             client_secret: login_config.client_secret,
-            export_url: export_url.unwrap_or_else(|| DEFAULT_EXPORT_URL.to_string()),
+            export_url,
             token_endpoint: login_config.token_endpoint,
         })
     }
+}
+
+fn validate_export_url(value: &str) -> ::anyhow::Result<String> {
+    let url = ::url::Url::parse(value)
+        .map_err(|e| ::anyhow::anyhow!("invalid export URL `{value}`: {e}"))?;
+    if url.scheme() != "http" && url.scheme() != "https" {
+        ::anyhow::bail!("invalid export URL `{value}`: scheme must be http or https");
+    }
+    Ok(value.to_string())
 }
 
 #[derive(::serde::Deserialize)]
@@ -195,5 +206,24 @@ mod tests {
         let message = error.to_string();
         assert!(message.contains("http://127.0.0.1:3000/export"));
         assert!(message.contains("is the server running"));
+    }
+
+    #[test]
+    fn export_config_rejects_invalid_url() {
+        let result = ExportConfig::default_with(Some("not-a-url".to_string()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn export_config_accepts_http_url() -> ::anyhow::Result<()> {
+        let config = ExportConfig::default_with(Some("http://127.0.0.1:3000/export".to_string()))?;
+        assert_eq!(config.export_url, "http://127.0.0.1:3000/export");
+        Ok(())
+    }
+
+    #[test]
+    fn export_config_rejects_non_http_scheme() {
+        let result = ExportConfig::default_with(Some("ftp://127.0.0.1/export".to_string()));
+        assert!(result.is_err());
     }
 }
