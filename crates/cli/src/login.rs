@@ -61,14 +61,16 @@ pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
     let authorization =
         build_authorization_request(&config.auth_endpoint, &config.client_id, &redirect_uri)?;
 
-    // devcontainer 等ブラウザを自動起動できない環境も想定し、URL を表示する。
+    let browser_open_error = try_open_browser(&authorization.authorization_url)
+        .err()
+        .map(|e| e.to_string());
     eprintln!(
-        "Open the following URL in your browser to authorize:\n\n{}\n",
-        authorization.authorization_url
+        "{}",
+        browser_open_notice(
+            &authorization.authorization_url,
+            browser_open_error.as_deref()
+        )
     );
-    if let Err(e) = try_open_browser(&authorization.authorization_url) {
-        eprintln!("Failed to open browser automatically: {e}");
-    }
 
     let callback = receive_callback(listener).await?;
     if callback.state != authorization.state {
@@ -131,6 +133,17 @@ fn browser_command(url: &str, browser: Option<&str>) -> (String, Vec<String>) {
     }
 }
 
+fn browser_open_notice(url: &str, error: Option<&str>) -> String {
+    match error {
+        Some(error) => format!(
+            "Could not open browser automatically: {error}\nOpen this URL in your browser to authorize:\n\n{url}\n"
+        ),
+        None => format!(
+            "Opened browser automatically. If your browser did not open, use this URL:\n\n{url}\n"
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,5 +180,20 @@ mod tests {
         let (program, args) = browser_command("https://example.com", None);
         assert_eq!(program, "xdg-open");
         assert_eq!(args, vec!["https://example.com".to_string()]);
+    }
+
+    #[test]
+    fn browser_open_notice_for_success_mentions_auto_open_and_url() {
+        let message = browser_open_notice("https://example.com", None);
+        assert!(message.contains("Opened browser automatically"));
+        assert!(message.contains("https://example.com"));
+    }
+
+    #[test]
+    fn browser_open_notice_for_failure_mentions_manual_open_and_error() {
+        let message = browser_open_notice("https://example.com", Some("spawn failed"));
+        assert!(message.contains("Could not open browser automatically"));
+        assert!(message.contains("spawn failed"));
+        assert!(message.contains("https://example.com"));
     }
 }
