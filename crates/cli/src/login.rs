@@ -66,6 +66,9 @@ pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
         "Open the following URL in your browser to authorize:\n\n{}\n",
         authorization.authorization_url
     );
+    if let Err(e) = try_open_browser(&authorization.authorization_url) {
+        eprintln!("Failed to open browser automatically: {e}");
+    }
 
     let callback = receive_callback(listener).await?;
     if callback.state != authorization.state {
@@ -94,6 +97,40 @@ pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
     Ok(())
 }
 
+fn try_open_browser(url: &str) -> ::anyhow::Result<()> {
+    let browser_env = ::std::env::var("BROWSER").ok();
+    let (program, args) = browser_command(url, browser_env.as_deref());
+    let status = ::std::process::Command::new(&program)
+        .args(&args)
+        .status()?;
+    if status.success() {
+        return Ok(());
+    }
+    ::anyhow::bail!("command exited with status {status}: {program}")
+}
+
+fn browser_command(url: &str, browser: Option<&str>) -> (String, Vec<String>) {
+    if let Some(program) = browser.filter(|s| !s.is_empty()) {
+        return (program.to_string(), vec![url.to_string()]);
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        return ("open".to_string(), vec![url.to_string()]);
+    }
+    #[cfg(target_os = "windows")]
+    {
+        return (
+            "cmd".to_string(),
+            vec!["/C".to_string(), "start".to_string(), url.to_string()],
+        );
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        ("xdg-open".to_string(), vec![url.to_string()])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,5 +152,20 @@ mod tests {
     fn redirect_uri_uses_loopback_and_port() {
         let config = LoginConfig::google("cid".to_string(), "secret".to_string(), 12345);
         assert_eq!(config.redirect_uri(), "http://127.0.0.1:12345/callback");
+    }
+
+    #[test]
+    fn browser_command_prefers_browser_env() {
+        let (program, args) = browser_command("https://example.com", Some("firefox"));
+        assert_eq!(program, "firefox");
+        assert_eq!(args, vec!["https://example.com".to_string()]);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn browser_command_uses_xdg_open_without_browser_env() {
+        let (program, args) = browser_command("https://example.com", None);
+        assert_eq!(program, "xdg-open");
+        assert_eq!(args, vec!["https://example.com".to_string()]);
     }
 }
