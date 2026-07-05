@@ -38,8 +38,9 @@ The CLI reads these at build time via `option_env!`.
 
 - `SHIORI_OIDC_CLIENT_ID`
 - `SHIORI_OIDC_CLIENT_SECRET`
+- `SHIORI_EXPORT_URL`
 
-If you change either value, rebuild the CLI binary before `login` / `export`.
+If you change any value, rebuild the CLI binary before `login` / `export`.
 
 ```bash
 cargo clean -p cli
@@ -52,8 +53,6 @@ cargo run -p cli -- login
 ```
 
 ### 3. Export bookmarks as NDJSON
-
-Default export endpoint is `http://127.0.0.1:3000/export`.
 
 #### No base path (`BASE_PATH=`)
 
@@ -70,11 +69,10 @@ cargo run -p cli -- export
 
 #### With base path (`BASE_PATH=/base`)
 
-Use either option or environment variable to point CLI to the prefixed export route.
+Set `SHIORI_EXPORT_URL` at build time (see step 2), or use `--url` for a one-off run.
 
 ```bash
 cargo run -p cli -- export --url http://127.0.0.1:3000/base/export
-SHIORI_EXPORT_URL=http://127.0.0.1:3000/base/export cargo run -p cli -- export
 ```
 
 Pipe examples.
@@ -87,5 +85,5 @@ cargo run -p cli -- export | fzf
 ## Troubleshooting
 
 - `export request failed with 401 Unauthorized` or `403 Forbidden`: run `cargo run -p cli -- login` again, then confirm `OIDC_CLI_CLIENT_ID` (server) and `SHIORI_OIDC_CLIENT_ID` (CLI build-time) point to the same OAuth client.
-- `failed to call export endpoint ... is the server running and URL correct?`: start server with `cargo run --bin main -- serve`, then check `SHIORI_EXPORT_URL` or `--url` if you use a base path.
+- `failed to call export endpoint ... is the server running and URL correct?`: start server with `cargo run --bin main -- serve`, then check `SHIORI_EXPORT_URL` (CLI build-time) or `--url` if you use a base path.
 - `this binary was built without SHIORI_OIDC_CLIENT_ID`: set `SHIORI_OIDC_CLIENT_ID` and `SHIORI_OIDC_CLIENT_SECRET` in `.env`, then run `cargo clean -p cli` and rebuild.

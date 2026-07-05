@@ -1,7 +1,7 @@
 use crate::LoginConfig;
 use crate::TokenStore;
 
-const DEFAULT_EXPORT_URL: &str = "http://127.0.0.1:3000/export";
+const EMBEDDED_EXPORT_URL: &str = env!("SHIORI_EXPORT_URL");
 
 pub(crate) struct ExportConfig {
     client_id: String,
@@ -14,7 +14,7 @@ impl ExportConfig {
     pub(crate) fn default_with(export_url: Option<String>) -> ::anyhow::Result<Self> {
         let login_config = LoginConfig::google_embedded(0)?;
         let export_url =
-            validate_export_url(&export_url.unwrap_or_else(|| DEFAULT_EXPORT_URL.to_string()))?;
+            validate_export_url(&export_url.unwrap_or_else(|| EMBEDDED_EXPORT_URL.to_string()))?;
         Ok(Self {
             client_id: login_config.client_id,
             client_secret: login_config.client_secret,
@@ -241,5 +241,10 @@ mod tests {
     fn export_config_rejects_non_http_scheme() {
         let result = ExportConfig::default_with(Some("ftp://127.0.0.1/export".to_string()));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn default_export_url_matches_compile_time_env() {
+        assert_eq!(EMBEDDED_EXPORT_URL, env!("SHIORI_EXPORT_URL"));
     }
 }
