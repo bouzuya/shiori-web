@@ -1,7 +1,8 @@
 use crate::LoginConfig;
 use crate::TokenStore;
 
-const EMBEDDED_EXPORT_URL: &str = env!("SHIORI_EXPORT_URL");
+const DEFAULT_EXPORT_URL: &str = "http://localhost:3000/export";
+const EMBEDDED_EXPORT_URL: Option<&str> = option_env!("SHIORI_EXPORT_URL");
 
 pub(crate) struct ExportConfig {
     client_id: String,
@@ -13,8 +14,12 @@ pub(crate) struct ExportConfig {
 impl ExportConfig {
     pub(crate) fn default_with(export_url: Option<String>) -> ::anyhow::Result<Self> {
         let login_config = LoginConfig::google_embedded(0)?;
-        let export_url =
-            validate_export_url(&export_url.unwrap_or_else(|| EMBEDDED_EXPORT_URL.to_string()))?;
+        let export_url = export_url.unwrap_or_else(|| {
+            EMBEDDED_EXPORT_URL
+                .unwrap_or(DEFAULT_EXPORT_URL)
+                .to_string()
+        });
+        let export_url = validate_export_url(&export_url)?;
         Ok(Self {
             client_id: login_config.client_id,
             client_secret: login_config.client_secret,
@@ -245,6 +250,6 @@ mod tests {
 
     #[test]
     fn default_export_url_matches_compile_time_env() {
-        assert_eq!(EMBEDDED_EXPORT_URL, env!("SHIORI_EXPORT_URL"));
+        assert_eq!(EMBEDDED_EXPORT_URL, option_env!("SHIORI_EXPORT_URL"));
     }
 }
