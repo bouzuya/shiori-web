@@ -1,5 +1,6 @@
 use crate::BookmarkList;
 use crate::BookmarkView;
+use crate::DateTime;
 use crate::PageToken;
 use crate::UserId;
 
@@ -19,7 +20,13 @@ pub trait BookmarkReader: Send + Sync {
 
     /// ユーザーの全ブックマークを `created_at` 降順で返す (ページネーションなし)。
     /// 削除は物理削除のため、生存しているブックマークのみが対象。
-    async fn list_all(&self, user_id: UserId) -> ::anyhow::Result<Vec<BookmarkView>>;
+    /// `since` が `Some` の場合、`updated_at` がその日時以降 (境界を含む) の
+    /// ブックマークのみを返す。
+    async fn list_all(
+        &self,
+        user_id: UserId,
+        since: Option<DateTime>,
+    ) -> ::anyhow::Result<Vec<BookmarkView>>;
 }
 
 #[cfg(test)]
@@ -108,12 +115,21 @@ mod tests {
             })
         }
 
-        async fn list_all(&self, user_id: UserId) -> ::anyhow::Result<Vec<BookmarkView>> {
+        async fn list_all(
+            &self,
+            user_id: UserId,
+            since: Option<DateTime>,
+        ) -> ::anyhow::Result<Vec<BookmarkView>> {
             let store = self.store.lock().map_err(|e| ::anyhow::anyhow!("{e}"))?;
             let mut items: Vec<BookmarkView> = store
                 .iter()
                 .filter(|(uid, _)| *uid == user_id)
                 .map(|(_, v)| v.clone())
+                .filter(|v| {
+                    since
+                        .as_ref()
+                        .is_none_or(|s| v.updated_at >= s.to_rfc3339())
+                })
                 .collect();
             items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
             Ok(items)
@@ -302,7 +318,7 @@ mod tests {
         let reader = InMemoryBookmarkReader::new();
         let user_id = UserId::new();
         insert_15(&reader, user_id)?;
-        let all = reader.list_all(user_id).await?;
+        let all = reader.list_all(user_id, None).await?;
         assert_eq!(all.len(), 15);
         assert_eq!(all[0].id, "id14");
         assert_eq!(all[14].id, "id00");
@@ -330,9 +346,35 @@ mod tests {
                 ..BookmarkView::for_test()
             },
         )?;
-        let all = reader.list_all(user_a).await?;
+        let all = reader.list_all(user_a, None).await?;
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].id, "a1");
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn test_list_all_with_since_returns_only_updated_at_or_after() -> ::anyhow::Result<()> {
+        let reader = InMemoryBookmarkReader::new();
+        let user_id = UserId::new();
+        for (id, updated_at) in [
+            ("old", "2024-01-01T00:00:00.000Z"),
+            ("boundary", "2024-06-01T00:00:00.000Z"),
+            ("new", "2024-12-01T00:00:00.000Z"),
+        ] {
+            reader.insert(
+                user_id,
+                BookmarkView {
+                    created_at: updated_at.to_string(),
+                    id: id.to_string(),
+                    updated_at: updated_at.to_string(),
+                    ..BookmarkView::for_test()
+                },
+            )?;
+        }
+        let since = DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?;
+        let all = reader.list_all(user_id, Some(since)).await?;
+        let ids: Vec<&str> = all.iter().map(|v| v.id.as_str()).collect();
+        assert_eq!(ids, vec!["new", "boundary"]);
         Ok(())
     }
 }

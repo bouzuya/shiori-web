@@ -19,7 +19,7 @@ async fn get_export(
     BearerUserId(user_id): BearerUserId,
     ::axum::extract::State(state): ::axum::extract::State<AppState>,
 ) -> ::axum::response::Response {
-    let views = match state.bookmark_reader.list_all(user_id).await {
+    let views = match state.bookmark_reader.list_all(user_id, None).await {
         Ok(views) => views,
         Err(e) => {
             ::tracing::error!("failed to list all bookmarks for export: {e}");

@@ -4,6 +4,7 @@ use crate::FirestoreCollection;
 use kernel::BookmarkList;
 use kernel::BookmarkReader;
 use kernel::BookmarkView;
+use kernel::DateTime;
 use kernel::PageToken;
 use kernel::UserId;
 
@@ -87,7 +88,11 @@ impl BookmarkReader for FirestoreBookmarkReader {
         })
     }
 
-    async fn list_all(&self, user_id: UserId) -> ::anyhow::Result<Vec<BookmarkView>> {
+    async fn list_all(
+        &self,
+        user_id: UserId,
+        _since: Option<DateTime>,
+    ) -> ::anyhow::Result<Vec<BookmarkView>> {
         let collection_ref = self
             .firestore
             .collection(BookmarksCollection::collection_path(&user_id))
@@ -285,7 +290,7 @@ mod tests {
         let (reader, repo) = firestore_reader_and_repo()?;
         let user_id = UserId::new();
         insert_n(&repo, user_id, 15).await?;
-        let all = reader.list_all(user_id).await?;
+        let all = reader.list_all(user_id, None).await?;
         assert_eq!(all.len(), 15);
         assert!(
             all.windows(2).all(|w| w[0].created_at >= w[1].created_at),
