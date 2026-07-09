@@ -1,5 +1,6 @@
 use crate::AppState;
 use crate::extractor::BearerUserId;
+use kernel::DateTime;
 
 pub(crate) fn router() -> ::axum::Router<AppState> {
     ::axum::Router::new().route("/export", ::axum::routing::get(get_export))
@@ -15,11 +16,31 @@ struct ExportBookmark {
     url: String,
 }
 
+#[derive(::serde::Deserialize)]
+struct ExportQuery {
+    since: Option<String>,
+}
+
 async fn get_export(
     BearerUserId(user_id): BearerUserId,
+    ::axum::extract::Query(query): ::axum::extract::Query<ExportQuery>,
     ::axum::extract::State(state): ::axum::extract::State<AppState>,
 ) -> ::axum::response::Response {
-    let views = match state.bookmark_reader.list_all(user_id, None).await {
+    let since = match query
+        .since
+        .as_deref()
+        .map(DateTime::from_rfc3339)
+        .transpose()
+    {
+        Ok(since) => since,
+        Err(e) => {
+            ::tracing::debug!("invalid since query parameter for export: {e}");
+            return ::axum::response::IntoResponse::into_response(
+                ::axum::http::StatusCode::BAD_REQUEST,
+            );
+        }
+    };
+    let views = match state.bookmark_reader.list_all(user_id, since).await {
         Ok(views) => views,
         Err(e) => {
             ::tracing::error!("failed to list all bookmarks for export: {e}");
@@ -191,6 +212,78 @@ mod tests {
             "title missing in export body: {body}"
         );
         assert_eq!(body.lines().count(), 1, "expected one NDJSON line: {body}");
+        Ok(())
+    }
+
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_export_with_since_filters_by_updated_at() -> ::anyhow::Result<()> {
+        let sub = unique_user_id();
+        let app = export_test_app(&sub)?;
+        let session = session_cookie(app.clone()).await?;
+        let create = send_request(
+            app.clone(),
+            ::axum::http::Request::builder()
+                .method("POST")
+                .uri("/")
+                .header(
+                    ::axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(::axum::http::header::COOKIE, &session)
+                .body(::axum::body::Body::from(
+                    "url=https%3A%2F%2Fexample.com%2Fexport&title=Export+Me&comment=note",
+                ))?,
+        )
+        .await?;
+        assert_eq!(create.status(), ::axum::http::StatusCode::SEE_OTHER);
+
+        // 過去の since: 作成したブックマークの updated_at は now なので含まれる
+        let response = send_request(
+            app.clone(),
+            ::axum::http::Request::builder()
+                .method("GET")
+                .uri("/export?since=2000-01-01T00%3A00%3A00.000Z")
+                .header(::axum::http::header::AUTHORIZATION, "Bearer dummy-token")
+                .body(::axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert_eq!(body.lines().count(), 1, "expected one NDJSON line: {body}");
+
+        // 未来の since: 何も含まれない
+        let response = send_request(
+            app,
+            ::axum::http::Request::builder()
+                .method("GET")
+                .uri("/export?since=9999-12-31T23%3A59%3A59.999Z")
+                .header(::axum::http::header::AUTHORIZATION, "Bearer dummy-token")
+                .body(::axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), ::axum::http::StatusCode::OK);
+        let body = response.into_body_string().await?;
+        assert_eq!(body, "", "expected empty body: {body}");
+        Ok(())
+    }
+
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn get_export_with_invalid_since_returns_bad_request() -> ::anyhow::Result<()> {
+        let sub = unique_user_id();
+        let app = export_test_app(&sub)?;
+        let _session = session_cookie(app.clone()).await?;
+        let response = send_request(
+            app,
+            ::axum::http::Request::builder()
+                .method("GET")
+                .uri("/export?since=not-a-date")
+                .header(::axum::http::header::AUTHORIZATION, "Bearer dummy-token")
+                .body(::axum::body::Body::empty())?,
+        )
+        .await?;
+        assert_eq!(response.status(), ::axum::http::StatusCode::BAD_REQUEST);
         Ok(())
     }
 }
