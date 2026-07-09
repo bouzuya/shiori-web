@@ -91,15 +91,21 @@ impl BookmarkReader for FirestoreBookmarkReader {
     async fn list_all(
         &self,
         user_id: UserId,
-        _since: Option<DateTime>,
+        since: Option<DateTime>,
     ) -> ::anyhow::Result<Vec<BookmarkView>> {
         let collection_ref = self
             .firestore
             .collection(BookmarksCollection::collection_path(&user_id))
             .map_err(|e| ::anyhow::anyhow!(e))?;
-        let query = collection_ref
+        let mut query = collection_ref
             .order_by("created_at", "desc")
             .map_err(|e| ::anyhow::anyhow!(e))?;
+        if let Some(since) = since {
+            let filter =
+                ::bouzuya_firestore_client::Filter::r#where("updated_at", ">=", since.to_rfc3339())
+                    .map_err(|e| ::anyhow::anyhow!(e))?;
+            query = query.r#where(filter).map_err(|e| ::anyhow::anyhow!(e))?;
+        }
         let snapshot = query.get().await.map_err(|e| ::anyhow::anyhow!(e))?;
         let mut views: Vec<BookmarkView> = Vec::new();
         for doc in snapshot {
@@ -295,6 +301,40 @@ mod tests {
         assert!(
             all.windows(2).all(|w| w[0].created_at >= w[1].created_at),
             "expected created_at descending order"
+        );
+        Ok(())
+    }
+
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_all_with_since_returns_only_updated_at_or_after() -> ::anyhow::Result<()> {
+        use kernel::BookmarkRepository as _;
+        let (reader, repo) = firestore_reader_and_repo()?;
+        let user_id = UserId::new();
+        for (path, updated_at) in [
+            ("old", "2024-01-01T00:00:00.000Z"),
+            ("boundary", "2024-06-01T00:00:00.000Z"),
+            ("new", "2024-12-01T00:00:00.000Z"),
+        ] {
+            let dt = DateTime::from_rfc3339(updated_at)?;
+            let bookmark = Bookmark::new(
+                "c".parse::<Comment>()?,
+                dt,
+                None,
+                BookmarkId::new(),
+                "t".parse::<Title>()?,
+                dt,
+                format!("https://example.com/{path}").parse::<Url>()?,
+                user_id,
+            );
+            repo.store(None, bookmark).await?;
+        }
+        let since = DateTime::from_rfc3339("2024-06-01T00:00:00.000Z")?;
+        let all = reader.list_all(user_id, Some(since)).await?;
+        let urls: Vec<&str> = all.iter().map(|v| v.url.as_str()).collect();
+        assert_eq!(
+            urls,
+            vec!["https://example.com/new", "https://example.com/boundary"]
         );
         Ok(())
     }
