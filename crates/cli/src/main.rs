@@ -2,6 +2,7 @@ mod export;
 mod login;
 mod loopback;
 mod oidc;
+mod server_config;
 mod token_store;
 
 pub(crate) use self::export::ExportConfig;
