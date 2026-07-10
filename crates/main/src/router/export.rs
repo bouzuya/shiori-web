@@ -81,6 +81,7 @@ async fn get_export(
 #[cfg(test)]
 mod tests {
     use crate::AppState;
+    use crate::CliConfig;
     use crate::test_helpers::MockAuthorizationCodeClient;
     use crate::test_helpers::MockIdTokenVerifier;
     use crate::test_helpers::ResponseExt as _;
@@ -103,6 +104,7 @@ mod tests {
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
+            CliConfig::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             ::std::sync::Arc::new(MockIdTokenVerifier::new(sub)),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new(sub)),

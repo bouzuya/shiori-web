@@ -7,6 +7,7 @@ use kernel::UserRepository;
 use kernel::UserSettingsReader;
 use kernel::UserSettingsRepository;
 
+use crate::CliConfig;
 use crate::FirestoreBookmarkReader;
 use crate::FirestoreBookmarkRepository;
 use crate::FirestoreUserRepository;
@@ -166,6 +167,7 @@ pub(crate) fn test_app(sub: impl Into<String>) -> ::anyhow::Result<::axum::Route
         "".to_string(),
         firestore_bookmark_reader()?,
         firestore_bookmark_repo()?,
+        CliConfig::for_test(),
         TEST_COOKIE_SIGNING_SECRET,
         crate::test_helpers::mock_id_token_verifier(),
         ::std::sync::Arc::new(MockAuthorizationCodeClient::new(sub)),
@@ -183,6 +185,7 @@ pub(crate) fn test_app_with_mock_repo(sub: impl Into<String>) -> ::anyhow::Resul
         "".to_string(),
         firestore_bookmark_reader()?,
         bookmark_repository,
+        CliConfig::for_test(),
         TEST_COOKIE_SIGNING_SECRET,
         crate::test_helpers::mock_id_token_verifier(),
         ::std::sync::Arc::new(MockAuthorizationCodeClient::new(sub)),

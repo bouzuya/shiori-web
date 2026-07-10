@@ -20,6 +20,7 @@ lightningcss = "1.0.0-alpha.71"
 
 [dev-dependencies]
 http-body-util = "0.1"
+rand = "0.10.1"
 serde_urlencoded = "0.7"
 serial_test = "3"
 temp-env = "0.3"

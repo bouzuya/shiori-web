@@ -1,5 +1,6 @@
 mod auth;
 mod bookmark;
+mod cli_config;
 mod export;
 mod favicon;
 mod index_css;
@@ -16,6 +17,7 @@ pub(crate) fn router(base_path: &str) -> ::axum::Router<AppState> {
     let inner = ::axum::Router::new()
         .merge(auth::router())
         .merge(bookmark::router())
+        .merge(cli_config::router())
         .merge(export::router())
         .merge(favicon::router())
         .merge(index_css::router())
@@ -70,6 +72,7 @@ pub(crate) async fn resolve_utc_offset(state: &AppState, user_id: UserId) -> Utc
 #[cfg(test)]
 mod tests {
     use crate::AppState;
+    use crate::CliConfig;
     use crate::test_helpers::MockAuthorizationCodeClient;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
     use crate::test_helpers::firestore_bookmark_reader;
@@ -87,6 +90,7 @@ mod tests {
             base_path.to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
+            CliConfig::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new("base_path_route_user")),

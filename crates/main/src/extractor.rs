@@ -117,6 +117,7 @@ where
 mod tests {
     use super::BearerUserId;
     use crate::AppState;
+    use crate::CliConfig;
     use crate::IdTokenVerifier;
     use crate::test_helpers::MockAuthorizationCodeClient;
     use crate::test_helpers::MockIdTokenVerifier;
@@ -139,6 +140,7 @@ mod tests {
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
+            CliConfig::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             id_token_verifier,
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new("unused")),

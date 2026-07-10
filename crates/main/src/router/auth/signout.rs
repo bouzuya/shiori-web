@@ -22,6 +22,7 @@ async fn handler(
 #[cfg(test)]
 mod tests {
     use crate::AppState;
+    use crate::CliConfig;
     use crate::test_helpers::MockAuthorizationCodeClient;
     use crate::test_helpers::MockUserRepository;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
@@ -64,6 +65,7 @@ mod tests {
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
+            CliConfig::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
@@ -128,6 +130,7 @@ mod tests {
             base_path.to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
+            CliConfig::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new("signout_base_path_user")),

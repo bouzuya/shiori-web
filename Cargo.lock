@@ -2040,6 +2040,7 @@ dependencies = [
  "kernel",
  "lightningcss",
  "openidconnect",
+ "rand 0.10.2",
  "serde",
  "serde_json",
  "serde_urlencoded",
