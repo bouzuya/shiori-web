@@ -1,3 +1,4 @@
+mod discovery;
 mod export;
 mod login;
 mod loopback;
