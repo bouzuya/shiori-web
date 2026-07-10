@@ -23,6 +23,8 @@ pub(crate) struct ServeArgs {
     pub database_id: String,
     #[arg(env = "OIDC_CLI_CLIENT_ID", long)]
     pub oidc_cli_client_id: String,
+    #[arg(env = "OIDC_CLI_CLIENT_SECRET", long)]
+    pub oidc_cli_client_secret: String,
     #[arg(env = "OIDC_CLIENT_ID", long)]
     pub oidc_client_id: String,
     #[arg(env = "OIDC_CLIENT_SECRET", long)]
@@ -41,7 +43,7 @@ pub(crate) struct ServeArgs {
 mod tests {
     use super::*;
 
-    fn all_vars() -> [(&'static str, Option<&'static str>); 10] {
+    fn all_vars() -> [(&'static str, Option<&'static str>); 11] {
         [
             ("BASE_PATH", Some("/app")),
             (
@@ -50,6 +52,7 @@ mod tests {
             ),
             ("DATABASE_ID", Some("test_database_id")),
             ("OIDC_CLI_CLIENT_ID", Some("test_cli_client_id")),
+            ("OIDC_CLI_CLIENT_SECRET", Some("test_cli_client_secret")),
             ("OIDC_CLIENT_ID", Some("test_client_id")),
             ("OIDC_CLIENT_SECRET", Some("test_client_secret")),
             ("OIDC_ISSUER_URL", Some("https://issuer.example.com")),
@@ -76,6 +79,7 @@ mod tests {
             );
             assert_eq!(args.database_id, "test_database_id");
             assert_eq!(args.oidc_cli_client_id, "test_cli_client_id");
+            assert_eq!(args.oidc_cli_client_secret, "test_cli_client_secret");
             assert_eq!(args.oidc_client_id, "test_client_id");
             assert_eq!(args.oidc_client_secret, "test_client_secret");
             assert_eq!(args.oidc_issuer_url, "https://issuer.example.com");
