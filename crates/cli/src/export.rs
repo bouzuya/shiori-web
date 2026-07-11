@@ -1,8 +1,10 @@
-use crate::LoginConfig;
 use crate::TokenStore;
 
 const DEFAULT_EXPORT_URL: &str = "http://localhost:3000/export";
 const EMBEDDED_EXPORT_URL: Option<&str> = option_env!("SHIORI_EXPORT_URL");
+// Step 5 (export 再構成) で ConfigStore + /cli/config 参照に置き換えて削除する暫定措置。
+const EMBEDDED_CLIENT_ID: Option<&str> = option_env!("SHIORI_OIDC_CLIENT_ID");
+const EMBEDDED_CLIENT_SECRET: Option<&str> = option_env!("SHIORI_OIDC_CLIENT_SECRET");
 
 pub(crate) struct ExportConfig {
     client_id: String,
@@ -13,7 +15,12 @@ pub(crate) struct ExportConfig {
 
 impl ExportConfig {
     pub(crate) fn default_with(export_url: Option<String>) -> ::anyhow::Result<Self> {
-        let login_config = LoginConfig::google_embedded(0)?;
+        let client_id = EMBEDDED_CLIENT_ID.ok_or_else(|| {
+            ::anyhow::anyhow!("this binary was built without SHIORI_OIDC_CLIENT_ID")
+        })?;
+        let client_secret = EMBEDDED_CLIENT_SECRET.ok_or_else(|| {
+            ::anyhow::anyhow!("this binary was built without SHIORI_OIDC_CLIENT_SECRET")
+        })?;
         let export_url = export_url.unwrap_or_else(|| {
             EMBEDDED_EXPORT_URL
                 .unwrap_or(DEFAULT_EXPORT_URL)
@@ -21,10 +28,10 @@ impl ExportConfig {
         });
         let export_url = validate_export_url(&export_url)?;
         Ok(Self {
-            client_id: login_config.client_id,
-            client_secret: login_config.client_secret,
+            client_id: client_id.to_string(),
+            client_secret: client_secret.to_string(),
             export_url,
-            token_endpoint: login_config.token_endpoint,
+            token_endpoint: "https://oauth2.googleapis.com/token".to_string(),
         })
     }
 }
@@ -120,6 +127,7 @@ async fn refresh_id_token(config: &ExportConfig, refresh_token: &str) -> ::anyho
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_helpers::spawn_json_server;
 
     fn for_test_config(export_url: String, token_endpoint: String) -> ExportConfig {
         ExportConfig {
@@ -128,36 +136,6 @@ mod tests {
             export_url,
             token_endpoint,
         }
-    }
-
-    async fn spawn_json_server(
-        status_line: &'static str,
-        body: String,
-    ) -> ::anyhow::Result<(String, ::tokio::task::JoinHandle<::anyhow::Result<()>>)> {
-        let listener = ::tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
-        let url = format!("http://{}", listener.local_addr()?);
-        let handle = ::tokio::spawn(async move {
-            let (mut stream, _peer) = listener.accept().await?;
-            let (read_half, mut write_half) = stream.split();
-            let mut reader = ::tokio::io::BufReader::new(read_half);
-
-            loop {
-                let mut line = String::new();
-                let read = ::tokio::io::AsyncBufReadExt::read_line(&mut reader, &mut line).await?;
-                if read == 0 || line.trim_end().is_empty() {
-                    break;
-                }
-            }
-
-            let response = format!(
-                "HTTP/1.1 {status_line}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                body.len()
-            );
-            ::tokio::io::AsyncWriteExt::write_all(&mut write_half, response.as_bytes()).await?;
-            ::tokio::io::AsyncWriteExt::flush(&mut write_half).await?;
-            Ok(())
-        });
-        Ok((url, handle))
     }
 
     #[::tokio::test]

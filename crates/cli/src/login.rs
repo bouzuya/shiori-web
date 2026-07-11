@@ -1,15 +1,13 @@
+use crate::ConfigStore;
+use crate::StoredConfig;
 use crate::StoredToken;
 use crate::TokenExchange;
 use crate::TokenStore;
 use crate::build_authorization_request;
 use crate::exchange_code;
+use crate::fetch_provider_metadata;
+use crate::fetch_server_config;
 use crate::receive_callback;
-
-// 公開リポジトリのため直書きせず、ビルド時に環境変数から焼き込む。
-// デスクトップ型 client_secret は非機密でバイナリからは抽出可能だが、
-// ソースにコミットしないことで secret スキャナによるクライアント自動無効化を避ける。
-const EMBEDDED_CLIENT_ID: Option<&str> = option_env!("SHIORI_OIDC_CLIENT_ID");
-const EMBEDDED_CLIENT_SECRET: Option<&str> = option_env!("SHIORI_OIDC_CLIENT_SECRET");
 
 /// login フローの設定。OIDC エンドポイントと public client の資格情報、loopback ポートを持つ。
 pub(crate) struct LoginConfig {
@@ -17,35 +15,23 @@ pub(crate) struct LoginConfig {
     pub client_id: String,
     pub client_secret: String,
     pub port: u16,
+    pub server_url: String,
     pub token_endpoint: String,
 }
 
 impl LoginConfig {
-    /// Google の認可 / トークンエンドポイントを用いた設定を作る。
-    pub(crate) fn google(client_id: String, client_secret: String, port: u16) -> Self {
-        Self {
-            auth_endpoint: "https://accounts.google.com/o/oauth2/v2/auth".to_string(),
-            client_id,
-            client_secret,
+    /// サーバーの `/cli/config` と issuer の OIDC Discovery から設定を組み立てる。
+    pub(crate) async fn fetch(server_url: &str, port: u16) -> ::anyhow::Result<Self> {
+        let server_config = fetch_server_config(server_url).await?;
+        let metadata = fetch_provider_metadata(&server_config.issuer).await?;
+        Ok(Self {
+            auth_endpoint: metadata.authorization_endpoint,
+            client_id: server_config.client_id,
+            client_secret: server_config.client_secret,
             port,
-            token_endpoint: "https://oauth2.googleapis.com/token".to_string(),
-        }
-    }
-
-    /// ビルド時に焼き込まれた資格情報を用いて Google 設定を作る。
-    /// 資格情報なしでビルドされていた場合はエラーにする。
-    pub(crate) fn google_embedded(port: u16) -> ::anyhow::Result<Self> {
-        let client_id = EMBEDDED_CLIENT_ID.ok_or_else(|| {
-            ::anyhow::anyhow!("this binary was built without SHIORI_OIDC_CLIENT_ID")
-        })?;
-        let client_secret = EMBEDDED_CLIENT_SECRET.ok_or_else(|| {
-            ::anyhow::anyhow!("this binary was built without SHIORI_OIDC_CLIENT_SECRET")
-        })?;
-        Ok(Self::google(
-            client_id.to_string(),
-            client_secret.to_string(),
-            port,
-        ))
+            server_url: server_url.trim_end_matches('/').to_string(),
+            token_endpoint: metadata.token_endpoint,
+        })
     }
 
     /// loopback の redirect_uri (`http://127.0.0.1:<port>/callback`)。
@@ -54,7 +40,26 @@ impl LoginConfig {
     }
 }
 
-/// loopback + PKCE でログインし、取得した refresh_token を `TokenStore` へ保存する。
+#[cfg(test)]
+impl LoginConfig {
+    pub(crate) fn for_test() -> Self {
+        let nanos = ::std::time::SystemTime::now()
+            .duration_since(::std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        Self {
+            auth_endpoint: format!("https://idp-{nanos}.example.com/auth"),
+            client_id: format!("client-{nanos}"),
+            client_secret: format!("secret-{nanos}"),
+            port: 9787,
+            server_url: format!("https://server-{nanos}.example.com"),
+            token_endpoint: format!("https://idp-{nanos}.example.com/token"),
+        }
+    }
+}
+
+/// loopback + PKCE でログインし、refresh_token を `TokenStore` へ、
+/// 接続先サーバー URL を `ConfigStore` へ保存する。
 pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
     let listener = ::tokio::net::TcpListener::bind(("127.0.0.1", config.port)).await?;
     let redirect_uri = config.redirect_uri();
@@ -94,6 +99,9 @@ pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
         .refresh_token
         .ok_or_else(|| ::anyhow::anyhow!("token endpoint did not return a refresh_token"))?;
     TokenStore::from_env()?.save(&StoredToken { refresh_token })?;
+    ConfigStore::from_env()?.save(&StoredConfig {
+        server_url: config.server_url,
+    })?;
 
     eprintln!("Login complete. Token saved.");
     Ok(())
@@ -147,23 +155,54 @@ fn browser_open_notice(url: &str, error: Option<&str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_helpers::spawn_json_server;
 
-    #[test]
-    fn google_sets_google_endpoints_and_keeps_credentials() {
-        let config = LoginConfig::google("cid".to_string(), "secret".to_string(), 9787);
-        assert_eq!(
-            config.auth_endpoint,
-            "https://accounts.google.com/o/oauth2/v2/auth"
-        );
-        assert_eq!(config.token_endpoint, "https://oauth2.googleapis.com/token");
+    #[::tokio::test]
+    async fn fetch_builds_config_from_server_config_and_discovery() -> ::anyhow::Result<()> {
+        let (issuer, idp) = spawn_json_server(
+            "200 OK",
+            r#"{"authorization_endpoint":"https://idp.example.com/auth","token_endpoint":"https://idp.example.com/token"}"#
+                .to_string(),
+        )
+        .await?;
+        let (server_url, server) = spawn_json_server(
+            "200 OK",
+            format!(r#"{{"client_id":"cid","client_secret":"sec","issuer":"{issuer}"}}"#),
+        )
+        .await?;
+
+        // 末尾スラッシュ付きで渡しても正規化されて保存される
+        let config = LoginConfig::fetch(&format!("{server_url}/"), 9787).await?;
+        server.await??;
+        idp.await??;
+
+        assert_eq!(config.auth_endpoint, "https://idp.example.com/auth");
         assert_eq!(config.client_id, "cid");
-        assert_eq!(config.client_secret, "secret");
+        assert_eq!(config.client_secret, "sec");
         assert_eq!(config.port, 9787);
+        assert_eq!(config.server_url, server_url);
+        assert_eq!(config.token_endpoint, "https://idp.example.com/token");
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn fetch_errors_when_server_config_is_unavailable() -> ::anyhow::Result<()> {
+        let (server_url, server) = spawn_json_server("404 Not Found", "".to_string()).await?;
+        let result = LoginConfig::fetch(&server_url, 9787).await;
+        server.await??;
+        let error = result
+            .err()
+            .ok_or_else(|| ::anyhow::anyhow!("expected fetch to return an error"))?;
+        assert!(error.to_string().contains("404"));
+        Ok(())
     }
 
     #[test]
     fn redirect_uri_uses_loopback_and_port() {
-        let config = LoginConfig::google("cid".to_string(), "secret".to_string(), 12345);
+        let config = LoginConfig {
+            port: 12345,
+            ..LoginConfig::for_test()
+        };
         assert_eq!(config.redirect_uri(), "http://127.0.0.1:12345/callback");
     }
 
