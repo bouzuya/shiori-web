@@ -1,3 +1,4 @@
+mod config_store;
 mod discovery;
 mod export;
 mod login;
