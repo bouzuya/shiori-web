@@ -1,6 +1,7 @@
 mod config_store;
 mod discovery;
 mod export;
+mod export_cache;
 mod login;
 mod loopback;
 mod oidc;
