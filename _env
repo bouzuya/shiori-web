@@ -11,11 +11,5 @@ OIDC_REDIRECT_URI=http://localhost:3000/auth/callback
 PORT=3000
 PROJECT_ID=replace_with_gcp_project_id
 
-# CLI build-time settings (shiori)
-# These are embedded at compile time via option_env!.
-SHIORI_EXPORT_URL=http://127.0.0.1:3000/export
-SHIORI_OIDC_CLIENT_ID=replace_with_cli_oauth_client_id.apps.googleusercontent.com
-SHIORI_OIDC_CLIENT_SECRET=replace_with_cli_oauth_client_secret
-
 # CLI runtime overrides
 # SHIORI_LOOPBACK_PORT=9787

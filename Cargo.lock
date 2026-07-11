@@ -520,7 +520,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
- "temp-env",
  "tempfile",
  "tokio",
  "url",

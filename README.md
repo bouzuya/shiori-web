@@ -32,29 +32,26 @@ Then start server.
 cargo run --bin main -- serve
 ```
 
-### 2. Build and login from CLI
+### 2. Login from CLI
 
-The CLI reads these at build time via `option_env!`.
-
-- `SHIORI_OIDC_CLIENT_ID`
-- `SHIORI_OIDC_CLIENT_SECRET`
-- `SHIORI_EXPORT_URL`
-
-If you change any value, rebuild the CLI binary before `login` / `export`.
+The CLI needs no build-time settings. Pass the server URL to `login`;
+the CLI fetches the OIDC client configuration from `{SERVER_URL}/cli/config`
+and discovers the provider endpoints from the issuer.
 
 ```bash
-cargo clean -p cli
+cargo run -p cli -- login http://127.0.0.1:3000
 ```
 
-Login once.
+With base path (`BASE_PATH=/base`), include it in the server URL.
 
 ```bash
-cargo run -p cli -- login
+cargo run -p cli -- login http://127.0.0.1:3000/base
 ```
+
+`login` saves the server URL to `$XDG_CONFIG_HOME/shiori/config.json`
+and the refresh token to `$XDG_STATE_HOME/shiori/token.json`.
 
 ### 3. Export bookmarks as NDJSON
-
-#### No base path (`BASE_PATH=`)
 
 Quick connectivity check after starting server:
 
@@ -63,16 +60,10 @@ curl -i http://127.0.0.1:3000/export | head -n 1
 # expected: HTTP/1.1 401 Unauthorized
 ```
 
+`export` uses `{SERVER_URL}/export` for the server URL saved by `login`.
+
 ```bash
 cargo run -p cli -- export
-```
-
-#### With base path (`BASE_PATH=/base`)
-
-Set `SHIORI_EXPORT_URL` at build time (see step 2), or use `--url` for a one-off run.
-
-```bash
-cargo run -p cli -- export --url http://127.0.0.1:3000/base/export
 ```
 
 Pipe examples.
@@ -84,6 +75,6 @@ cargo run -p cli -- export | fzf
 
 ## Troubleshooting
 
-- `export request failed with 401 Unauthorized` or `403 Forbidden`: run `cargo run -p cli -- login` again, then confirm `OIDC_CLI_CLIENT_ID` (server) and `SHIORI_OIDC_CLIENT_ID` (CLI build-time) point to the same OAuth client.
-- `failed to call export endpoint ... is the server running and URL correct?`: start server with `cargo run --bin main -- serve`, then check `SHIORI_EXPORT_URL` (CLI build-time) or `--url` if you use a base path.
-- `this binary was built without SHIORI_OIDC_CLIENT_ID`: set `SHIORI_OIDC_CLIENT_ID` and `SHIORI_OIDC_CLIENT_SECRET` in `.env`, then run `cargo clean -p cli` and rebuild.
+- `export request failed with 401 Unauthorized` or `403 Forbidden`: run `cargo run -p cli -- login <SERVER_URL>` again, then confirm the server's `OIDC_CLI_CLIENT_ID` / `OIDC_CLI_CLIENT_SECRET` point to the CLI OAuth client.
+- `failed to call export endpoint ... is the server running and URL correct?`: start server with `cargo run --bin main -- serve`. If the server URL (or base path) changed, run `login <SERVER_URL>` again.
+- `no server configured. run \`shiori login <SERVER_URL>\` first`: run `login` once to save the server URL.

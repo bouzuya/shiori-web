@@ -20,10 +20,6 @@ jobs:
           - os: macos-latest
             target: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
-    env:
-      SHIORI_EXPORT_URL: ${{ secrets.SHIORI_EXPORT_URL }}
-      SHIORI_OIDC_CLIENT_ID: ${{ secrets.SHIORI_OIDC_CLIENT_ID }}
-      SHIORI_OIDC_CLIENT_SECRET: ${{ secrets.SHIORI_OIDC_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v6
       - run: rustup target add ${{ matrix.target }}

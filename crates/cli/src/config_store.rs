@@ -40,8 +40,6 @@ impl ConfigStore {
         Ok(Self::new(config_dir))
     }
 
-    // Step 5 の export が消費するまで bin では未使用。
-    #[allow(dead_code)]
     pub(crate) fn load(&self) -> ::anyhow::Result<Option<StoredConfig>> {
         match ::std::fs::read_to_string(&self.path) {
             Ok(contents) => Ok(Some(::serde_json::from_str(&contents)?)),

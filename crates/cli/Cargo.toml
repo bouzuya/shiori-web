@@ -18,7 +18,6 @@ url = "2"
 
 [dev-dependencies]
 serde_urlencoded = "0.7"
-temp-env = "0.3"
 tempfile = "3"
 
 [package]

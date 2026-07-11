@@ -1,10 +1,7 @@
+use crate::ConfigStore;
 use crate::TokenStore;
-
-const DEFAULT_EXPORT_URL: &str = "http://localhost:3000/export";
-const EMBEDDED_EXPORT_URL: Option<&str> = option_env!("SHIORI_EXPORT_URL");
-// Step 5 (export 再構成) で ConfigStore + /cli/config 参照に置き換えて削除する暫定措置。
-const EMBEDDED_CLIENT_ID: Option<&str> = option_env!("SHIORI_OIDC_CLIENT_ID");
-const EMBEDDED_CLIENT_SECRET: Option<&str> = option_env!("SHIORI_OIDC_CLIENT_SECRET");
+use crate::fetch_provider_metadata;
+use crate::fetch_server_config;
 
 pub(crate) struct ExportConfig {
     client_id: String,
@@ -14,35 +11,27 @@ pub(crate) struct ExportConfig {
 }
 
 impl ExportConfig {
-    pub(crate) fn default_with(export_url: Option<String>) -> ::anyhow::Result<Self> {
-        let client_id = EMBEDDED_CLIENT_ID.ok_or_else(|| {
-            ::anyhow::anyhow!("this binary was built without SHIORI_OIDC_CLIENT_ID")
+    /// `ConfigStore` に保存された server_url を基点に設定を解決する。
+    /// login 未実行 (server_url 未保存) の場合はエラーにする。
+    pub(crate) async fn resolve() -> ::anyhow::Result<Self> {
+        let stored = ConfigStore::from_env()?.load()?.ok_or_else(|| {
+            ::anyhow::anyhow!("no server configured. run `shiori login <SERVER_URL>` first")
         })?;
-        let client_secret = EMBEDDED_CLIENT_SECRET.ok_or_else(|| {
-            ::anyhow::anyhow!("this binary was built without SHIORI_OIDC_CLIENT_SECRET")
-        })?;
-        let export_url = export_url.unwrap_or_else(|| {
-            EMBEDDED_EXPORT_URL
-                .unwrap_or(DEFAULT_EXPORT_URL)
-                .to_string()
-        });
-        let export_url = validate_export_url(&export_url)?;
+        Self::fetch(&stored.server_url).await
+    }
+
+    /// サーバーの `/cli/config` と issuer の OIDC Discovery から設定を組み立てる。
+    /// export URL は `{server_url}/export` に固定する。
+    async fn fetch(server_url: &str) -> ::anyhow::Result<Self> {
+        let server_config = fetch_server_config(server_url).await?;
+        let metadata = fetch_provider_metadata(&server_config.issuer).await?;
         Ok(Self {
-            client_id: client_id.to_string(),
-            client_secret: client_secret.to_string(),
-            export_url,
-            token_endpoint: "https://oauth2.googleapis.com/token".to_string(),
+            client_id: server_config.client_id,
+            client_secret: server_config.client_secret,
+            export_url: format!("{}/export", server_url.trim_end_matches('/')),
+            token_endpoint: metadata.token_endpoint,
         })
     }
-}
-
-fn validate_export_url(value: &str) -> ::anyhow::Result<String> {
-    let url = ::url::Url::parse(value)
-        .map_err(|e| ::anyhow::anyhow!("invalid export URL `{value}`: {e}"))?;
-    if url.scheme() != "http" && url.scheme() != "https" {
-        ::anyhow::bail!("invalid export URL `{value}`: scheme must be http or https");
-    }
-    Ok(value.to_string())
 }
 
 #[derive(::serde::Deserialize)]
@@ -62,7 +51,7 @@ pub(crate) async fn run(config: ExportConfig) -> ::anyhow::Result<()> {
     let store = TokenStore::from_env()?;
     let stored = store
         .load()?
-        .ok_or_else(|| ::anyhow::anyhow!("not logged in. run `shiori login` first"))?;
+        .ok_or_else(|| ::anyhow::anyhow!("not logged in. run `shiori login <SERVER_URL>` first"))?;
 
     let id_token = refresh_id_token(&config, &stored.refresh_token).await?;
     let response = ::reqwest::Client::new()
@@ -139,6 +128,44 @@ mod tests {
     }
 
     #[::tokio::test]
+    async fn fetch_builds_config_from_server_config_and_discovery() -> ::anyhow::Result<()> {
+        let (issuer, idp) = spawn_json_server(
+            "200 OK",
+            r#"{"authorization_endpoint":"https://idp.example.com/auth","token_endpoint":"https://idp.example.com/token"}"#
+                .to_string(),
+        )
+        .await?;
+        let (server_url, server) = spawn_json_server(
+            "200 OK",
+            format!(r#"{{"client_id":"cid","client_secret":"sec","issuer":"{issuer}"}}"#),
+        )
+        .await?;
+
+        // 末尾スラッシュ付きの server_url でも export URL は正規化される
+        let config = ExportConfig::fetch(&format!("{server_url}/")).await?;
+        server.await??;
+        idp.await??;
+
+        assert_eq!(config.client_id, "cid");
+        assert_eq!(config.client_secret, "sec");
+        assert_eq!(config.export_url, format!("{server_url}/export"));
+        assert_eq!(config.token_endpoint, "https://idp.example.com/token");
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn fetch_errors_when_server_config_is_unavailable() -> ::anyhow::Result<()> {
+        let (server_url, server) = spawn_json_server("404 Not Found", "".to_string()).await?;
+        let result = ExportConfig::fetch(&server_url).await;
+        server.await??;
+        let error = result
+            .err()
+            .ok_or_else(|| ::anyhow::anyhow!("expected fetch to return an error"))?;
+        assert!(error.to_string().contains("404"));
+        Ok(())
+    }
+
+    #[::tokio::test]
     async fn refresh_id_token_returns_id_token() -> ::anyhow::Result<()> {
         let (token_endpoint, server) =
             spawn_json_server("200 OK", r#"{"id_token":"idt"}"#.to_string()).await?;
@@ -205,29 +232,5 @@ mod tests {
         let message = error.to_string();
         assert!(message.contains("http://127.0.0.1:3000/export"));
         assert!(message.contains("is the server running"));
-    }
-
-    #[test]
-    fn export_config_rejects_invalid_url() {
-        let result = ExportConfig::default_with(Some("not-a-url".to_string()));
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn export_config_accepts_http_url() -> ::anyhow::Result<()> {
-        let config = ExportConfig::default_with(Some("http://127.0.0.1:3000/export".to_string()))?;
-        assert_eq!(config.export_url, "http://127.0.0.1:3000/export");
-        Ok(())
-    }
-
-    #[test]
-    fn export_config_rejects_non_http_scheme() {
-        let result = ExportConfig::default_with(Some("ftp://127.0.0.1/export".to_string()));
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn default_export_url_matches_compile_time_env() {
-        assert_eq!(EMBEDDED_EXPORT_URL, option_env!("SHIORI_EXPORT_URL"));
     }
 }
