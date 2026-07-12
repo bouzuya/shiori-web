@@ -26,18 +26,18 @@ pub(crate) struct TokenStore {
 }
 
 impl TokenStore {
-    pub(crate) fn new(state_dir: impl AsRef<::std::path::Path>) -> Self {
+    pub(crate) fn new(state_home: impl AsRef<::std::path::Path>) -> Self {
         Self {
-            path: state_dir.as_ref().join(APP_DIR).join(TOKEN_FILE),
+            path: state_home.as_ref().join(APP_DIR).join(TOKEN_FILE),
         }
     }
 
     pub(crate) fn from_env() -> ::anyhow::Result<Self> {
-        let state_dir = resolve_state_dir(
+        let state_home = resolve_state_home(
             ::std::env::var("XDG_STATE_HOME").ok().as_deref(),
             ::std::env::var("HOME").ok().as_deref(),
         )?;
-        Ok(Self::new(state_dir))
+        Ok(Self::new(state_home))
     }
 
     // 5d の export が消費するまで bin では未使用。
@@ -60,7 +60,7 @@ impl TokenStore {
     }
 }
 
-fn resolve_state_dir(
+fn resolve_state_home(
     xdg_state_home: Option<&str>,
     home: Option<&str>,
 ) -> ::anyhow::Result<::std::path::PathBuf> {
@@ -123,28 +123,28 @@ mod tests {
     }
 
     #[test]
-    fn resolve_state_dir_prefers_xdg_state_home() -> ::anyhow::Result<()> {
-        let dir = resolve_state_dir(Some("/xdg/state"), Some("/home/u"))?;
+    fn resolve_state_home_prefers_xdg_state_home() -> ::anyhow::Result<()> {
+        let dir = resolve_state_home(Some("/xdg/state"), Some("/home/u"))?;
         assert_eq!(dir, ::std::path::PathBuf::from("/xdg/state"));
         Ok(())
     }
 
     #[test]
-    fn resolve_state_dir_falls_back_to_home_local_state() -> ::anyhow::Result<()> {
-        let dir = resolve_state_dir(None, Some("/home/u"))?;
+    fn resolve_state_home_falls_back_to_home_local_state() -> ::anyhow::Result<()> {
+        let dir = resolve_state_home(None, Some("/home/u"))?;
         assert_eq!(dir, ::std::path::PathBuf::from("/home/u/.local/state"));
         Ok(())
     }
 
     #[test]
-    fn resolve_state_dir_treats_empty_xdg_as_unset() -> ::anyhow::Result<()> {
-        let dir = resolve_state_dir(Some(""), Some("/home/u"))?;
+    fn resolve_state_home_treats_empty_xdg_as_unset() -> ::anyhow::Result<()> {
+        let dir = resolve_state_home(Some(""), Some("/home/u"))?;
         assert_eq!(dir, ::std::path::PathBuf::from("/home/u/.local/state"));
         Ok(())
     }
 
     #[test]
-    fn resolve_state_dir_errors_without_xdg_or_home() {
-        assert!(resolve_state_dir(None, None).is_err());
+    fn resolve_state_home_errors_without_xdg_or_home() {
+        assert!(resolve_state_home(None, None).is_err());
     }
 }
