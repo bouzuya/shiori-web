@@ -146,8 +146,6 @@ impl ExportCache {
         Ok(())
     }
 
-    // login が消費するまで bin では未使用。
-    #[allow(dead_code)]
     pub(crate) fn remove(&self) -> ::anyhow::Result<()> {
         match ::std::fs::remove_file(&self.path) {
             Ok(()) => Ok(()),

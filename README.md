@@ -73,6 +73,21 @@ cargo run -p cli -- export | jq
 cargo run -p cli -- export | fzf
 ```
 
+`export` writes a local cache to `$XDG_CACHE_HOME/shiori/export.ndjson`
+(fallback: `$HOME/.cache/shiori/export.ndjson`) and only fetches the
+`updated_at` diff on the next run. Constraints:
+
+- Server-side deletions are not reflected by the diff. Run
+  `cargo run -p cli -- export --refresh` to discard the cache and refetch
+  all bookmarks; otherwise deleted bookmarks stay in the local cache.
+- `since` is boundary-inclusive on `updated_at`. In the unlikely case that
+  writes with the exact same millisecond timestamp as the previous max
+  arrive between two `export` runs, they may be missed. `--refresh`
+  reconciles this as well.
+
+`login` removes the cache on success so that a new user / server does not
+inherit stale bookmarks.
+
 ## Troubleshooting
 
 - `export request failed with 401 Unauthorized` or `403 Forbidden`: run `cargo run -p cli -- login <SERVER_URL>` again, then confirm the server's `OIDC_CLI_CLIENT_ID` / `OIDC_CLI_CLIENT_SECRET` point to the CLI OAuth client.
