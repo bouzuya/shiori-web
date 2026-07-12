@@ -48,7 +48,7 @@ struct TokenRefresh<'a> {
     refresh_token: &'a str,
 }
 
-pub(crate) async fn run(config: ExportConfig) -> ::anyhow::Result<()> {
+pub(crate) async fn run(config: ExportConfig, _refresh: bool) -> ::anyhow::Result<()> {
     let store = TokenStore::from_env()?;
     let stored = store
         .load()?
@@ -60,34 +60,60 @@ pub(crate) async fn run(config: ExportConfig) -> ::anyhow::Result<()> {
         .bearer_auth(id_token)
         .send()
         .await
-        .map_err(|e| export_transport_error_message(&config.export_url, &e.to_string()))?;
+        .map_err(|e| build_export_transport_error(&config.export_url, &e.to_string()))?;
     let status = response.status();
     let body = response.text().await?;
     if !status.is_success() {
-        return export_error_message(status, &config.export_url, &body);
+        return Err(build_export_error(status, &config.export_url, &body));
     }
 
     print!("{body}");
     Ok(())
 }
 
-fn export_error_message(
-    status: ::reqwest::StatusCode,
-    url: &str,
-    body: &str,
-) -> ::anyhow::Result<()> {
+fn build_export_error(status: ::reqwest::StatusCode, url: &str, body: &str) -> ::anyhow::Error {
     if status == ::reqwest::StatusCode::UNAUTHORIZED || status == ::reqwest::StatusCode::FORBIDDEN {
-        ::anyhow::bail!(
+        return ::anyhow::anyhow!(
             "export request to {url} failed with {status}. run `shiori login` and retry"
         );
     }
-    ::anyhow::bail!("export request to {url} failed with {status}: {body}");
+    ::anyhow::anyhow!("export request to {url} failed with {status}: {body}")
 }
 
-fn export_transport_error_message(url: &str, detail: &str) -> ::anyhow::Error {
+fn build_export_transport_error(url: &str, detail: &str) -> ::anyhow::Error {
     ::anyhow::anyhow!(
         "failed to call export endpoint {url}: {detail}; is the server running and URL correct?"
     )
+}
+
+/// export エンドポイントに GET し、NDJSON を parse して返す。
+/// `since` が `Some` のとき `?since=` クエリを付けて差分だけを取得する。
+// run() が消費するまで bin では未使用。
+#[allow(dead_code)]
+pub(crate) async fn fetch_export(
+    config: &ExportConfig,
+    id_token: &str,
+    since: Option<&str>,
+) -> ::anyhow::Result<Vec<CachedBookmark>> {
+    let mut request = ::reqwest::Client::new()
+        .get(&config.export_url)
+        .bearer_auth(id_token);
+    if let Some(since) = since {
+        request = request.query(&[("since", since)]);
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| build_export_transport_error(&config.export_url, &e.to_string()))?;
+    let status = response.status();
+    let body = response.text().await?;
+    if !status.is_success() {
+        return Err(build_export_error(status, &config.export_url, &body));
+    }
+    body.lines()
+        .filter(|l| !l.is_empty())
+        .map(CachedBookmark::parse)
+        .collect()
 }
 
 /// cache と差分を id でマージする。同一 id は incoming (差分) で上書き。
@@ -236,36 +262,30 @@ mod tests {
     }
 
     #[test]
-    fn export_unauthorized_error_prompts_relogin() -> ::anyhow::Result<()> {
-        let error = export_error_message(
+    fn export_unauthorized_error_prompts_relogin() {
+        let error = build_export_error(
             ::reqwest::StatusCode::UNAUTHORIZED,
             "http://127.0.0.1:3000/export",
             "",
-        )
-        .err()
-        .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
+        );
         assert!(error.to_string().contains("run `shiori login`"));
         assert!(error.to_string().contains("http://127.0.0.1:3000/export"));
-        Ok(())
     }
 
     #[test]
-    fn export_forbidden_error_prompts_relogin() -> ::anyhow::Result<()> {
-        let error = export_error_message(
+    fn export_forbidden_error_prompts_relogin() {
+        let error = build_export_error(
             ::reqwest::StatusCode::FORBIDDEN,
             "http://127.0.0.1:3000/export",
             "",
-        )
-        .err()
-        .ok_or_else(|| ::anyhow::anyhow!("expected error"))?;
+        );
         assert!(error.to_string().contains("run `shiori login`"));
         assert!(error.to_string().contains("http://127.0.0.1:3000/export"));
-        Ok(())
     }
 
     #[test]
     fn export_transport_error_mentions_endpoint_and_hint() {
-        let error = export_transport_error_message("http://127.0.0.1:3000/export", "boom");
+        let error = build_export_transport_error("http://127.0.0.1:3000/export", "boom");
         let message = error.to_string();
         assert!(message.contains("http://127.0.0.1:3000/export"));
         assert!(message.contains("is the server running"));
@@ -381,5 +401,109 @@ mod tests {
     fn max_updated_at_returns_none_for_empty() {
         let bookmarks: Vec<CachedBookmark> = vec![];
         assert_eq!(max_updated_at(&bookmarks), None);
+    }
+
+    #[::tokio::test]
+    async fn fetch_export_returns_parsed_bookmarks() -> ::anyhow::Result<()> {
+        let body = format!(
+            "{}\n{}\n",
+            ::serde_json::json!({
+                "comment": "",
+                "created_at": "2026-01-01T00:00:00.000Z",
+                "id": "a",
+                "title": "",
+                "updated_at": "2026-01-01T00:00:00.000Z",
+                "url": "https://example.com/a",
+            }),
+            ::serde_json::json!({
+                "comment": "",
+                "created_at": "2026-01-02T00:00:00.000Z",
+                "id": "b",
+                "title": "",
+                "updated_at": "2026-01-02T00:00:00.000Z",
+                "url": "https://example.com/b",
+            }),
+        );
+        let (export_url, server) = spawn_json_server("200 OK", body).await?;
+        let config = for_test_config(format!("{export_url}/export"), "http://x".to_string());
+
+        let bookmarks = fetch_export(&config, "idt", None).await?;
+        let request_line = server.await??;
+
+        assert_eq!(bookmarks.len(), 2);
+        assert_eq!(bookmarks[0].id(), "a");
+        assert_eq!(bookmarks[1].id(), "b");
+        assert!(request_line.starts_with("GET /export "));
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn fetch_export_sends_since_as_query_parameter() -> ::anyhow::Result<()> {
+        let (export_url, server) = spawn_json_server("200 OK", String::new()).await?;
+        let config = for_test_config(format!("{export_url}/export"), "http://x".to_string());
+
+        let _ = fetch_export(&config, "idt", Some("2026-07-06T23:06:49.751Z")).await?;
+        let request_line = server.await??;
+
+        assert!(
+            request_line.starts_with("GET /export?since=2026-07-06T23%3A06%3A49.751Z "),
+            "unexpected request line: {request_line}"
+        );
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn fetch_export_returns_empty_vec_for_empty_body() -> ::anyhow::Result<()> {
+        let (export_url, server) = spawn_json_server("200 OK", String::new()).await?;
+        let config = for_test_config(format!("{export_url}/export"), "http://x".to_string());
+
+        let bookmarks = fetch_export(&config, "idt", None).await?;
+        server.await??;
+
+        assert!(bookmarks.is_empty());
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn fetch_export_errors_on_unauthorized() -> ::anyhow::Result<()> {
+        let (export_url, server) = spawn_json_server("401 Unauthorized", String::new()).await?;
+        let config = for_test_config(format!("{export_url}/export"), "http://x".to_string());
+
+        let error = fetch_export(&config, "idt", None)
+            .await
+            .err()
+            .ok_or_else(|| ::anyhow::anyhow!("expected fetch_export to return an error"))?;
+        server.await??;
+
+        assert!(error.to_string().contains("run `shiori login`"));
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn fetch_export_errors_on_server_error() -> ::anyhow::Result<()> {
+        let (export_url, server) =
+            spawn_json_server("500 Internal Server Error", "boom".to_string()).await?;
+        let config = for_test_config(format!("{export_url}/export"), "http://x".to_string());
+
+        let error = fetch_export(&config, "idt", None)
+            .await
+            .err()
+            .ok_or_else(|| ::anyhow::anyhow!("expected fetch_export to return an error"))?;
+        server.await??;
+
+        assert!(error.to_string().contains("500"));
+        Ok(())
+    }
+
+    #[::tokio::test]
+    async fn fetch_export_errors_on_malformed_line() -> ::anyhow::Result<()> {
+        let (export_url, server) = spawn_json_server("200 OK", "not json\n".to_string()).await?;
+        let config = for_test_config(format!("{export_url}/export"), "http://x".to_string());
+
+        let result = fetch_export(&config, "idt", None).await;
+        server.await??;
+
+        assert!(result.is_err());
+        Ok(())
     }
 }

@@ -35,9 +35,17 @@ struct Cli {
 #[derive(::clap::Subcommand)]
 enum Subcommand {
     /// login 済みサーバーからブックマークを NDJSON としてエクスポートし stdout へ出す。
-    Export,
+    Export(ExportArgs),
     /// 指定サーバーの OIDC (loopback + PKCE) でログインし、トークンと接続先をローカルに保存する。
     Login(LoginArgs),
+}
+
+#[derive(::clap::Args)]
+struct ExportArgs {
+    /// ローカルキャッシュを破棄して全件を再取得する
+    /// (サーバー側で削除されたブックマークの反映にはこれが必要)。
+    #[arg(long)]
+    refresh: bool,
 }
 
 #[derive(::clap::Args)]
@@ -51,7 +59,7 @@ struct LoginArgs {
 #[::tokio::main]
 async fn main() -> ::anyhow::Result<()> {
     match <Cli as ::clap::Parser>::parse().subcommand {
-        Subcommand::Export => run_export(ExportConfig::resolve().await?).await,
+        Subcommand::Export(args) => run_export(ExportConfig::resolve().await?, args.refresh).await,
         Subcommand::Login(args) => {
             run(LoginConfig::fetch(&args.server_url, args.port).await?).await
         }
@@ -101,9 +109,20 @@ mod tests {
     #[test]
     fn parses_export_subcommand() -> ::anyhow::Result<()> {
         let cli = <Cli as ::clap::Parser>::try_parse_from(["shiori", "export"])?;
-        let Subcommand::Export = cli.subcommand else {
+        let Subcommand::Export(args) = cli.subcommand else {
             return Err(::anyhow::anyhow!("expected export subcommand"));
         };
+        assert!(!args.refresh);
+        Ok(())
+    }
+
+    #[test]
+    fn parses_export_subcommand_with_refresh_flag() -> ::anyhow::Result<()> {
+        let cli = <Cli as ::clap::Parser>::try_parse_from(["shiori", "export", "--refresh"])?;
+        let Subcommand::Export(args) = cli.subcommand else {
+            return Err(::anyhow::anyhow!("expected export subcommand"));
+        };
+        assert!(args.refresh);
         Ok(())
     }
 
