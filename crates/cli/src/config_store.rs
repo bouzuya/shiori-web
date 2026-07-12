@@ -26,18 +26,18 @@ pub(crate) struct ConfigStore {
 }
 
 impl ConfigStore {
-    pub(crate) fn new(config_dir: impl AsRef<::std::path::Path>) -> Self {
+    pub(crate) fn new(config_home: impl AsRef<::std::path::Path>) -> Self {
         Self {
-            path: config_dir.as_ref().join(APP_DIR).join(CONFIG_FILE),
+            path: config_home.as_ref().join(APP_DIR).join(CONFIG_FILE),
         }
     }
 
     pub(crate) fn from_env() -> ::anyhow::Result<Self> {
-        let config_dir = resolve_config_dir(
+        let config_home = resolve_config_home(
             ::std::env::var("XDG_CONFIG_HOME").ok().as_deref(),
             ::std::env::var("HOME").ok().as_deref(),
         )?;
-        Ok(Self::new(config_dir))
+        Ok(Self::new(config_home))
     }
 
     pub(crate) fn load(&self) -> ::anyhow::Result<Option<StoredConfig>> {
@@ -57,7 +57,7 @@ impl ConfigStore {
     }
 }
 
-fn resolve_config_dir(
+fn resolve_config_home(
     xdg_config_home: Option<&str>,
     home: Option<&str>,
 ) -> ::anyhow::Result<::std::path::PathBuf> {
@@ -102,28 +102,28 @@ mod tests {
     }
 
     #[test]
-    fn resolve_config_dir_prefers_xdg_config_home() -> ::anyhow::Result<()> {
-        let dir = resolve_config_dir(Some("/xdg/config"), Some("/home/u"))?;
+    fn resolve_config_home_prefers_xdg_config_home() -> ::anyhow::Result<()> {
+        let dir = resolve_config_home(Some("/xdg/config"), Some("/home/u"))?;
         assert_eq!(dir, ::std::path::PathBuf::from("/xdg/config"));
         Ok(())
     }
 
     #[test]
-    fn resolve_config_dir_falls_back_to_home_dot_config() -> ::anyhow::Result<()> {
-        let dir = resolve_config_dir(None, Some("/home/u"))?;
+    fn resolve_config_home_falls_back_to_home_dot_config() -> ::anyhow::Result<()> {
+        let dir = resolve_config_home(None, Some("/home/u"))?;
         assert_eq!(dir, ::std::path::PathBuf::from("/home/u/.config"));
         Ok(())
     }
 
     #[test]
-    fn resolve_config_dir_treats_empty_xdg_as_unset() -> ::anyhow::Result<()> {
-        let dir = resolve_config_dir(Some(""), Some("/home/u"))?;
+    fn resolve_config_home_treats_empty_xdg_as_unset() -> ::anyhow::Result<()> {
+        let dir = resolve_config_home(Some(""), Some("/home/u"))?;
         assert_eq!(dir, ::std::path::PathBuf::from("/home/u/.config"));
         Ok(())
     }
 
     #[test]
-    fn resolve_config_dir_errors_without_xdg_or_home() {
-        assert!(resolve_config_dir(None, None).is_err());
+    fn resolve_config_home_errors_without_xdg_or_home() {
+        assert!(resolve_config_home(None, None).is_err());
     }
 }
