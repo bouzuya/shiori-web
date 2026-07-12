@@ -5,8 +5,6 @@ const CACHE_FILE: &str = "export.ndjson";
 /// ソート (`created_at`)・`since` 導出 (`updated_at`) に必要なキーを保持する。
 /// 行を生のまま保持するのは、server 側のスキーマ進化 (フィールド追加) で
 /// データを欠落させず、出力を server の応答とバイト単位で一致させるため。
-// export が消費するまで bin では未使用。
-#[allow(dead_code)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct CachedBookmark {
     created_at: String,
@@ -22,7 +20,6 @@ struct Keys {
     updated_at: String,
 }
 
-#[allow(dead_code)]
 impl CachedBookmark {
     pub(crate) fn parse(line: &str) -> ::anyhow::Result<Self> {
         let keys: Keys = ::serde_json::from_str(line)?;
@@ -89,13 +86,10 @@ impl CachedBookmark {
 
 /// `$XDG_CACHE_HOME/shiori/export.ndjson` (未設定なら `$HOME/.cache/shiori/export.ndjson`)
 /// に export 結果の local cache を読み書きする。
-// export / login が消費するまで bin では未使用。
-#[allow(dead_code)]
 pub(crate) struct ExportCache {
     path: ::std::path::PathBuf,
 }
 
-#[allow(dead_code)]
 impl ExportCache {
     pub(crate) fn new(cache_home: impl AsRef<::std::path::Path>) -> Self {
         Self {
@@ -152,6 +146,8 @@ impl ExportCache {
         Ok(())
     }
 
+    // login が消費するまで bin では未使用。
+    #[allow(dead_code)]
     pub(crate) fn remove(&self) -> ::anyhow::Result<()> {
         match ::std::fs::remove_file(&self.path) {
             Ok(()) => Ok(()),

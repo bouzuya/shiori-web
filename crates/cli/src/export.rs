@@ -1,5 +1,6 @@
 use crate::CachedBookmark;
 use crate::ConfigStore;
+use crate::ExportCache;
 use crate::TokenStore;
 use crate::fetch_provider_metadata;
 use crate::fetch_server_config;
@@ -48,26 +49,29 @@ struct TokenRefresh<'a> {
     refresh_token: &'a str,
 }
 
-pub(crate) async fn run(config: ExportConfig, _refresh: bool) -> ::anyhow::Result<()> {
+pub(crate) async fn run(config: ExportConfig, refresh: bool) -> ::anyhow::Result<()> {
     let store = TokenStore::from_env()?;
     let stored = store
         .load()?
         .ok_or_else(|| ::anyhow::anyhow!("not logged in. run `shiori login <SERVER_URL>` first"))?;
+    let cache_store = ExportCache::from_env()?;
+    let cache = if refresh {
+        Vec::new()
+    } else {
+        cache_store.load()?.unwrap_or_default()
+    };
+    let since = max_updated_at(&cache).map(str::to_string);
 
     let id_token = refresh_id_token(&config, &stored.refresh_token).await?;
-    let response = ::reqwest::Client::new()
-        .get(&config.export_url)
-        .bearer_auth(id_token)
-        .send()
-        .await
-        .map_err(|e| build_export_transport_error(&config.export_url, &e.to_string()))?;
-    let status = response.status();
-    let body = response.text().await?;
-    if !status.is_success() {
-        return Err(build_export_error(status, &config.export_url, &body));
-    }
+    let incoming = fetch_export(&config, &id_token, since.as_deref()).await?;
 
-    print!("{body}");
+    let mut merged = merge_bookmarks(cache, incoming);
+    sort_bookmarks(&mut merged);
+    cache_store.save(&merged)?;
+
+    for bookmark in &merged {
+        ::std::println!("{}", bookmark.line());
+    }
     Ok(())
 }
 
@@ -88,8 +92,6 @@ fn build_export_transport_error(url: &str, detail: &str) -> ::anyhow::Error {
 
 /// export エンドポイントに GET し、NDJSON を parse して返す。
 /// `since` が `Some` のとき `?since=` クエリを付けて差分だけを取得する。
-// run() が消費するまで bin では未使用。
-#[allow(dead_code)]
 pub(crate) async fn fetch_export(
     config: &ExportConfig,
     id_token: &str,
@@ -117,8 +119,6 @@ pub(crate) async fn fetch_export(
 }
 
 /// cache と差分を id でマージする。同一 id は incoming (差分) で上書き。
-// run() が消費するまで bin では未使用。
-#[allow(dead_code)]
 pub(crate) fn merge_bookmarks(
     cache: Vec<CachedBookmark>,
     incoming: Vec<CachedBookmark>,
@@ -134,8 +134,6 @@ pub(crate) fn merge_bookmarks(
 /// `created_at` 降順、同時刻なら `id` 降順でソートする。
 /// タイムスタンプは固定幅 RFC3339 UTC (例: `2026-07-06T23:06:49.751Z`) を前提とし、
 /// 辞書順 = 時刻順が成り立つ。
-// run() が消費するまで bin では未使用。
-#[allow(dead_code)]
 pub(crate) fn sort_bookmarks(bookmarks: &mut [CachedBookmark]) {
     bookmarks.sort_by(|a, b| {
         b.created_at()
@@ -146,8 +144,6 @@ pub(crate) fn sort_bookmarks(bookmarks: &mut [CachedBookmark]) {
 
 /// `updated_at` の最大値を返す。空なら `None`。
 /// 次回リクエストの `since` パラメーターに使う。
-// run() が消費するまで bin では未使用。
-#[allow(dead_code)]
 pub(crate) fn max_updated_at(bookmarks: &[CachedBookmark]) -> Option<&str> {
     bookmarks.iter().map(|b| b.updated_at()).max()
 }
