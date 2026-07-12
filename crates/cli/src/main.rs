@@ -15,6 +15,7 @@ pub(crate) use self::config_store::StoredConfig;
 pub(crate) use self::discovery::fetch_provider_metadata;
 pub(crate) use self::export::ExportConfig;
 pub(crate) use self::export::run as run_export;
+pub(crate) use self::export_cache::CachedBookmark;
 pub(crate) use self::login::LoginConfig;
 pub(crate) use self::login::run;
 pub(crate) use self::loopback::receive_callback;
