@@ -18,10 +18,11 @@ pub trait BookmarkReader: Send + Sync {
         page_token: Option<PageToken>,
     ) -> ::anyhow::Result<BookmarkList>;
 
-    /// ユーザーの全ブックマークを `created_at` 降順で返す (ページネーションなし)。
+    /// ユーザーの全ブックマークを返す (ページネーションなし)。
     /// 削除は物理削除のため、生存しているブックマークのみが対象。
+    /// `since` が `None` の場合、`created_at` 降順で返す。
     /// `since` が `Some` の場合、`updated_at` がその日時以降 (境界を含む) の
-    /// ブックマークのみを返す。
+    /// ブックマークのみを `updated_at` 降順で返す。
     async fn list_all(
         &self,
         user_id: UserId,
@@ -131,7 +132,11 @@ mod tests {
                         .is_none_or(|s| v.updated_at >= s.to_rfc3339())
                 })
                 .collect();
-            items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+            if since.is_some() {
+                items.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+            } else {
+                items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+            }
             Ok(items)
         }
     }

@@ -97,9 +97,17 @@ impl BookmarkReader for FirestoreBookmarkReader {
             .firestore
             .collection(BookmarksCollection::collection_path(&user_id))
             .map_err(|e| ::anyhow::anyhow!(e))?;
-        let mut query = collection_ref
-            .order_by("created_at", "desc")
-            .map_err(|e| ::anyhow::anyhow!(e))?;
+        // since 指定時は updated_at で範囲フィルタするため、Firestore の制約
+        // (不等号フィルタのフィールドを最初の order_by にする) に合わせて
+        // updated_at で並べる。未指定時は従来どおり created_at 降順。
+        let mut query = match &since {
+            None => collection_ref
+                .order_by("created_at", "desc")
+                .map_err(|e| ::anyhow::anyhow!(e))?,
+            Some(_) => collection_ref
+                .order_by("updated_at", "desc")
+                .map_err(|e| ::anyhow::anyhow!(e))?,
+        };
         if let Some(since) = since {
             let filter =
                 ::bouzuya_firestore_client::Filter::r#where("updated_at", ">=", since.to_rfc3339())
@@ -336,6 +344,38 @@ mod tests {
             urls,
             vec!["https://example.com/new", "https://example.com/boundary"]
         );
+        Ok(())
+    }
+
+    #[::tokio::test]
+    #[::serial_test::serial]
+    async fn test_list_all_with_since_sorts_by_updated_at_desc() -> ::anyhow::Result<()> {
+        use kernel::BookmarkRepository as _;
+        let (reader, repo) = firestore_reader_and_repo()?;
+        let user_id = UserId::new();
+        // created_at の順と updated_at の順が食い違うデータを用意し、
+        // since 指定時に updated_at 降順で並ぶことを確認する。
+        for (path, created_at, updated_at) in [
+            ("a", "2024-06-01T00:00:00.000Z", "2024-02-01T00:00:00.000Z"),
+            ("b", "2024-03-01T00:00:00.000Z", "2024-12-01T00:00:00.000Z"),
+        ] {
+            let bookmark = Bookmark::new(
+                "c".parse::<Comment>()?,
+                DateTime::from_rfc3339(created_at)?,
+                None,
+                BookmarkId::new(),
+                "t".parse::<Title>()?,
+                DateTime::from_rfc3339(updated_at)?,
+                format!("https://example.com/{path}").parse::<Url>()?,
+                user_id,
+            );
+            repo.store(None, bookmark).await?;
+        }
+        let since = DateTime::from_rfc3339("2024-01-01T00:00:00.000Z")?;
+        let all = reader.list_all(user_id, Some(since)).await?;
+        let urls: Vec<&str> = all.iter().map(|v| v.url.as_str()).collect();
+        // updated_at 降順: b(2024-12) -> a(2024-02)
+        assert_eq!(urls, vec!["https://example.com/b", "https://example.com/a"]);
         Ok(())
     }
 }
