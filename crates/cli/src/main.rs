@@ -35,16 +35,16 @@ struct Cli {
 
 #[derive(::clap::Subcommand)]
 enum Subcommand {
-    /// login 済みサーバーからブックマークを NDJSON としてエクスポートし stdout へ出す。
+    /// Export bookmarks from the logged-in server as NDJSON to stdout.
     Export(ExportArgs),
-    /// 指定サーバーの OIDC (loopback + PKCE) でログインし、トークンと接続先をローカルに保存する。
+    /// Log in to the given server via OIDC (loopback + PKCE) and save the token and target locally.
     Login(LoginArgs),
 }
 
 #[derive(::clap::Args)]
 struct ExportArgs {
-    /// ローカルキャッシュを破棄して全件を再取得する
-    /// (サーバー側で削除されたブックマークの反映にはこれが必要)。
+    /// Discard the local cache and refetch all bookmarks
+    /// (required to reflect bookmarks deleted on the server).
     #[arg(long)]
     refresh: bool,
 }
@@ -53,7 +53,7 @@ struct ExportArgs {
 struct LoginArgs {
     #[arg(default_value_t = 9787, env = "SHIORI_LOOPBACK_PORT", long)]
     port: u16,
-    /// 接続先の shiori サーバー URL (例: https://shiori.example.com)
+    /// The shiori server URL to connect to (e.g. https://shiori.example.com)
     server_url: String,
 }
 
