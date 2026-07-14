@@ -1,0 +1,64 @@
+{
+    "realm": "shiori",
+    "enabled": true,
+    "sslRequired": "none",
+    "loginTheme": "keycloak",
+    "clients": [
+        {
+            "clientId": "shiori-web",
+            "name": "shiori web (server)",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "publicClient": false,
+            "secret": "shiori-web-secret",
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": false,
+            "redirectUris": [
+                "http://localhost:3000/auth/callback",
+                "http://localhost:3000/*"
+            ],
+            "webOrigins": [
+                "http://localhost:3000"
+            ],
+            "attributes": {
+                "pkce.code.challenge.method": "S256"
+            }
+        },
+        {
+            "clientId": "shiori-cli",
+            "name": "shiori cli (loopback + PKCE)",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "publicClient": false,
+            "secret": "shiori-cli-secret",
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": false,
+            "redirectUris": [
+                "http://127.0.0.1/*"
+            ],
+            "webOrigins": [],
+            "attributes": {
+                "pkce.code.challenge.method": "S256"
+            }
+        }
+    ],
+    "users": [
+        {
+            "username": "shiori",
+            "enabled": true,
+            "email": "shiori@example.com",
+            "emailVerified": true,
+            "firstName": "Shiori",
+            "lastName": "User",
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "password",
+                    "temporary": false
+                }
+            ]
+        }
+    ]
+}

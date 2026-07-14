@@ -4,6 +4,23 @@ services:
     volumes:
       - ./firebase:/firebase
 
+  # ローカル開発用の代替 OP (OpenID Provider)。
+  # workspace とネットワーク名前空間を共有し、workspace の localhost:8080 で
+  # 待ち受ける。これにより issuer `http://localhost:8080/realms/shiori` が
+  # コンテナ内 (server / CLI) とホストのブラウザ (VS Code のポート転送) の
+  # 双方で一致する。realm / client / テストユーザーは import で自動投入する。
+  keycloak:
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      - workspace
+    environment:
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+    image: quay.io/keycloak/keycloak:26.4
+    network_mode: "service:workspace"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+
   workspace:
     environment:
       - FIRESTORE_EMULATOR_HOST=firebase:8080

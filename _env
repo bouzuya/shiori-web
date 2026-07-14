@@ -2,14 +2,26 @@
 BASE_PATH=
 COOKIE_SIGNING_SECRET=replace_with_64bytes_or_more_hex
 DATABASE_ID=(default)
-OIDC_CLIENT_ID=replace_with_web_oauth_client_id.apps.googleusercontent.com
-OIDC_CLIENT_SECRET=replace_with_web_oauth_client_secret
-OIDC_CLI_CLIENT_ID=replace_with_cli_oauth_client_id.apps.googleusercontent.com
-OIDC_CLI_CLIENT_SECRET=replace_with_cli_oauth_client_secret
-OIDC_ISSUER_URL=https://accounts.google.com
+# 既定はローカル開発用 Keycloak (compose の keycloak サービス) を指す。
+# realm / client / テストユーザーは keycloak/shiori-realm.json から import される。
+# テストユーザー: shiori / password
+OIDC_CLIENT_ID=shiori-web
+OIDC_CLIENT_SECRET=shiori-web-secret
+OIDC_CLI_CLIENT_ID=shiori-cli
+OIDC_CLI_CLIENT_SECRET=shiori-cli-secret
+OIDC_ISSUER_URL=http://localhost:8080/realms/shiori
 OIDC_REDIRECT_URI=http://localhost:3000/auth/callback
 PORT=3000
-PROJECT_ID=replace_with_gcp_project_id
+PROJECT_ID=demo-project
+
+# Google を OP に使う場合は上の OIDC_* を次のように差し替える。
+# OIDC_CLIENT_ID=replace_with_web_oauth_client_id.apps.googleusercontent.com
+# OIDC_CLIENT_SECRET=replace_with_web_oauth_client_secret
+# OIDC_CLI_CLIENT_ID=replace_with_cli_oauth_client_id.apps.googleusercontent.com
+# OIDC_CLI_CLIENT_SECRET=replace_with_cli_oauth_client_secret
+# OIDC_ISSUER_URL=https://accounts.google.com
+# OIDC_REDIRECT_URI=http://localhost:3000/auth/callback
+# PROJECT_ID=replace_with_gcp_project_id
 
 # CLI runtime overrides
 # SHIORI_LOOPBACK_PORT=9787
