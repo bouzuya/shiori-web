@@ -28,6 +28,7 @@ pub(crate) use self::token_store::StoredToken;
 pub(crate) use self::token_store::TokenStore;
 
 #[derive(::clap::Parser)]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     subcommand: Subcommand,
@@ -138,5 +139,15 @@ mod tests {
     #[test]
     fn requires_a_subcommand() {
         assert!(<Cli as ::clap::Parser>::try_parse_from(["shiori"]).is_err());
+    }
+
+    #[test]
+    fn version_flag_reports_crate_version() -> ::anyhow::Result<()> {
+        let error = <Cli as ::clap::Parser>::try_parse_from(["shiori", "--version"])
+            .err()
+            .ok_or_else(|| ::anyhow::anyhow!("expected --version to exit"))?;
+        assert_eq!(error.kind(), ::clap::error::ErrorKind::DisplayVersion);
+        assert!(error.to_string().contains(::std::env!("CARGO_PKG_VERSION")));
+        Ok(())
     }
 }
