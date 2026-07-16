@@ -1,3 +1,5 @@
+pub(crate) mod export;
+
 #[derive(::clap::Subcommand)]
 pub(crate) enum Subcommand {
     /// Export bookmarks from the logged-in server as NDJSON to stdout.
