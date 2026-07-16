@@ -6,6 +6,7 @@ mod login;
 mod loopback;
 mod oidc;
 mod server_config;
+mod subcommand;
 #[cfg(test)]
 mod test_helpers;
 mod token_store;
@@ -24,6 +25,7 @@ pub(crate) use self::oidc::TokenExchange;
 pub(crate) use self::oidc::build_authorization_request;
 pub(crate) use self::oidc::exchange_code;
 pub(crate) use self::server_config::fetch_server_config;
+pub(crate) use self::subcommand::Subcommand;
 pub(crate) use self::token_store::StoredToken;
 pub(crate) use self::token_store::TokenStore;
 
@@ -32,30 +34,6 @@ pub(crate) use self::token_store::TokenStore;
 struct Cli {
     #[command(subcommand)]
     subcommand: Subcommand,
-}
-
-#[derive(::clap::Subcommand)]
-enum Subcommand {
-    /// Export bookmarks from the logged-in server as NDJSON to stdout.
-    Export(ExportArgs),
-    /// Log in to the given server via OIDC (loopback + PKCE) and save the token and target locally.
-    Login(LoginArgs),
-}
-
-#[derive(::clap::Args)]
-struct ExportArgs {
-    /// Discard the local cache and refetch all bookmarks
-    /// (required to reflect bookmarks deleted on the server).
-    #[arg(long)]
-    refresh: bool,
-}
-
-#[derive(::clap::Args)]
-struct LoginArgs {
-    #[arg(default_value_t = 9787, env = "SHIORI_LOOPBACK_PORT", long)]
-    port: u16,
-    /// The shiori server URL to connect to (e.g. https://shiori.example.com)
-    server_url: String,
 }
 
 #[::tokio::main]
