@@ -1,7 +1,6 @@
 mod config_store;
 mod discovery;
 mod export_cache;
-mod login;
 mod loopback;
 mod oidc;
 mod server_config;
@@ -15,8 +14,6 @@ pub(crate) use self::config_store::StoredConfig;
 pub(crate) use self::discovery::fetch_provider_metadata;
 pub(crate) use self::export_cache::CachedBookmark;
 pub(crate) use self::export_cache::ExportCache;
-pub(crate) use self::login::LoginConfig;
-pub(crate) use self::login::run;
 pub(crate) use self::loopback::receive_callback;
 pub(crate) use self::oidc::TokenExchange;
 pub(crate) use self::oidc::build_authorization_request;
@@ -25,6 +22,8 @@ pub(crate) use self::server_config::fetch_server_config;
 pub(crate) use self::subcommand::Subcommand;
 pub(crate) use self::subcommand::export::ExportConfig;
 pub(crate) use self::subcommand::export::run as run_export;
+pub(crate) use self::subcommand::login::LoginConfig;
+pub(crate) use self::subcommand::login::run;
 pub(crate) use self::token_store::StoredToken;
 pub(crate) use self::token_store::TokenStore;
 

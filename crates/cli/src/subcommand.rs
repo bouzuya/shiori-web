@@ -1,4 +1,5 @@
 pub(crate) mod export;
+pub(crate) mod login;
 
 #[derive(::clap::Subcommand)]
 pub(crate) enum Subcommand {
