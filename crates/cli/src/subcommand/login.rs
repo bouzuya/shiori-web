@@ -10,19 +10,33 @@ use crate::fetch_provider_metadata;
 use crate::fetch_server_config;
 use crate::receive_callback;
 
-/// login フローの設定。OIDC エンドポイントと public client の資格情報、loopback ポートを持つ。
-pub(crate) struct LoginConfig {
-    pub auth_endpoint: String,
-    pub client_id: String,
-    pub client_secret: String,
+#[derive(::clap::Args)]
+pub(crate) struct LoginArgs {
+    #[arg(default_value_t = 9787, env = "SHIORI_LOOPBACK_PORT", long)]
     pub port: u16,
+    /// The shiori server URL to connect to (e.g. https://shiori.example.com)
     pub server_url: String,
-    pub token_endpoint: String,
+}
+
+impl LoginArgs {
+    pub(crate) async fn execute(self) -> ::anyhow::Result<()> {
+        run(&self.server_url, self.port).await
+    }
+}
+
+/// login フローの設定。OIDC エンドポイントと public client の資格情報、loopback ポートを持つ。
+struct LoginConfig {
+    auth_endpoint: String,
+    client_id: String,
+    client_secret: String,
+    port: u16,
+    server_url: String,
+    token_endpoint: String,
 }
 
 impl LoginConfig {
     /// サーバーの `/cli/config` と issuer の OIDC Discovery から設定を組み立てる。
-    pub(crate) async fn fetch(server_url: &str, port: u16) -> ::anyhow::Result<Self> {
+    async fn fetch(server_url: &str, port: u16) -> ::anyhow::Result<Self> {
         let server_config = fetch_server_config(server_url).await?;
         let metadata = fetch_provider_metadata(&server_config.issuer).await?;
         Ok(Self {
@@ -36,7 +50,7 @@ impl LoginConfig {
     }
 
     /// loopback の redirect_uri (`http://127.0.0.1:<port>/callback`)。
-    pub(crate) fn redirect_uri(&self) -> String {
+    fn redirect_uri(&self) -> String {
         format!("http://127.0.0.1:{}/callback", self.port)
     }
 }
@@ -61,7 +75,9 @@ impl LoginConfig {
 
 /// loopback + PKCE でログインし、refresh_token を `TokenStore` へ、
 /// 接続先サーバー URL を `ConfigStore` へ保存する。
-pub(crate) async fn run(config: LoginConfig) -> ::anyhow::Result<()> {
+pub(crate) async fn run(server_url: &str, port: u16) -> ::anyhow::Result<()> {
+    let config = LoginConfig::fetch(server_url, port).await?;
+
     let listener = ::tokio::net::TcpListener::bind(("127.0.0.1", config.port)).await?;
     let redirect_uri = config.redirect_uri();
     let authorization =
