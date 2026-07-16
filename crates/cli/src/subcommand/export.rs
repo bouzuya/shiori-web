@@ -5,7 +5,21 @@ use crate::TokenStore;
 use crate::fetch_provider_metadata;
 use crate::fetch_server_config;
 
-pub(crate) struct ExportConfig {
+#[derive(::clap::Args)]
+pub(crate) struct ExportArgs {
+    /// Discard the local cache and refetch all bookmarks
+    /// (required to reflect bookmarks deleted on the server).
+    #[arg(long)]
+    pub refresh: bool,
+}
+
+impl ExportArgs {
+    pub(crate) async fn execute(self) -> ::anyhow::Result<()> {
+        run(self.refresh).await
+    }
+}
+
+struct ExportConfig {
     client_id: String,
     client_secret: String,
     export_url: String,
@@ -49,7 +63,9 @@ struct TokenRefresh<'a> {
     refresh_token: &'a str,
 }
 
-pub(crate) async fn run(config: ExportConfig, refresh: bool) -> ::anyhow::Result<()> {
+pub(crate) async fn run(refresh: bool) -> ::anyhow::Result<()> {
+    let config = ExportConfig::resolve().await?;
+
     let store = TokenStore::from_env()?;
     let stored = store
         .load()?
@@ -92,7 +108,7 @@ fn build_export_transport_error(url: &str, detail: &str) -> ::anyhow::Error {
 
 /// export エンドポイントに GET し、NDJSON を parse して返す。
 /// `since` が `Some` のとき `?since=` クエリを付けて差分だけを取得する。
-pub(crate) async fn fetch_export(
+async fn fetch_export(
     config: &ExportConfig,
     id_token: &str,
     since: Option<&str>,
