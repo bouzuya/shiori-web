@@ -24,3 +24,19 @@ pub(crate) struct LoginArgs {
     /// The shiori server URL to connect to (e.g. https://shiori.example.com)
     pub server_url: String,
 }
+
+impl Subcommand {
+    pub(super) async fn execute(self) -> ::anyhow::Result<()> {
+        match self {
+            Subcommand::Export(args) => {
+                self::export::run(self::export::ExportConfig::resolve().await?, args.refresh).await
+            }
+            Subcommand::Login(args) => {
+                self::login::run(
+                    self::login::LoginConfig::fetch(&args.server_url, args.port).await?,
+                )
+                .await
+            }
+        }
+    }
+}

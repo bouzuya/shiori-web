@@ -20,10 +20,6 @@ pub(crate) use self::oidc::build_authorization_request;
 pub(crate) use self::oidc::exchange_code;
 pub(crate) use self::server_config::fetch_server_config;
 pub(crate) use self::subcommand::Subcommand;
-pub(crate) use self::subcommand::export::ExportConfig;
-pub(crate) use self::subcommand::export::run as run_export;
-pub(crate) use self::subcommand::login::LoginConfig;
-pub(crate) use self::subcommand::login::run;
 pub(crate) use self::token_store::StoredToken;
 pub(crate) use self::token_store::TokenStore;
 
@@ -36,12 +32,7 @@ struct Cli {
 
 #[::tokio::main]
 async fn main() -> ::anyhow::Result<()> {
-    match <Cli as ::clap::Parser>::parse().subcommand {
-        Subcommand::Export(args) => run_export(ExportConfig::resolve().await?, args.refresh).await,
-        Subcommand::Login(args) => {
-            run(LoginConfig::fetch(&args.server_url, args.port).await?).await
-        }
-    }
+    <Cli as ::clap::Parser>::parse().subcommand.execute().await
 }
 
 #[cfg(test)]
