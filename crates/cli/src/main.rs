@@ -1,8 +1,8 @@
 mod config_store;
-mod discovery;
 mod export_cache;
 mod loopback;
 mod oidc;
+mod provider_metadata;
 mod server_config;
 mod subcommand;
 #[cfg(test)]
@@ -11,13 +11,13 @@ mod token_store;
 
 pub(crate) use self::config_store::ConfigStore;
 pub(crate) use self::config_store::StoredConfig;
-pub(crate) use self::discovery::fetch_provider_metadata;
 pub(crate) use self::export_cache::CachedBookmark;
 pub(crate) use self::export_cache::ExportCache;
 pub(crate) use self::loopback::receive_callback;
 pub(crate) use self::oidc::TokenExchange;
 pub(crate) use self::oidc::build_authorization_request;
 pub(crate) use self::oidc::exchange_code;
+pub(crate) use self::provider_metadata::fetch_provider_metadata;
 pub(crate) use self::server_config::fetch_server_config;
 pub(crate) use self::subcommand::Subcommand;
 pub(crate) use self::token_store::StoredToken;

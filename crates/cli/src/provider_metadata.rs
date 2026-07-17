@@ -6,7 +6,7 @@ pub(crate) struct ProviderMetadata {
     pub token_endpoint: String,
 }
 
-fn discovery_url(issuer: &str) -> String {
+fn provider_metadata_url(issuer: &str) -> String {
     format!(
         "{}/.well-known/openid-configuration",
         issuer.trim_end_matches('/')
@@ -15,7 +15,7 @@ fn discovery_url(issuer: &str) -> String {
 
 /// issuer から OIDC Discovery でプロバイダーのエンドポイントを取得する。
 pub(crate) async fn fetch_provider_metadata(issuer: &str) -> ::anyhow::Result<ProviderMetadata> {
-    let url = discovery_url(issuer);
+    let url = provider_metadata_url(issuer);
     let response = ::reqwest::Client::new()
         .get(&url)
         .send()
@@ -35,17 +35,17 @@ mod tests {
     use crate::test_helpers::spawn_json_server;
 
     #[test]
-    fn discovery_url_appends_well_known_path() {
+    fn provider_metadata_url_appends_well_known_path() {
         assert_eq!(
-            discovery_url("https://accounts.google.com"),
+            provider_metadata_url("https://accounts.google.com"),
             "https://accounts.google.com/.well-known/openid-configuration"
         );
     }
 
     #[test]
-    fn discovery_url_trims_trailing_slash() {
+    fn provider_metadata_url_trims_trailing_slash() {
         assert_eq!(
-            discovery_url("https://accounts.google.com/"),
+            provider_metadata_url("https://accounts.google.com/"),
             "https://accounts.google.com/.well-known/openid-configuration"
         );
     }
