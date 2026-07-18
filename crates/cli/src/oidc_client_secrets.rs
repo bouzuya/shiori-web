@@ -6,13 +6,15 @@ pub(crate) struct OidcClientSecrets {
     pub issuer: String,
 }
 
-fn server_config_url(server_url: &str) -> String {
+fn oidc_client_secrets_url(server_url: &str) -> String {
     format!("{}/cli/config", server_url.trim_end_matches('/'))
 }
 
 /// サーバーのベース URL から `/cli/config` を取得する。
-pub(crate) async fn fetch_server_config(server_url: &str) -> ::anyhow::Result<OidcClientSecrets> {
-    let url = server_config_url(server_url);
+pub(crate) async fn fetch_oidc_client_secrets(
+    server_url: &str,
+) -> ::anyhow::Result<OidcClientSecrets> {
+    let url = oidc_client_secrets_url(server_url);
     let response = ::reqwest::Client::new()
         .get(&url)
         .send()
@@ -34,17 +36,17 @@ mod tests {
     use crate::test_helpers::spawn_json_server;
 
     #[test]
-    fn server_config_url_appends_path() {
+    fn oidc_client_secrets_url_appends_path() {
         assert_eq!(
-            server_config_url("https://example.com"),
+            oidc_client_secrets_url("https://example.com"),
             "https://example.com/cli/config"
         );
     }
 
     #[test]
-    fn server_config_url_trims_trailing_slash() {
+    fn oidc_client_secrets_url_trims_trailing_slash() {
         assert_eq!(
-            server_config_url("https://example.com/app/"),
+            oidc_client_secrets_url("https://example.com/app/"),
             "https://example.com/app/cli/config"
         );
     }
@@ -66,14 +68,14 @@ mod tests {
     }
 
     #[::tokio::test]
-    async fn fetch_server_config_returns_config() -> ::anyhow::Result<()> {
+    async fn fetch_oidc_client_secrets_returns_secrets() -> ::anyhow::Result<()> {
         let (url, server) = spawn_json_server(
             "200 OK",
             r#"{"client_id":"cid","client_secret":"sec","issuer":"https://accounts.google.com"}"#
                 .to_string(),
         )
         .await?;
-        let config = fetch_server_config(&url).await?;
+        let config = fetch_oidc_client_secrets(&url).await?;
         server.await??;
         assert_eq!(config.client_id, "cid");
         assert_eq!(config.client_secret, "sec");
@@ -82,13 +84,13 @@ mod tests {
     }
 
     #[::tokio::test]
-    async fn fetch_server_config_errors_on_non_success_status() -> ::anyhow::Result<()> {
+    async fn fetch_oidc_client_secrets_errors_on_non_success_status() -> ::anyhow::Result<()> {
         let (url, server) = spawn_json_server("404 Not Found", "".to_string()).await?;
-        let result = fetch_server_config(&url).await;
+        let result = fetch_oidc_client_secrets(&url).await;
         server.await??;
-        let error = result
-            .err()
-            .ok_or_else(|| ::anyhow::anyhow!("expected fetch_server_config to return an error"))?;
+        let error = result.err().ok_or_else(|| {
+            ::anyhow::anyhow!("expected fetch_oidc_client_secrets to return an error")
+        })?;
         assert!(error.to_string().contains("404"));
         Ok(())
     }

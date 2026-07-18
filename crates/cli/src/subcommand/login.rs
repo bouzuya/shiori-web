@@ -6,8 +6,8 @@ use crate::TokenExchange;
 use crate::TokenStore;
 use crate::build_authorization_request;
 use crate::exchange_code;
+use crate::fetch_oidc_client_secrets;
 use crate::fetch_provider_metadata;
-use crate::fetch_server_config;
 use crate::receive_callback;
 
 #[derive(::clap::Args)]
@@ -37,12 +37,12 @@ struct LoginConfig {
 impl LoginConfig {
     /// サーバーの `/cli/config` と issuer の OIDC Discovery から設定を組み立てる。
     async fn fetch(server_url: &str, port: u16) -> ::anyhow::Result<Self> {
-        let server_config = fetch_server_config(server_url).await?;
-        let metadata = fetch_provider_metadata(&server_config.issuer).await?;
+        let secrets = fetch_oidc_client_secrets(server_url).await?;
+        let metadata = fetch_provider_metadata(&secrets.issuer).await?;
         Ok(Self {
             auth_endpoint: metadata.authorization_endpoint,
-            client_id: server_config.client_id,
-            client_secret: server_config.client_secret,
+            client_id: secrets.client_id,
+            client_secret: secrets.client_secret,
             port,
             server_url: server_url.trim_end_matches('/').to_string(),
             token_endpoint: metadata.token_endpoint,
@@ -178,7 +178,7 @@ mod tests {
     use crate::test_helpers::spawn_json_server;
 
     #[::tokio::test]
-    async fn fetch_builds_config_from_server_config_and_discovery() -> ::anyhow::Result<()> {
+    async fn fetch_builds_config_from_oidc_client_secrets_and_discovery() -> ::anyhow::Result<()> {
         let (issuer, idp) = spawn_json_server(
             "200 OK",
             r#"{"authorization_endpoint":"https://idp.example.com/auth","token_endpoint":"https://idp.example.com/token"}"#
@@ -206,7 +206,7 @@ mod tests {
     }
 
     #[::tokio::test]
-    async fn fetch_errors_when_server_config_is_unavailable() -> ::anyhow::Result<()> {
+    async fn fetch_errors_when_oidc_client_secrets_are_unavailable() -> ::anyhow::Result<()> {
         let (server_url, server) = spawn_json_server("404 Not Found", "".to_string()).await?;
         let result = LoginConfig::fetch(&server_url, 9787).await;
         server.await??;
