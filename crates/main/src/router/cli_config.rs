@@ -15,9 +15,9 @@ async fn get_cli_config(
     ::axum::extract::State(state): ::axum::extract::State<AppState>,
 ) -> ::axum::Json<CliConfigResponse> {
     ::axum::Json(CliConfigResponse {
-        client_id: state.cli_config.client_id,
-        client_secret: state.cli_config.client_secret,
-        issuer: state.cli_config.issuer,
+        client_id: state.oidc_client_secrets.client_id,
+        client_secret: state.oidc_client_secrets.client_secret,
+        issuer: state.oidc_client_secrets.issuer,
     })
 }
 
