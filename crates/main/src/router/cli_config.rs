@@ -24,7 +24,7 @@ async fn get_cli_config(
 #[cfg(test)]
 mod tests {
     use crate::AppState;
-    use crate::CliConfig;
+    use crate::OidcClientSecrets;
     use crate::test_helpers::MockAuthorizationCodeClient;
     use crate::test_helpers::ResponseExt as _;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
@@ -38,7 +38,7 @@ mod tests {
     #[::tokio::test]
     #[::serial_test::serial]
     async fn get_cli_config_returns_client_credentials_and_issuer() -> ::anyhow::Result<()> {
-        let cli_config = CliConfig::for_test();
+        let cli_config = OidcClientSecrets::for_test();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,

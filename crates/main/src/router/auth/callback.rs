@@ -118,7 +118,7 @@ mod tests {
     use kernel::User;
 
     use crate::AppState;
-    use crate::CliConfig;
+    use crate::OidcClientSecrets;
     use crate::test_helpers::MockAuthorizationCodeClient;
     use crate::test_helpers::TEST_COOKIE_SIGNING_SECRET;
     use crate::test_helpers::extract_cookies;
@@ -138,7 +138,7 @@ mod tests {
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
-            CliConfig::for_test(),
+            OidcClientSecrets::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
@@ -201,7 +201,7 @@ mod tests {
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
-            CliConfig::for_test(),
+            OidcClientSecrets::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
@@ -244,7 +244,7 @@ mod tests {
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
-            CliConfig::for_test(),
+            OidcClientSecrets::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
@@ -284,7 +284,7 @@ mod tests {
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
-            CliConfig::for_test(),
+            OidcClientSecrets::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
@@ -332,7 +332,7 @@ mod tests {
             base_path.to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
-            CliConfig::for_test(),
+            OidcClientSecrets::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),
@@ -382,7 +382,7 @@ mod tests {
             base_path.to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
-            CliConfig::for_test(),
+            OidcClientSecrets::for_test(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new(&sub)),

@@ -34,7 +34,7 @@ pub(crate) use self::oidc::RealAuthorizationCodeClientOptions;
 pub(crate) use self::oidc::RealIdTokenVerifier;
 pub(crate) use self::oidc::RealIdTokenVerifierOptions;
 pub(crate) use self::state::AppState;
-pub(crate) use self::state::CliConfig;
+pub(crate) use self::state::OidcClientSecrets;
 
 use crate::cli::Cli;
 use crate::cli::ServeArgs;
@@ -70,7 +70,7 @@ async fn build_state(args: &ServeArgs) -> ::anyhow::Result<AppState> {
         args.base_path.clone(),
         bookmark_reader,
         bookmark_repository,
-        CliConfig {
+        OidcClientSecrets {
             client_id: args.oidc_cli_client_id.clone(),
             client_secret: args.oidc_cli_client_secret.clone(),
             issuer: args.oidc_issuer_url.clone(),

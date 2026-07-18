@@ -10,16 +10,17 @@ use kernel::UserSettingsRepository;
 #[derive(Clone)]
 pub(crate) struct BasePath(pub String);
 
-/// CLI へ配布する OIDC クライアント設定。
+/// CLI へ配布する OIDC クライアントシークレット
+/// (Google の client secret JSON 相当。client_id + client_secret に issuer を加えたもの)。
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct CliConfig {
+pub(crate) struct OidcClientSecrets {
     pub client_id: String,
     pub client_secret: String,
     pub issuer: String,
 }
 
 #[cfg(test)]
-impl CliConfig {
+impl OidcClientSecrets {
     pub fn for_test() -> Self {
         fn random_string() -> String {
             let mut rng = ::rand::rng();
@@ -43,7 +44,7 @@ pub(crate) struct AppState {
     pub base_path: String,
     pub bookmark_reader: ::std::sync::Arc<dyn BookmarkReader>,
     pub bookmark_repository: ::std::sync::Arc<dyn BookmarkRepository>,
-    pub cli_config: CliConfig,
+    pub cli_config: OidcClientSecrets,
     pub cookie_key: ::axum_extra::extract::cookie::Key,
     pub id_token_verifier: ::std::sync::Arc<dyn IdTokenVerifier>,
     pub oidc_client: ::std::sync::Arc<dyn AuthorizationCodeClient>,
@@ -59,7 +60,7 @@ impl AppState {
         base_path: String,
         bookmark_reader: ::std::sync::Arc<dyn BookmarkReader>,
         bookmark_repository: ::std::sync::Arc<dyn BookmarkRepository>,
-        cli_config: CliConfig,
+        cli_config: OidcClientSecrets,
         cookie_signing_secret: &str,
         id_token_verifier: ::std::sync::Arc<dyn IdTokenVerifier>,
         oidc_client: ::std::sync::Arc<dyn AuthorizationCodeClient>,
@@ -99,8 +100,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cli_config_for_test_generates_non_empty_fields() {
-        let config = CliConfig::for_test();
+    fn oidc_client_secrets_for_test_generates_non_empty_fields() {
+        let config = OidcClientSecrets::for_test();
         assert!(!config.client_id.is_empty());
         assert!(!config.client_secret.is_empty());
         assert!(config.issuer.starts_with("https://"));
