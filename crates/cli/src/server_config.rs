@@ -1,6 +1,6 @@
 /// サーバーの `GET /cli/config` が返す、CLI 認証用の OIDC クライアント設定。
 #[derive(Clone, Debug, Eq, PartialEq, ::serde::Deserialize)]
-pub(crate) struct ServerConfig {
+pub(crate) struct OidcClientSecrets {
     pub client_id: String,
     pub client_secret: String,
     pub issuer: String,
@@ -11,7 +11,7 @@ fn server_config_url(server_url: &str) -> String {
 }
 
 /// サーバーのベース URL から `/cli/config` を取得する。
-pub(crate) async fn fetch_server_config(server_url: &str) -> ::anyhow::Result<ServerConfig> {
+pub(crate) async fn fetch_server_config(server_url: &str) -> ::anyhow::Result<OidcClientSecrets> {
     let url = server_config_url(server_url);
     let response = ::reqwest::Client::new()
         .get(&url)
@@ -50,13 +50,13 @@ mod tests {
     }
 
     #[test]
-    fn deserializes_server_config() -> ::anyhow::Result<()> {
+    fn deserializes_oidc_client_secrets() -> ::anyhow::Result<()> {
         let json =
             r#"{"client_id":"cid","client_secret":"sec","issuer":"https://accounts.google.com"}"#;
-        let config: ServerConfig = ::serde_json::from_str(json)?;
+        let config: OidcClientSecrets = ::serde_json::from_str(json)?;
         assert_eq!(
             config,
-            ServerConfig {
+            OidcClientSecrets {
                 client_id: "cid".to_string(),
                 client_secret: "sec".to_string(),
                 issuer: "https://accounts.google.com".to_string(),
