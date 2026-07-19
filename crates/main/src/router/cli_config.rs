@@ -1,20 +1,20 @@
 use crate::AppState;
 
 pub(crate) fn router() -> ::axum::Router<AppState> {
-    ::axum::Router::new().route("/cli/config", ::axum::routing::get(get_cli_config))
+    ::axum::Router::new().route("/cli/config", ::axum::routing::get(get_oidc_client_secrets))
 }
 
 #[derive(::serde::Serialize)]
-struct CliConfigResponse {
+struct OidcClientSecretsResponse {
     client_id: String,
     client_secret: String,
     issuer: String,
 }
 
-async fn get_cli_config(
+async fn get_oidc_client_secrets(
     ::axum::extract::State(state): ::axum::extract::State<AppState>,
-) -> ::axum::Json<CliConfigResponse> {
-    ::axum::Json(CliConfigResponse {
+) -> ::axum::Json<OidcClientSecretsResponse> {
+    ::axum::Json(OidcClientSecretsResponse {
         client_id: state.oidc_client_secrets.client_id,
         client_secret: state.oidc_client_secrets.client_secret,
         issuer: state.oidc_client_secrets.issuer,
@@ -37,13 +37,14 @@ mod tests {
 
     #[::tokio::test]
     #[::serial_test::serial]
-    async fn get_cli_config_returns_client_credentials_and_issuer() -> ::anyhow::Result<()> {
-        let cli_config = OidcClientSecrets::for_test();
+    async fn get_oidc_client_secrets_returns_client_credentials_and_issuer() -> ::anyhow::Result<()>
+    {
+        let oidc_client_secrets = OidcClientSecrets::for_test();
         let state = AppState::new(
             "".to_string(),
             firestore_bookmark_reader()?,
             firestore_bookmark_repo()?,
-            cli_config.clone(),
+            oidc_client_secrets.clone(),
             TEST_COOKIE_SIGNING_SECRET,
             crate::test_helpers::mock_id_token_verifier(),
             ::std::sync::Arc::new(MockAuthorizationCodeClient::new("cli_config_user")),
@@ -73,9 +74,9 @@ mod tests {
         assert_eq!(
             value,
             ::serde_json::json!({
-                "client_id": cli_config.client_id,
-                "client_secret": cli_config.client_secret,
-                "issuer": cli_config.issuer,
+                "client_id": oidc_client_secrets.client_id,
+                "client_secret": oidc_client_secrets.client_secret,
+                "issuer": oidc_client_secrets.issuer,
             })
         );
         Ok(())
