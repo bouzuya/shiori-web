@@ -1,9 +1,9 @@
 mod auth;
 mod bookmark;
-mod cli_config;
 mod export;
 mod favicon;
 mod index_css;
+mod oidc_client_secrets;
 mod root;
 mod settings;
 
@@ -17,10 +17,10 @@ pub(crate) fn router(base_path: &str) -> ::axum::Router<AppState> {
     let inner = ::axum::Router::new()
         .merge(auth::router())
         .merge(bookmark::router())
-        .merge(cli_config::router())
         .merge(export::router())
         .merge(favicon::router())
         .merge(index_css::router())
+        .merge(oidc_client_secrets::router())
         .merge(root::router())
         .merge(settings::router());
     if base_path.is_empty() {
