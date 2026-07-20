@@ -7,7 +7,6 @@ mod storage;
 mod subcommand;
 #[cfg(test)]
 mod test_helpers;
-mod token_store;
 
 pub(crate) use self::export_cache::CachedBookmark;
 pub(crate) use self::export_cache::ExportCache;
@@ -19,9 +18,9 @@ pub(crate) use self::oidc_client_secrets::fetch_oidc_client_secrets;
 pub(crate) use self::provider_metadata::fetch_provider_metadata;
 pub(crate) use self::storage::ConfigStore;
 pub(crate) use self::storage::StoredConfig;
+pub(crate) use self::storage::StoredToken;
+pub(crate) use self::storage::TokenStore;
 pub(crate) use self::subcommand::Subcommand;
-pub(crate) use self::token_store::StoredToken;
-pub(crate) use self::token_store::TokenStore;
 
 #[derive(::clap::Parser)]
 #[command(version)]
