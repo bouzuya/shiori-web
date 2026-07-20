@@ -1,4 +1,3 @@
-mod export_cache;
 mod loopback;
 mod oidc;
 mod oidc_client_secrets;
@@ -8,15 +7,15 @@ mod subcommand;
 #[cfg(test)]
 mod test_helpers;
 
-pub(crate) use self::export_cache::CachedBookmark;
-pub(crate) use self::export_cache::ExportCache;
 pub(crate) use self::loopback::receive_callback;
 pub(crate) use self::oidc::TokenExchange;
 pub(crate) use self::oidc::build_authorization_request;
 pub(crate) use self::oidc::exchange_code;
 pub(crate) use self::oidc_client_secrets::fetch_oidc_client_secrets;
 pub(crate) use self::provider_metadata::fetch_provider_metadata;
+pub(crate) use self::storage::CachedBookmark;
 pub(crate) use self::storage::ConfigStore;
+pub(crate) use self::storage::ExportCache;
 pub(crate) use self::storage::StoredConfig;
 pub(crate) use self::storage::StoredToken;
 pub(crate) use self::storage::TokenStore;
