@@ -1,7 +1,6 @@
 mod loopback;
 mod oidc;
 mod oidc_client_secrets;
-mod provider_metadata;
 mod storage;
 mod subcommand;
 #[cfg(test)]
@@ -11,8 +10,8 @@ pub(crate) use self::loopback::receive_callback;
 pub(crate) use self::oidc::TokenExchange;
 pub(crate) use self::oidc::build_authorization_request;
 pub(crate) use self::oidc::exchange_code;
+pub(crate) use self::oidc::fetch_provider_metadata;
 pub(crate) use self::oidc_client_secrets::fetch_oidc_client_secrets;
-pub(crate) use self::provider_metadata::fetch_provider_metadata;
 pub(crate) use self::storage::CachedBookmark;
 pub(crate) use self::storage::ConfigStore;
 pub(crate) use self::storage::ExportCache;

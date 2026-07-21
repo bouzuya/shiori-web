@@ -1,3 +1,7 @@
+mod provider_metadata;
+
+pub(crate) use self::provider_metadata::fetch_provider_metadata;
+
 /// 認可コードフロー (loopback + PKCE) の認可リクエスト。
 ///
 /// `authorization_url` をブラウザで開き、コールバックで受け取った認可コードを
