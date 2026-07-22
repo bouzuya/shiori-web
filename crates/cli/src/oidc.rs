@@ -1,5 +1,7 @@
+mod loopback;
 mod provider_metadata;
 
+pub(crate) use self::loopback::receive_callback;
 pub(crate) use self::provider_metadata::fetch_provider_metadata;
 
 /// 認可コードフロー (loopback + PKCE) の認可リクエスト。
