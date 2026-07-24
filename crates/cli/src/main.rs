@@ -5,7 +5,9 @@ mod subcommand;
 #[cfg(test)]
 mod test_helpers;
 
+pub(crate) use self::oidc::RefreshTokenResponse;
 pub(crate) use self::oidc::TokenExchange;
+pub(crate) use self::oidc::TokenRefresh;
 pub(crate) use self::oidc::build_authorization_request;
 pub(crate) use self::oidc::exchange_code;
 pub(crate) use self::oidc::fetch_provider_metadata;

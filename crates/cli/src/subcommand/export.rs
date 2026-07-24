@@ -1,6 +1,8 @@
 use crate::CachedBookmark;
 use crate::ConfigStore;
 use crate::ExportCache;
+use crate::RefreshTokenResponse;
+use crate::TokenRefresh;
 use crate::TokenStore;
 use crate::fetch_oidc_client_secrets;
 use crate::fetch_provider_metadata;
@@ -48,19 +50,6 @@ impl ExportConfig {
             token_endpoint: metadata.token_endpoint,
         })
     }
-}
-
-#[derive(::serde::Deserialize)]
-struct RefreshTokenResponse {
-    id_token: String,
-}
-
-#[derive(::serde::Serialize)]
-struct TokenRefresh<'a> {
-    client_id: &'a str,
-    client_secret: &'a str,
-    grant_type: &'a str,
-    refresh_token: &'a str,
 }
 
 pub(crate) async fn run(refresh: bool) -> ::anyhow::Result<()> {
