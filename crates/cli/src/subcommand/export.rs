@@ -6,6 +6,9 @@ use crate::TokenRefresh;
 use crate::TokenStore;
 use crate::fetch_oidc_client_secrets;
 use crate::fetch_provider_metadata;
+use crate::max_updated_at;
+use crate::merge_bookmarks;
+use crate::sort_bookmarks;
 
 #[derive(::clap::Args)]
 pub(crate) struct ExportArgs {
@@ -121,36 +124,6 @@ async fn fetch_export(
         .filter(|l| !l.is_empty())
         .map(CachedBookmark::parse)
         .collect()
-}
-
-/// cache と差分を id でマージする。同一 id は incoming (差分) で上書き。
-pub(crate) fn merge_bookmarks(
-    cache: Vec<CachedBookmark>,
-    incoming: Vec<CachedBookmark>,
-) -> Vec<CachedBookmark> {
-    let mut map: ::std::collections::HashMap<String, CachedBookmark> =
-        cache.into_iter().map(|b| (b.id().to_string(), b)).collect();
-    for b in incoming {
-        map.insert(b.id().to_string(), b);
-    }
-    map.into_values().collect()
-}
-
-/// `created_at` 降順、同時刻なら `id` 降順でソートする。
-/// タイムスタンプは固定幅 RFC3339 UTC (例: `2026-07-06T23:06:49.751Z`) を前提とし、
-/// 辞書順 = 時刻順が成り立つ。
-pub(crate) fn sort_bookmarks(bookmarks: &mut [CachedBookmark]) {
-    bookmarks.sort_by(|a, b| {
-        b.created_at()
-            .cmp(a.created_at())
-            .then_with(|| b.id().cmp(a.id()))
-    });
-}
-
-/// `updated_at` の最大値を返す。空なら `None`。
-/// 次回リクエストの `since` パラメーターに使う。
-pub(crate) fn max_updated_at(bookmarks: &[CachedBookmark]) -> Option<&str> {
-    bookmarks.iter().map(|b| b.updated_at()).max()
 }
 
 async fn refresh_id_token(config: &ExportConfig, refresh_token: &str) -> ::anyhow::Result<String> {

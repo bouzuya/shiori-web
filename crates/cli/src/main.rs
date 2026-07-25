@@ -1,3 +1,4 @@
+mod bookmark;
 mod oidc;
 mod oidc_client_secrets;
 mod storage;
@@ -5,6 +6,10 @@ mod subcommand;
 #[cfg(test)]
 mod test_helpers;
 
+pub(crate) use self::bookmark::CachedBookmark;
+pub(crate) use self::bookmark::max_updated_at;
+pub(crate) use self::bookmark::merge_bookmarks;
+pub(crate) use self::bookmark::sort_bookmarks;
 pub(crate) use self::oidc::RefreshTokenResponse;
 pub(crate) use self::oidc::TokenExchange;
 pub(crate) use self::oidc::TokenRefresh;
@@ -13,7 +18,6 @@ pub(crate) use self::oidc::exchange_code;
 pub(crate) use self::oidc::fetch_provider_metadata;
 pub(crate) use self::oidc::receive_callback;
 pub(crate) use self::oidc_client_secrets::fetch_oidc_client_secrets;
-pub(crate) use self::storage::CachedBookmark;
 pub(crate) use self::storage::ConfigStore;
 pub(crate) use self::storage::ExportCache;
 pub(crate) use self::storage::StoredConfig;
