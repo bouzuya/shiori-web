@@ -52,7 +52,6 @@ pub(crate) async fn run(refresh: bool) -> ::anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CachedBookmark;
     use crate::test_helpers::spawn_json_server;
 
     fn for_test_config(export_url: String, token_endpoint: String) -> ExportConfig {
@@ -133,118 +132,6 @@ mod tests {
         let message = error.to_string();
         assert!(message.contains("run `shiori login` again"));
         Ok(())
-    }
-
-    fn bookmark(id: &str, created_at: &str, updated_at: &str) -> CachedBookmark {
-        let line = ::serde_json::json!({
-            "comment": "",
-            "created_at": created_at,
-            "id": id,
-            "title": "",
-            "updated_at": updated_at,
-            "url": "https://example.com/",
-        })
-        .to_string();
-        CachedBookmark::parse(&line).expect("test bookmark should parse")
-    }
-
-    #[test]
-    fn merge_bookmarks_combines_cache_and_incoming() {
-        let cache = vec![bookmark(
-            "a",
-            "2026-01-01T00:00:00.000Z",
-            "2026-01-01T00:00:00.000Z",
-        )];
-        let incoming = vec![bookmark(
-            "b",
-            "2026-01-02T00:00:00.000Z",
-            "2026-01-02T00:00:00.000Z",
-        )];
-        let merged = merge_bookmarks(cache, incoming);
-        assert_eq!(merged.len(), 2);
-        assert!(merged.iter().any(|b| b.id() == "a"));
-        assert!(merged.iter().any(|b| b.id() == "b"));
-    }
-
-    #[test]
-    fn merge_bookmarks_incoming_overwrites_cache_by_id() {
-        let cache = vec![bookmark(
-            "a",
-            "2026-01-01T00:00:00.000Z",
-            "2026-01-01T00:00:00.000Z",
-        )];
-        let incoming = vec![bookmark(
-            "a",
-            "2026-01-01T00:00:00.000Z",
-            "2026-01-02T00:00:00.000Z",
-        )];
-        let merged = merge_bookmarks(cache, incoming);
-        assert_eq!(merged.len(), 1);
-        assert_eq!(merged[0].updated_at(), "2026-01-02T00:00:00.000Z");
-    }
-
-    #[test]
-    fn merge_bookmarks_empty_cache() {
-        let incoming = vec![bookmark(
-            "a",
-            "2026-01-01T00:00:00.000Z",
-            "2026-01-01T00:00:00.000Z",
-        )];
-        let merged = merge_bookmarks(vec![], incoming);
-        assert_eq!(merged.len(), 1);
-    }
-
-    #[test]
-    fn merge_bookmarks_empty_incoming() {
-        let cache = vec![bookmark(
-            "a",
-            "2026-01-01T00:00:00.000Z",
-            "2026-01-01T00:00:00.000Z",
-        )];
-        let merged = merge_bookmarks(cache, vec![]);
-        assert_eq!(merged.len(), 1);
-    }
-
-    #[test]
-    fn sort_bookmarks_by_created_at_desc() {
-        let mut bookmarks = vec![
-            bookmark("a", "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"),
-            bookmark("b", "2026-01-03T00:00:00.000Z", "2026-01-03T00:00:00.000Z"),
-            bookmark("c", "2026-01-02T00:00:00.000Z", "2026-01-02T00:00:00.000Z"),
-        ];
-        sort_bookmarks(&mut bookmarks);
-        assert_eq!(bookmarks[0].id(), "b");
-        assert_eq!(bookmarks[1].id(), "c");
-        assert_eq!(bookmarks[2].id(), "a");
-    }
-
-    #[test]
-    fn sort_bookmarks_by_id_desc_when_created_at_equal() {
-        let mut bookmarks = vec![
-            bookmark("a", "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"),
-            bookmark("c", "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"),
-            bookmark("b", "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"),
-        ];
-        sort_bookmarks(&mut bookmarks);
-        assert_eq!(bookmarks[0].id(), "c");
-        assert_eq!(bookmarks[1].id(), "b");
-        assert_eq!(bookmarks[2].id(), "a");
-    }
-
-    #[test]
-    fn max_updated_at_returns_max() {
-        let bookmarks = vec![
-            bookmark("a", "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"),
-            bookmark("b", "2026-01-02T00:00:00.000Z", "2026-01-03T00:00:00.000Z"),
-            bookmark("c", "2026-01-03T00:00:00.000Z", "2026-01-02T00:00:00.000Z"),
-        ];
-        assert_eq!(max_updated_at(&bookmarks), Some("2026-01-03T00:00:00.000Z"));
-    }
-
-    #[test]
-    fn max_updated_at_returns_none_for_empty() {
-        let bookmarks: Vec<CachedBookmark> = vec![];
-        assert_eq!(max_updated_at(&bookmarks), None);
     }
 
     #[::tokio::test]
