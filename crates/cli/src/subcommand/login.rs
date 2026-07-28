@@ -25,7 +25,7 @@ impl LoginArgs {
 }
 
 /// login フローの設定。OIDC エンドポイントと public client の資格情報、loopback ポートを持つ。
-struct LoginConfig {
+struct LoginParams {
     auth_endpoint: String,
     client_id: String,
     client_secret: String,
@@ -34,7 +34,7 @@ struct LoginConfig {
     token_endpoint: String,
 }
 
-impl LoginConfig {
+impl LoginParams {
     /// サーバーの `/cli/config` と issuer の OIDC Discovery から設定を組み立てる。
     async fn fetch(server_url: &str, port: u16) -> ::anyhow::Result<Self> {
         let secrets = fetch_oidc_client_secrets(server_url).await?;
@@ -56,7 +56,7 @@ impl LoginConfig {
 }
 
 #[cfg(test)]
-impl LoginConfig {
+impl LoginParams {
     pub(crate) fn for_test() -> Self {
         let nanos = ::std::time::SystemTime::now()
             .duration_since(::std::time::UNIX_EPOCH)
@@ -76,7 +76,7 @@ impl LoginConfig {
 /// loopback + PKCE でログインし、refresh_token を `TokenStore` へ、
 /// 接続先サーバー URL を `ConfigStore` へ保存する。
 pub(crate) async fn run(server_url: &str, port: u16) -> ::anyhow::Result<()> {
-    let config = LoginConfig::fetch(server_url, port).await?;
+    let config = LoginParams::fetch(server_url, port).await?;
 
     let listener = ::tokio::net::TcpListener::bind(("127.0.0.1", config.port)).await?;
     let redirect_uri = config.redirect_uri();
@@ -192,7 +192,7 @@ mod tests {
         .await?;
 
         // 末尾スラッシュ付きで渡しても正規化されて保存される
-        let config = LoginConfig::fetch(&format!("{server_url}/"), 9787).await?;
+        let config = LoginParams::fetch(&format!("{server_url}/"), 9787).await?;
         server.await??;
         idp.await??;
 
@@ -208,7 +208,7 @@ mod tests {
     #[::tokio::test]
     async fn fetch_errors_when_oidc_client_secrets_are_unavailable() -> ::anyhow::Result<()> {
         let (server_url, server) = spawn_json_server("404 Not Found", "".to_string()).await?;
-        let result = LoginConfig::fetch(&server_url, 9787).await;
+        let result = LoginParams::fetch(&server_url, 9787).await;
         server.await??;
         let error = result
             .err()
@@ -219,9 +219,9 @@ mod tests {
 
     #[test]
     fn redirect_uri_uses_loopback_and_port() {
-        let config = LoginConfig {
+        let config = LoginParams {
             port: 12345,
-            ..LoginConfig::for_test()
+            ..LoginParams::for_test()
         };
         assert_eq!(config.redirect_uri(), "http://127.0.0.1:12345/callback");
     }
