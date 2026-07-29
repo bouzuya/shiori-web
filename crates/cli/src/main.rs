@@ -19,7 +19,7 @@ pub(crate) use self::oidc::exchange_code;
 pub(crate) use self::oidc::fetch_provider_metadata;
 pub(crate) use self::oidc::receive_callback;
 pub(crate) use self::oidc_client_secrets::fetch_oidc_client_secrets;
-pub(crate) use self::server::ExportConfig;
+pub(crate) use self::server::ExportParams;
 pub(crate) use self::server::fetch_export;
 pub(crate) use self::server::refresh_id_token;
 pub(crate) use self::storage::ConfigStore;

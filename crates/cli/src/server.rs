@@ -5,14 +5,14 @@ use crate::TokenRefresh;
 use crate::fetch_oidc_client_secrets;
 use crate::fetch_provider_metadata;
 
-pub(crate) struct ExportConfig {
+pub(crate) struct ExportParams {
     pub(crate) client_id: String,
     pub(crate) client_secret: String,
     pub(crate) export_url: String,
     pub(crate) token_endpoint: String,
 }
 
-impl ExportConfig {
+impl ExportParams {
     /// `ConfigStore` に保存された server_url を基点に設定を解決する。
     /// login 未実行 (server_url 未保存) の場合はエラーにする。
     pub(crate) async fn resolve() -> ::anyhow::Result<Self> {
@@ -39,7 +39,7 @@ impl ExportConfig {
 /// export エンドポイントに GET し、NDJSON を parse して返す。
 /// `since` が `Some` のとき `?since=` クエリを付けて差分だけを取得する。
 pub(crate) async fn fetch_export(
-    config: &ExportConfig,
+    config: &ExportParams,
     id_token: &str,
     since: Option<&str>,
 ) -> ::anyhow::Result<Vec<CachedBookmark>> {
@@ -80,7 +80,7 @@ fn build_export_transport_error(url: &str, detail: &str) -> ::anyhow::Error {
 }
 
 pub(crate) async fn refresh_id_token(
-    config: &ExportConfig,
+    config: &ExportParams,
     refresh_token: &str,
 ) -> ::anyhow::Result<String> {
     let response = ::reqwest::Client::new()

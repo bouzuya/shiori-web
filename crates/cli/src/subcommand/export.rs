@@ -1,5 +1,5 @@
 use crate::ExportCache;
-use crate::ExportConfig;
+use crate::ExportParams;
 use crate::TokenStore;
 use crate::fetch_export;
 use crate::max_updated_at;
@@ -22,7 +22,7 @@ impl ExportArgs {
 }
 
 pub(crate) async fn run(refresh: bool) -> ::anyhow::Result<()> {
-    let config = ExportConfig::resolve().await?;
+    let config = ExportParams::resolve().await?;
 
     let store = TokenStore::from_env()?;
     let stored = store
@@ -54,8 +54,8 @@ mod tests {
     use super::*;
     use crate::test_helpers::spawn_json_server;
 
-    fn for_test_config(export_url: String, token_endpoint: String) -> ExportConfig {
-        ExportConfig {
+    fn for_test_config(export_url: String, token_endpoint: String) -> ExportParams {
+        ExportParams {
             client_id: "cid".to_string(),
             client_secret: "sec".to_string(),
             export_url,
@@ -78,7 +78,7 @@ mod tests {
         .await?;
 
         // 末尾スラッシュ付きの server_url でも export URL は正規化される
-        let config = ExportConfig::fetch(&format!("{server_url}/")).await?;
+        let config = ExportParams::fetch(&format!("{server_url}/")).await?;
         server.await??;
         idp.await??;
 
@@ -92,7 +92,7 @@ mod tests {
     #[::tokio::test]
     async fn fetch_errors_when_oidc_client_secrets_are_unavailable() -> ::anyhow::Result<()> {
         let (server_url, server) = spawn_json_server("404 Not Found", "".to_string()).await?;
-        let result = ExportConfig::fetch(&server_url).await;
+        let result = ExportParams::fetch(&server_url).await;
         server.await??;
         let error = result
             .err()
