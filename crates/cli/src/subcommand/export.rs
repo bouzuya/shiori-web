@@ -22,7 +22,7 @@ impl ExportArgs {
 }
 
 pub(crate) async fn run(refresh: bool) -> ::anyhow::Result<()> {
-    let config = ExportParams::resolve().await?;
+    let params = ExportParams::resolve().await?;
 
     let store = TokenStore::from_env()?;
     let stored = store
@@ -36,8 +36,8 @@ pub(crate) async fn run(refresh: bool) -> ::anyhow::Result<()> {
     };
     let since = max_updated_at(&cache).map(str::to_string);
 
-    let id_token = refresh_id_token(&config, &stored.refresh_token).await?;
-    let incoming = fetch_export(&config, &id_token, since.as_deref()).await?;
+    let id_token = refresh_id_token(&params, &stored.refresh_token).await?;
+    let incoming = fetch_export(&params, &id_token, since.as_deref()).await?;
 
     let mut merged = merge_bookmarks(cache, incoming);
     sort_bookmarks(&mut merged);
@@ -78,14 +78,14 @@ mod tests {
         .await?;
 
         // 末尾スラッシュ付きの server_url でも export URL は正規化される
-        let config = ExportParams::fetch(&format!("{server_url}/")).await?;
+        let params = ExportParams::fetch(&format!("{server_url}/")).await?;
         server.await??;
         idp.await??;
 
-        assert_eq!(config.client_id, "cid");
-        assert_eq!(config.client_secret, "sec");
-        assert_eq!(config.export_url, format!("{server_url}/export"));
-        assert_eq!(config.token_endpoint, "https://idp.example.com/token");
+        assert_eq!(params.client_id, "cid");
+        assert_eq!(params.client_secret, "sec");
+        assert_eq!(params.export_url, format!("{server_url}/export"));
+        assert_eq!(params.token_endpoint, "https://idp.example.com/token");
         Ok(())
     }
 

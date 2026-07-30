@@ -39,12 +39,17 @@ impl ExportParams {
 /// export エンドポイントに GET し、NDJSON を parse して返す。
 /// `since` が `Some` のとき `?since=` クエリを付けて差分だけを取得する。
 pub(crate) async fn fetch_export(
-    config: &ExportParams,
+    ExportParams {
+        client_id: _,
+        client_secret: _,
+        export_url,
+        token_endpoint: _,
+    }: &ExportParams,
     id_token: &str,
     since: Option<&str>,
 ) -> ::anyhow::Result<Vec<CachedBookmark>> {
     let mut request = ::reqwest::Client::new()
-        .get(&config.export_url)
+        .get(export_url)
         .bearer_auth(id_token);
     if let Some(since) = since {
         request = request.query(&[("since", since)]);
@@ -52,11 +57,11 @@ pub(crate) async fn fetch_export(
     let response = request
         .send()
         .await
-        .map_err(|e| build_export_transport_error(&config.export_url, &e.to_string()))?;
+        .map_err(|e| build_export_transport_error(export_url, &e.to_string()))?;
     let status = response.status();
     let body = response.text().await?;
     if !status.is_success() {
-        return Err(build_export_error(status, &config.export_url, &body));
+        return Err(build_export_error(status, export_url, &body));
     }
     body.lines()
         .filter(|l| !l.is_empty())
@@ -80,14 +85,19 @@ fn build_export_transport_error(url: &str, detail: &str) -> ::anyhow::Error {
 }
 
 pub(crate) async fn refresh_id_token(
-    config: &ExportParams,
+    ExportParams {
+        client_id,
+        client_secret,
+        export_url: _,
+        token_endpoint,
+    }: &ExportParams,
     refresh_token: &str,
 ) -> ::anyhow::Result<String> {
     let response = ::reqwest::Client::new()
-        .post(&config.token_endpoint)
+        .post(token_endpoint)
         .form(&TokenRefresh {
-            client_id: &config.client_id,
-            client_secret: &config.client_secret,
+            client_id,
+            client_secret,
             grant_type: "refresh_token",
             refresh_token,
         })
