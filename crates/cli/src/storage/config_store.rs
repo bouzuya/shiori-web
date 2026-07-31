@@ -2,12 +2,12 @@ const APP_DIR: &str = "shiori";
 const CONFIG_FILE: &str = "config.json";
 
 #[derive(Clone, Debug, Eq, PartialEq, ::serde::Deserialize, ::serde::Serialize)]
-pub(crate) struct StoredConfig {
+pub(crate) struct ConfigJson {
     pub server_url: String,
 }
 
 #[cfg(test)]
-impl StoredConfig {
+impl ConfigJson {
     pub(crate) fn for_test() -> Self {
         let nanos = ::std::time::SystemTime::now()
             .duration_since(::std::time::UNIX_EPOCH)
@@ -40,7 +40,7 @@ impl ConfigStore {
         Ok(Self::new(config_home))
     }
 
-    pub(crate) fn load(&self) -> ::anyhow::Result<Option<StoredConfig>> {
+    pub(crate) fn load(&self) -> ::anyhow::Result<Option<ConfigJson>> {
         match ::std::fs::read_to_string(&self.path) {
             Ok(contents) => Ok(Some(::serde_json::from_str(&contents)?)),
             Err(e) if e.kind() == ::std::io::ErrorKind::NotFound => Ok(None),
@@ -48,7 +48,7 @@ impl ConfigStore {
         }
     }
 
-    pub(crate) fn save(&self, config: &StoredConfig) -> ::anyhow::Result<()> {
+    pub(crate) fn save(&self, config: &ConfigJson) -> ::anyhow::Result<()> {
         if let Some(parent) = self.path.parent() {
             ::std::fs::create_dir_all(parent)?;
         }
@@ -78,7 +78,7 @@ mod tests {
     fn save_then_load_round_trips() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
         let store = ConfigStore::new(dir.path());
-        let config = StoredConfig::for_test();
+        let config = ConfigJson::for_test();
         store.save(&config)?;
         assert_eq!(store.load()?, Some(config));
         Ok(())
@@ -96,7 +96,7 @@ mod tests {
     fn saves_under_shiori_config_json() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
         let store = ConfigStore::new(dir.path());
-        store.save(&StoredConfig::for_test())?;
+        store.save(&ConfigJson::for_test())?;
         assert!(dir.path().join("shiori").join("config.json").is_file());
         Ok(())
     }

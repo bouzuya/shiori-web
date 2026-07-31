@@ -1,6 +1,6 @@
+use crate::ConfigJson;
 use crate::ConfigStore;
 use crate::ExportCache;
-use crate::StoredConfig;
 use crate::StoredToken;
 use crate::TokenExchange;
 use crate::TokenStore;
@@ -116,7 +116,7 @@ pub(crate) async fn run(server_url: &str, port: u16) -> ::anyhow::Result<()> {
         .refresh_token
         .ok_or_else(|| ::anyhow::anyhow!("token endpoint did not return a refresh_token"))?;
     TokenStore::from_env()?.save(&StoredToken { refresh_token })?;
-    ConfigStore::from_env()?.save(&StoredConfig {
+    ConfigStore::from_env()?.save(&ConfigJson {
         server_url: config.server_url,
     })?;
     // 新しい login では以前の user / server のブックマークを含む可能性のある
