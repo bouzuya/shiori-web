@@ -35,7 +35,7 @@ struct LoginParams {
 }
 
 impl LoginParams {
-    /// サーバーの `/cli/config` と issuer の OIDC Discovery から設定を組み立てる。
+    /// サーバーの `/cli/oidc-client-secrets` と issuer の OIDC Discovery から設定を組み立てる。
     async fn fetch(server_url: &str, port: u16) -> ::anyhow::Result<Self> {
         let secrets = fetch_oidc_client_secrets(server_url).await?;
         let metadata = fetch_provider_metadata(&secrets.issuer).await?;

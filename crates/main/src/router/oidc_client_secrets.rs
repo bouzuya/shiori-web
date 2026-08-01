@@ -1,7 +1,10 @@
 use crate::AppState;
 
 pub(crate) fn router() -> ::axum::Router<AppState> {
-    ::axum::Router::new().route("/cli/config", ::axum::routing::get(get_oidc_client_secrets))
+    ::axum::Router::new().route(
+        "/cli/oidc-client-secrets",
+        ::axum::routing::get(get_oidc_client_secrets),
+    )
 }
 
 #[derive(::serde::Serialize)]
@@ -55,7 +58,7 @@ mod tests {
         let response = send_request(
             crate::router::router("").with_state(state),
             ::axum::http::Request::builder()
-                .uri("/cli/config")
+                .uri("/cli/oidc-client-secrets")
                 .body(::axum::body::Body::empty())?,
         )
         .await?;

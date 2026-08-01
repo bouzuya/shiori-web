@@ -1,4 +1,4 @@
-/// サーバーの `GET /cli/config` が返す、CLI 認証用の OIDC クライアント設定。
+/// サーバーの `GET /cli/oidc-client-secrets` が返す、CLI 認証用の OIDC クライアント設定。
 #[derive(Clone, Debug, Eq, PartialEq, ::serde::Deserialize)]
 pub(crate) struct OidcClientSecrets {
     pub client_id: String,
@@ -7,10 +7,13 @@ pub(crate) struct OidcClientSecrets {
 }
 
 fn oidc_client_secrets_url(server_url: &str) -> String {
-    format!("{}/cli/config", server_url.trim_end_matches('/'))
+    format!(
+        "{}/cli/oidc-client-secrets",
+        server_url.trim_end_matches('/')
+    )
 }
 
-/// サーバーのベース URL から `/cli/config` を取得する。
+/// サーバーのベース URL から `/cli/oidc-client-secrets` を取得する。
 pub(crate) async fn fetch_oidc_client_secrets(
     server_url: &str,
 ) -> ::anyhow::Result<OidcClientSecrets> {
@@ -39,7 +42,7 @@ mod tests {
     fn oidc_client_secrets_url_appends_path() {
         assert_eq!(
             oidc_client_secrets_url("https://example.com"),
-            "https://example.com/cli/config"
+            "https://example.com/cli/oidc-client-secrets"
         );
     }
 
@@ -47,7 +50,7 @@ mod tests {
     fn oidc_client_secrets_url_trims_trailing_slash() {
         assert_eq!(
             oidc_client_secrets_url("https://example.com/app/"),
-            "https://example.com/app/cli/config"
+            "https://example.com/app/cli/oidc-client-secrets"
         );
     }
 

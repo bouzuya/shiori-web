@@ -22,7 +22,7 @@ impl ExportParams {
         Self::fetch(&stored.server_url).await
     }
 
-    /// サーバーの `/cli/config` と issuer の OIDC Discovery から設定を組み立てる。
+    /// サーバーの `/cli/oidc-client-secrets` と issuer の OIDC Discovery から設定を組み立てる。
     /// export URL は `{server_url}/export` に固定する。
     pub(crate) async fn fetch(server_url: &str) -> ::anyhow::Result<Self> {
         let secrets = fetch_oidc_client_secrets(server_url).await?;

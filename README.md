@@ -35,7 +35,7 @@ cargo run --bin main -- serve
 ### 2. Login from CLI
 
 The CLI needs no build-time settings. Pass the server URL to `login`;
-the CLI fetches the OIDC client configuration from `{SERVER_URL}/cli/config`
+the CLI fetches the OIDC client configuration from `{SERVER_URL}/cli/oidc-client-secrets`
 and discovers the provider endpoints from the issuer.
 
 ```bash
