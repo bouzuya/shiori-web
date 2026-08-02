@@ -5,11 +5,11 @@ const CACHE_FILE: &str = "export.ndjson";
 
 /// `$XDG_CACHE_HOME/shiori/export.ndjson` (未設定なら `$HOME/.cache/shiori/export.ndjson`)
 /// に export 結果の local cache を読み書きする。
-pub(crate) struct ExportCache {
+pub(crate) struct ExportCacheStore {
     path: ::std::path::PathBuf,
 }
 
-impl ExportCache {
+impl ExportCacheStore {
     pub(crate) fn new(cache_home: impl AsRef<::std::path::Path>) -> Self {
         Self {
             path: cache_home.as_ref().join(APP_DIR).join(CACHE_FILE),
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn save_then_load_round_trips() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
-        let cache = ExportCache::new(dir.path());
+        let cache = ExportCacheStore::new(dir.path());
         let bookmarks = vec![CachedBookmark::for_test(), CachedBookmark::for_test()];
         cache.save(&bookmarks)?;
         assert_eq!(cache.load()?, Some(bookmarks));
@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn load_returns_none_when_file_is_missing() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
-        let cache = ExportCache::new(dir.path());
+        let cache = ExportCacheStore::new(dir.path());
         assert_eq!(cache.load()?, None);
         Ok(())
     }
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn load_returns_none_when_file_is_corrupted() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
-        let cache = ExportCache::new(dir.path());
+        let cache = ExportCacheStore::new(dir.path());
         let path = dir.path().join(APP_DIR).join(CACHE_FILE);
         ::std::fs::create_dir_all(dir.path().join(APP_DIR))?;
         ::std::fs::write(&path, "not json\n")?;
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn saves_lines_under_shiori_export_ndjson() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
-        let cache = ExportCache::new(dir.path());
+        let cache = ExportCacheStore::new(dir.path());
         let bookmarks = vec![CachedBookmark::for_test(), CachedBookmark::for_test()];
         cache.save(&bookmarks)?;
         let path = dir.path().join(APP_DIR).join(CACHE_FILE);
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn save_replaces_existing_content_and_leaves_no_temp_file() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
-        let cache = ExportCache::new(dir.path());
+        let cache = ExportCacheStore::new(dir.path());
         cache.save(&[CachedBookmark::for_test(), CachedBookmark::for_test()])?;
         let bookmarks = vec![CachedBookmark::for_test()];
         cache.save(&bookmarks)?;
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn remove_deletes_cache_file() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
-        let cache = ExportCache::new(dir.path());
+        let cache = ExportCacheStore::new(dir.path());
         cache.save(&[CachedBookmark::for_test()])?;
         cache.remove()?;
         assert_eq!(cache.load()?, None);
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn remove_succeeds_when_file_is_missing() -> ::anyhow::Result<()> {
         let dir = ::tempfile::tempdir()?;
-        let cache = ExportCache::new(dir.path());
+        let cache = ExportCacheStore::new(dir.path());
         cache.remove()?;
         Ok(())
     }

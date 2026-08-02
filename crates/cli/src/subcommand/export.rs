@@ -1,4 +1,4 @@
-use crate::ExportCache;
+use crate::ExportCacheStore;
 use crate::ExportParams;
 use crate::TokenStore;
 use crate::fetch_export;
@@ -28,7 +28,7 @@ pub(crate) async fn run(refresh: bool) -> ::anyhow::Result<()> {
     let stored = store
         .load()?
         .ok_or_else(|| ::anyhow::anyhow!("not logged in. run `shiori login <SERVER_URL>` first"))?;
-    let cache_store = ExportCache::from_env()?;
+    let cache_store = ExportCacheStore::from_env()?;
     let cache = if refresh {
         Vec::new()
     } else {

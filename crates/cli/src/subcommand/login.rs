@@ -1,6 +1,6 @@
 use crate::ConfigJson;
 use crate::ConfigStore;
-use crate::ExportCache;
+use crate::ExportCacheStore;
 use crate::StoredToken;
 use crate::TokenExchange;
 use crate::TokenStore;
@@ -121,7 +121,7 @@ pub(crate) async fn run(server_url: &str, port: u16) -> ::anyhow::Result<()> {
     })?;
     // 新しい login では以前の user / server のブックマークを含む可能性のある
     // cache は無効なので破棄する。次回 export は全件取得で作り直す。
-    ExportCache::from_env()?.remove()?;
+    ExportCacheStore::from_env()?.remove()?;
 
     eprintln!("Login complete. Token saved.");
     Ok(())

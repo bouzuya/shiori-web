@@ -24,7 +24,7 @@ pub(crate) use self::server::fetch_export;
 pub(crate) use self::server::refresh_id_token;
 pub(crate) use self::storage::ConfigJson;
 pub(crate) use self::storage::ConfigStore;
-pub(crate) use self::storage::ExportCache;
+pub(crate) use self::storage::ExportCacheStore;
 pub(crate) use self::storage::StoredToken;
 pub(crate) use self::storage::TokenStore;
 pub(crate) use self::subcommand::Subcommand;
